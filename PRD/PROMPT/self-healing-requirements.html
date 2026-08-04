@@ -1,0 +1,609 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Multi-Agent Healing System - Architecture Notes</title>
+<style>
+body{font-family:Arial,Helvetica,sans-serif;background:#f4f6f9;color:#222;margin:0;line-height:1.6}
+.container{max-width:1100px;margin:auto;padding:20px}
+h1,h2,h3{color:#163a70}
+.card{background:#fff;border-radius:12px;padding:18px;margin:18px 0;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+ul{margin:8px 0 0 18px}
+code{background:#eef;padding:2px 5px;border-radius:4px}
+.feature{border-left:5px solid #2b6cb0;padding-left:12px;margin:18px 0}
+.small{color:#555;font-size:.95em}
+@media(max-width:700px){body{font-size:16px}}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>AI Multi-Agent Healing System Autonomous assistant</h1>
+<p class="small">Project requirements Details</p>
+
+<div class="card">
+<h2>Core Agent Pipeline</h2>
+<ol>
+<li><b>Planner Agent</b> → Understands user intent, asks clarifying questions, generates structured execution plan.</li>
+<li><b>Worker Agent</b> → Executes assigned tasks only.</li>
+<li><b>Supervisor Agent</b> → Monitors execution, validates outputs, tracks progress.</li>
+<li><b>Healing Agent</b> → Analyzes failures, generates recovery plan, retries until success.</li>
+</ol>
+</div>
+
+<div class="container">
+    <div class="grid">
+        <!-- Planner Agent -->
+        <div class="card planner">
+            <div class="card-header">Planner Agent</div>
+            <div class="card-body">
+                <div>
+                    <p class="section-title">Libraries</p>
+                    <div class="tag-container">
+                        <span class="tag">LangGraph</span>
+                        <span class="tag">Pydantic</span>
+                        <span class="tag">Instructor</span>
+                        <span class="tag">JSON Schema</span>
+                    </div>
+                </div>
+                <div>
+                    <p class="section-title">Responsibilities</p>
+                    <ul class="responsibility-list">
+                        <li>User understanding</li>
+                        <li>Requirement clarification</li>
+                        <li>Task decomposition</li>
+                        <li>Planning</li>
+                        <li>Priority assignment</li>
+                        <li>Permission detection</li>
+                        <li>Risk analysis</li>
+                        <li>Time estimation</li>
+                        <li>Parallel task planning</li>
+                        <li>Structured JSON output</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Worker Agent -->
+        <div class="card worker">
+            <div class="card-header">Worker Agent</div>
+            <div class="card-body">
+                <div>
+                    <p class="section-title">Libraries</p>
+                    <div class="tag-container">
+                        <span class="tag">Playwright</span>
+                        <span class="tag">Requests</span>
+                        <span class="tag">BeautifulSoup4</span>
+                        <span class="tag">httpx</span>
+                        <span class="tag">aiofiles</span>
+                        <span class="tag">subprocess</span>
+                        <span class="tag">pathlib</span>
+                        <span class="tag">shutil</span>
+                        <span class="tag">os</span>
+                    </div>
+                </div>
+                <div>
+                    <p class="section-title">Responsibilities</p>
+                    <ul class="responsibility-list">
+                        <li>Browser automation</li>
+                        <li>Web research</li>
+                        <li>File operations</li>
+                        <li>Execute terminal commands</li>
+                        <li>Code generation</li>
+                        <li>Run programs</li>
+                        <li>Create PPT/PDF</li>
+                        <li>Download resources</li>
+                        <li>Return execution logs</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Supervisor Agent -->
+        <div class="card supervisor">
+            <div class="card-header">Supervisor Agent</div>
+            <div class="card-body">
+                <div>
+                    <p class="section-title">Libraries</p>
+                    <div class="tag-container">
+                        <span class="tag">LangGraph</span>
+                        <span class="tag">asyncio</span>
+                        <span class="tag">Pydantic</span>
+                    </div>
+                </div>
+                <div>
+                    <p class="section-title">Responsibilities</p>
+                    <ul class="responsibility-list">
+                        <li>Monitor every task</li>
+                        <li>Verify completion</li>
+                        <li>Track progress</li>
+                        <li>Detect failures</li>
+                        <li>Validate outputs</li>
+                        <li>Send failed steps to Healing Agent</li>
+                        <li>Monitor parallel tasks</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Healing Agent -->
+        <div class="card healing">
+            <div class="card-header">Healing Agent</div>
+            <div class="card-body">
+                <div>
+                    <p class="section-title">Libraries</p>
+                    <div class="tag-container">
+                        <span class="tag">LangGraph</span>
+                        <span class="tag">LLM</span>
+                        <span class="tag">Error parser</span>
+                        <span class="tag">Retry framework</span>
+                    </div>
+                </div>
+                <div>
+                    <p class="section-title">Responsibilities</p>
+                    <ul class="responsibility-list">
+                        <li>Analyze errors</li>
+                        <li>Root cause detection</li>
+                        <li>Generate recovery plan</li>
+                        <li>Generate new worker tasks</li>
+                        <li>Retry execution</li>
+                        <li>Loop until success</li>
+                        <li>Escalate unrecoverable failures</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+<h2>Technology Stack</h2>
+<div class="grid">
+<div><h3>Core</h3><ul>
+<li>Python</li><li>FastAPI</li><li>React</li><li>Tailwind CSS</li>
+<li>Electron / Tauri (Optional)</li>
+<li>SQLite / PostgreSQL</li>
+<li>LangGraph</li>
+<li>Gemini / OpenAI / Ollama</li>
+</ul></div>
+
+<div><h3>Planner</h3><ul>
+<li>LangGraph</li><li>Pydantic</li><li>Instructor</li><li>JSON Schema</li>
+</ul></div>
+
+<div><h3>Worker</h3><ul>
+<li>Playwright</li><li>Requests</li><li>BeautifulSoup4</li>
+<li>httpx</li><li>aiofiles</li><li>subprocess</li>
+<li>pathlib</li><li>shutil</li><li>os</li>
+</ul></div>
+
+<div><h3>Supervisor</h3><ul>
+<li>LangGraph</li><li>asyncio</li><li>Pydantic</li>
+</ul></div>
+
+<div><h3>Healing</h3><ul>
+<li>LangGraph</li><li>LLM</li><li>Error Parser</li><li>Retry Framework</li>
+</ul></div>
+
+<div><h3>Memory</h3><ul>
+<li>ChromaDB</li><li>FAISS (Optional)</li></ul></div>
+
+<div><h3>Automation</h3><ul>
+<li>Playwright</li><li>Selenium (Optional)</li>
+<li>PyAutoGUI</li><li>pywinauto</li><li>keyboard</li>
+<li>mouse</li><li>psutil</li><li>winreg</li>
+</ul></div>
+
+<div><h3>Research</h3><ul>
+<li>Tavily API</li><li>BeautifulSoup</li><li>Requests</li>
+<li>Newspaper3k</li><li>DuckDuckGo Search</li><li>Firecrawl (Optional)</li>
+</ul></div>
+
+<div><h3>Coding</h3><ul>
+<li>GitPython</li><li>tree-sitter</li><li>subprocess</li></ul></div>
+
+<div><h3>Documents</h3><ul>
+<li>python-pptx</li><li>Pillow</li><li>ReportLab</li>
+<li>WeasyPrint</li><li>python-docx</li><li>Markdown</li>
+</ul></div>
+
+<div><h3>Vision</h3><ul>
+<li>PaddleOCR</li><li>OpenCV</li></ul></div>
+
+<div><h3>Utilities</h3><ul>
+<li>loguru</li><li>cryptography</li><li>python-dotenv</li><li>Pydantic Settings</li></ul></div>
+</div>
+</div>
+
+<div class="card">
+<h2>Recommended Architecture Improvements 1</h2>
+<div class="feature"><h3>1. Standardized Task Object</h3><p>Shared structured task schema using Pydantic instead of plain text.</p></div>
+<div class="feature"><h3>2. Global State Object</h3><p>Single shared workflow state for all agents.</p></div>
+<div class="feature"><h3>3. Planner Never Guesses</h3><p>Always ask clarifying questions until confident.</p></div>
+<div class="feature"><h3>4. Task Categories</h3><p>Research, Browser, Coding, Git, OCR, Vision, Windows, PPT, PDF, etc.</p></div>
+<div class="feature"><h3>5. Plugin-Based Worker</h3><p>Independent execution modules for each capability.</p></div>
+<div class="feature"><h3>6. Artifact Manager</h3><p>Track all generated files and outputs.</p></div>
+<div class="feature"><h3>7. Permission Manager</h3><p>Centralized approval system for risky operations.</p></div>
+<div class="feature"><h3>8. Rollback Manager</h3><p>Backup and restore changes for undo functionality.</p></div>
+<div class="feature"><h3>9. Tool Registry</h3><p>Planner selects tools; Worker executes them.</p></div>
+<div class="feature"><h3>10. Context Window</h3><p>Send only relevant context to each agent.</p></div>
+<div class="feature"><h3>11. Supervisor Dashboard</h3><p>Live pipeline with task progress.</p></div>
+<div class="feature"><h3>12. UUID for Tasks</h3><p>Unique IDs like TASK-0001.</p></div>
+<div class="feature"><h3>13. Confidence Score</h3><p>Planner confidence determines whether to ask user.</p></div>
+<div class="feature"><h3>14. Event Bus</h3><p>Agents communicate through events.</p></div>
+<div class="feature"><h3>15. Parallel Executor</h3><p>Run independent tasks concurrently.</p></div>
+<div class="feature"><h3>16. Recovery History</h3><p>Remember previous successful fixes.</p></div>
+<div class="feature"><h3>17. Planner Versioning</h3><p>Maintain editable plan versions.</p></div>
+<div class="feature"><h3>18. Explainability</h3><p>Every decision includes a reason.</p></div>
+<div class="feature"><h3>19. Human Override</h3><p>Pause, resume, skip, retry, cancel, edit.</p></div>
+<div class="feature"><h3>20. Execution Modes</h3><p>Safe, Assisted, Autonomous.</p></div>
+
+</div>
+
+<div class="card">
+<h2>Execution Modes</h2>
+<ul>
+<li><b>Safe:</b> Ask permission for every action.</li>
+<li><b>Assisted:</b> Ask only for risky operations.</li>
+<li><b>Autonomous:</b> Execute within approved permissions.</li>
+</ul>
+</div>
+
+<div class="card">
+<h2>Future Enhancements</h2>
+<ul>
+<li>Multi-worker execution</li>
+<li>Voice commands</li>
+<li>Vision-based desktop understanding</li>
+<li>User preference learning</li>
+<li>Offline LLM support</li>
+<li>MCP Integration</li>
+<li>Workflow templates</li>
+<li>Scheduled/background tasks</li>
+<li>Cross-device execution</li>
+</ul>
+</div>
+
+<div class="card">
+<h2>Recommended Architecture Improvements explanation detailed 2</h2>
+<div class="agent-architecture-container">
+  <!-- 1. Standardized Task Object -->
+  <div class="feature-card must-have" id="task-object">
+    <div class="feature-header">
+      <span class="feature-number">1</span>
+      <h3>Standardized Task Object</h3>
+      <span class="rating">⭐⭐⭐⭐⭐ [Must Have]</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Instead of agents sending plain text, every agent exchanges the same structured object.</p>
+      
+      <div class="grid-layout">
+        <div class="list-section">
+          <h4>Example Fields</h4>
+          <ul class="fields-list">
+            <li>Task ID</li><li>Parent Task ID</li><li>Goal</li><li>Task Name</li>
+            <li>Description</li><li>Priority</li><li>Category</li><li>Dependencies</li>
+            <li>Estimated Time</li><li>Permission Required</li><li>Risk Level</li>
+            <li>Expected Output</li><li>Output Location</li><li>Status</li>
+            <li>Retry Count</li><li>Logs</li><li>Created By</li><li>Assigned Agent</li>
+          </ul>
+        </div>
+        <div class="benefits-section">
+          <h4>Why?</h4>
+          <ul class="benefits-list">
+            <li>Easier debugging & monitoring</li>
+            <li>Easy to save in Database</li>
+            <li>Supervisor understands every task</li>
+            <li>Healing can modify tasks directly</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Global State Object -->
+  <div class="feature-card must-have" id="global-state">
+    <div class="feature-header">
+      <span class="feature-number">2</span>
+      <h3>Global State Object</h3>
+      <span class="rating">⭐⭐⭐⭐⭐ [Must Have]</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Instead of each agent storing its own information, create one shared state that every agent updates.</p>
+      <div class="tags-container">
+        <span class="state-tag">Conversation</span><span class="state-tag">Goal</span>
+        <span class="state-tag">Clarifications</span><span class="state-tag">Task Queue</span>
+        <span class="state-tag">Running Tasks</span><span class="state-tag">Completed Tasks</span>
+        <span class="state-tag">Failed Tasks</span><span class="state-tag">Permissions</span>
+        <span class="state-tag">Logs</span><span class="state-tag">Memory</span>
+        <span class="state-tag">Current Stage</span><span class="state-tag">Artifacts</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Planner Should Never Guess -->
+  <div class="feature-card must-have" id="planner-confidence">
+    <div class="feature-header">
+      <span class="feature-number">3</span>
+      <h3>Planner Should Never Guess</h3>
+      <span class="rating">⭐⭐⭐⭐⭐</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Planner should ask questions until confidence is high. Never assume.</p>
+      <div class="workflow-flow">
+        <span>Create PPT</span> &rarr; <span>How many slides?</span> &rarr; <span>Target audience?</span> &rarr; <span>Theme?</span> &rarr; <span>Animations?</span> &rarr; <span>Citations?</span> &rarr; <span>Need PDF?</span> &rarr; <span class="highlight">Generate Plan</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Introduce Task Types -->
+  <div class="feature-card should-have" id="task-types">
+    <div class="feature-header">
+      <span class="feature-number">4</span>
+      <h3>Introduce Task Types</h3>
+      <span class="rating">⭐⭐⭐⭐☆</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Every task gets a category so the Worker immediately knows which module to use.</p>
+      <div class="categories-grid">
+        <span>Research</span><span>Browser</span><span>Coding</span><span>File</span><span>Terminal</span>
+        <span>Vision</span><span>OCR</span><span>Windows</span><span>Git</span><span>Document</span>
+        <span>PPT</span><span>PDF</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Plugin-Based Worker -->
+  <div class="feature-card must-have" id="plugin-worker">
+    <div class="feature-header">
+      <span class="feature-number">5</span>
+      <h3>Plugin-Based Worker</h3>
+      <span class="rating">⭐⭐⭐⭐⭐</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Instead of one huge worker, future modules become modular plug-and-play components.</p>
+      <div class="architecture-tree">
+        <div class="root">Worker</div>
+        <div class="branches">
+          <span>Browser</span><span>Research</span><span>Coding</span><span>Git</span><span>Windows</span><span>OCR</span><span>PPT</span><span>PDF</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Artifact Manager -->
+  <div class="feature-card must-have" id="artifact-manager">
+    <div class="feature-header">
+      <span class="feature-number">6</span>
+      <h3>Artifact Manager</h3>
+      <span class="rating">⭐⭐⭐⭐⭐</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Generated files shouldn't disappear. Store everything so the Supervisor always knows file locations.</p>
+      <div class="storage-vault">
+        <code>slides.pptx</code><code>report.pdf</code><code>research.md</code><code>images/</code><code>logs/</code><code>screenshots/</code><code>code/</code><code>downloads/</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Permission Manager -->
+  <div class="feature-card must-have" id="permission-manager">
+    <div class="feature-header">
+      <span class="feature-number">7</span>
+      <h3>Permission Manager</h3>
+      <span class="rating">⭐⭐⭐⭐⭐</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Cleaner centralized architecture instead of every agent asking for permissions individually.</p>
+      <div class="workflow-flow">
+        <span>Need CMD</span> &rarr; <span>Permission Manager</span> &rarr; <span>Show Popup</span> &rarr; <span class="success">Approved</span> &rarr; <span>Continue</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Rollback Manager -->
+  <div class="feature-card must-have" id="rollback-manager">
+    <div class="feature-header">
+      <span class="feature-number">8</span>
+      <h3>Rollback Manager</h3>
+      <span class="rating">⭐⭐⭐⭐⭐</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Dedicated rollback system that backs up environments before changing anything.</p>
+      <div class="workflow-flow text-center">
+        <span>Backup</span> &rarr; <span>Modify</span> &rarr; <span class="danger">Failure?</span> &rarr; <span>Restore</span>
+      </div>
+      <div class="sub-targets">
+        <strong>Targets:</strong> Registry, Files, Drivers, Git, Config, Environment Variables
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. Tool Registry -->
+  <div class="feature-card should-have" id="tool-registry">
+    <div class="feature-header">
+      <span class="feature-number">9</span>
+      <h3>Tool Registry</h3>
+      <span class="rating">⭐⭐⭐⭐☆</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Planner shouldn't know how tools work. It simply selects tools, and the Worker executes them.</p>
+      <div class="categories-grid flex-list">
+        <span>Browser</span><span>Git</span><span>PowerShell</span><span>OCR</span><span>Vision</span><span>PPT</span><span>PDF</span><span>Web Search</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 10. Context Window Optimization -->
+  <div class="feature-card must-have" id="context-window">
+    <div class="feature-header">
+      <span class="feature-number">10</span>
+      <h3>Context Window Optimization</h3>
+      <span class="rating">⭐⭐⭐⭐⭐</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Worker only receives relevant info instead of the whole conversation. Saves tokens, yields better reasoning.</p>
+      <div class="tags-container small">
+        <span>Goal</span><span>Current Task</span><span>Dependencies</span><span>Permission</span><span>Expected Output</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 11. Supervisor Dashboard -->
+  <div class="feature-card must-have" id="supervisor-dashboard">
+    <div class="feature-header">
+      <span class="feature-number">11</span>
+      <h3>Supervisor Dashboard</h3>
+      <span class="rating">⭐⭐⭐⭐⭐</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Show a live pipeline status breakdown instead of raw text logs. Looks impressive during demos.</p>
+      <div class="dashboard-mock">
+        <span class="status-done">✔ Research</span>
+        <span class="status-done">✔ Images</span>
+        <span class="status-pending">⏳ PPT</span>
+        <span class="status-done">✔ PDF</span>
+        <span class="status-fail">❌ Driver Install</span>
+        <span class="status-retry">⟳ Healing</span>
+        <span class="status-done">✔ Finished</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 12. UUID for Every Task -->
+  <div class="feature-card must-have" id="task-uuid">
+    <div class="feature-header">
+      <span class="feature-number">12</span>
+      <h3>Every Task Gets a UUID</h3>
+      <span class="rating">⭐⭐⭐⭐⭐</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Instead of <code>Task 1</code>, use <code>TASK-0001</code> so self-healing can reference the exact failure points.</p>
+    </div>
+  </div>
+
+  <!-- 13. Confidence Score -->
+  <div class="feature-card should-have" id="confidence-score">
+    <div class="feature-header">
+      <span class="feature-number">13</span>
+      <h3>Confidence Score</h3>
+      <span class="rating">⭐⭐⭐⭐☆</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Planner flags its internal certainty. If it hits low confidence, it stops to ask the user.</p>
+      <div class="metric-box">Task Confidence: <span class="alert-status">95%</span></div>
+    </div>
+  </div>
+
+  <!-- 14. Event Bus Architecture -->
+  <div class="feature-card must-have" id="event-bus">
+    <div class="feature-header">
+      <span class="feature-number">14</span>
+      <h3>Event Bus</h3>
+      <span class="rating">⭐⭐⭐⭐⭐</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Cleaner than polling. System updates reactively via standard lifecycle triggers.</p>
+      <div class="workflow-flow vertical">
+        <span>Planner Finished</span> &darr; <span>Worker Starts</span> &darr; <span>Worker Completed</span> &darr; <span>Supervisor Checks</span> &darr; <span>Healing Starts</span> &darr; <span>Supervisor Updates</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 15. Parallel Executor -->
+  <div class="feature-card must-have" id="parallel-executor">
+    <div class="feature-header">
+      <span class="feature-number">15</span>
+      <h3>Parallel Executor</h3>
+      <span class="rating">⭐⭐⭐⭐⭐</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Instead of running one task sequentially, independent modules run together while the Supervisor watches all.</p>
+      <div class="parallel-box">
+        <div class="parallel-tracks"><span>Research</span><span>Images</span><span>References</span><span>Citations</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 16. Recovery History Database -->
+  <div class="feature-card should-have" id="recovery-history">
+    <div class="feature-header">
+      <span class="feature-number">16</span>
+      <h3>Recovery History</h3>
+      <span class="rating">⭐⭐⭐⭐☆</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Self-healing mechanism remembers historical fixes to reuse strategies on future errors.</p>
+      <div class="workflow-flow">
+        <span>Error Identified</span> &rarr; <span>Solution Applied</span> &rarr; <span>Saved in DB</span> &rarr; <span class="highlight">Auto-Reused Next Time</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 17. Planner Versioning -->
+  <div class="feature-card should-have" id="planner-versioning">
+    <div class="feature-header">
+      <span class="feature-number">17</span>
+      <h3>Planner Versioning</h3>
+      <span class="rating">⭐⭐⭐⭐☆</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Saves linear changes to historical execution plans for easy manual or system rollbacks.</p>
+      <div class="workflow-flow">
+        <span>Plan V1</span> &rarr; <span>User Change</span> &rarr; <span>Plan V2</span> &rarr; <span>User Change</span> &rarr; <span>Plan V3</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 18. Decision Explainability -->
+  <div class="feature-card must-have" id="explainability">
+    <div class="feature-header">
+      <span class="feature-number">18</span>
+      <h3>Explainability</h3>
+      <span class="rating">⭐⭐⭐⭐⭐</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Every structural decision must provide a plain-text rationale for clear debugging and presentations.</p>
+      <blockquote><strong>Example:</strong> "Research first" &rarr; <em>Reason: Need content layout before generating PPT slides.</em></blockquote>
+    </div>
+  </div>
+
+  <!-- 19. Human Override Mechanics -->
+  <div class="feature-card must-have" id="human-override">
+    <div class="feature-header">
+      <span class="feature-number">19</span>
+      <h3>Human Override</h3>
+      <span class="rating">⭐⭐⭐⭐⭐</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Gives users granular operational control mid-execution to ensure a professional user experience.</p>
+      <div class="categories-grid interactive">
+        <span>Pause</span><span>Resume</span><span>Skip</span><span>Retry</span><span>Cancel</span><span>Edit Plan</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 20. Execution Modes -->
+  <div class="feature-card must-have" id="execution-modes">
+    <div class="feature-header">
+      <span class="feature-number">20</span>
+      <h3>Execution Modes</h3>
+      <span class="rating">⭐⭐⭐⭐⭐</span>
+    </div>
+    <div class="feature-body">
+      <p class="description">Provides configurable safety guidelines depending on user trust and operational scope:</p>
+      <ul class="modes-list">
+        <li><strong>Safe Mode:</strong> Explicit permission required for every action.</li>
+        <li><strong>Assisted Mode:</strong> Prompts the user only for risky/destructive actions.</li>
+        <li><strong>Autonomous Mode:</strong> Executes all processes uninhibited within pre-approved parameters.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+</div>
+</body>
+</html>

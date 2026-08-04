@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autonomous Multi-Agent System Architecture Blueprint</title>
+    <style>
+        :root {
+            --bg-deep: #0b0f19;
+            --bg-card: #131a26;
+            --bg-nested: #1b2433;
+            --border: #26354a;
+            --border-glow: #3b5270;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --text-dark: #64748b;
+            
+            --clr-planner: #38bdf8;
+            --clr-worker: #fb923c;
+            --clr-supervisor: #a78bfa;
+            --clr-healing: #f87171;
+            --clr-state: #34d399;
+            --clr-system: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            padding: 2rem;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        header {
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        header h1 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            color: var(--text-main);
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+        }
+
+        .meta-tags {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .meta-badge {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-family: monospace;
+            color: var(--clr-planner);
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 0.5rem;
+        }
+
+        h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-main);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(48%, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(30%, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card.full-width {
+            grid-column: 1 / -1;
+        }
+
+        /* Border accents for agent identities */
+        .card.planner-card { border-top: 4px solid var(--clr-planner); }
+        .card.worker-card { border-top: 4px solid var(--clr-worker); }
+        .card.supervisor-card { border-top: 4px solid var(--clr-supervisor); }
+        .card.healing-card { border-top: 4px solid var(--clr-healing); }
+        .card.state-card { border-top: 4px solid var(--clr-state); }
+
+        /* Global Flow Diagram Layout */
+        .flow-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 0;
+            background: #0d131f;
+            border-radius: 8px;
+            border: 1px dashed var(--border);
+            margin: 1.5rem 0;
+        }
+
+        .flow-node {
+            background-color: var(--bg-nested);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem 1.5rem;
+            text-align: center;
+            min-width: 240px;
+            font-weight: 600;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.4);
+            font-size: 0.95rem;
+        }
+
+        .flow-node.planner { border-color: var(--clr-planner); color: var(--clr-planner); }
+        .flow-node.worker { border-color: var(--clr-worker); color: var(--clr-worker); }
+        .flow-node.supervisor { border-color: var(--clr-supervisor); color: var(--clr-supervisor); }
+        .flow-node.healing { border-color: var(--clr-healing); color: var(--clr-healing); }
+        .flow-node.state { border-color: var(--clr-state); color: var(--clr-state); background: #0e201a; }
+        .flow-node.user { border-color: var(--clr-system); color: var(--clr-system); }
+
+        .flow-arrow {
+            color: var(--text-dark);
+            font-family: monospace;
+            font-size: 1.25rem;
+            margin: 0.25rem 0;
+            text-align: center;
+            user-select: none;
+        }
+
+        .flow-split-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .flow-split-row {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            max-width: 1000px;
+            margin: 0.5rem 0;
+        }
+
+        .flow-branch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        /* Lists and Inventories */
+        ul.spec-list {
+            list-style: none;
+        }
+
+        ul.spec-list li {
+            position: relative;
+            padding-left: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        ul.spec-list li::before {
+            content: "▪";
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: var(--text-dark);
+        }
+
+        .planner-card ul.spec-list li::before { color: var(--clr-planner); }
+        .worker-card ul.spec-list li::before { color: var(--clr-worker); }
+        .supervisor-card ul.spec-list li::before { color: var(--clr-supervisor); }
+        .healing-card ul.spec-list li::before { color: var(--clr-healing); }
+        .state-card ul.spec-list li::before { color: var(--clr-state); }
+
+        .tag-cloud {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .tag {
+            background-color: var(--bg-nested);
+            border: 1px solid var(--border);
+            padding: 0.35rem 0.7rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: var(--text-main);
+        }
+        
+        .tag.highlight {
+            border-color: var(--clr-planner);
+            color: var(--clr-planner);
+        }
+
+        /* Pipeline Progression Styling */
+        .pipeline-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            margin-top: 1rem;
+        }
+
+        .pipeline-step {
+            background-color: var(--bg-nested);
+            border-left: 3px solid var(--clr-planner);
+            padding: 0.5rem 1rem;
+            border-radius: 0 4px 4px 0;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .pipeline-step span.step-idx {
+            font-family: monospace;
+            color: var(--text-dark);
+            font-size: 0.8rem;
+        }
+
+        .worker-card .pipeline-step { border-left-color: var(--clr-worker); }
+        .healing-card .pipeline-step { border-left-color: var(--clr-healing); }
+
+        /* Code & Directory Trees */
+        .tree-container {
+            background-color: var(--bg-deep);
+            border: 1px solid var(--border);
+            padding: 1.25rem;
+            border-radius: 6px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            color: #e2e8f0;
+        }
+
+        .tree-node { margin-left: 1.5rem; }
+        .tree-root { font-weight: bold; color: var(--clr-planner); }
+        .tree-dir { color: #cbd5e1; font-weight: 500; }
+        .tree-file { color: #94a3b8; }
+
+        .callout-box {
+            background-color: rgba(38, 53, 74, 0.3);
+            border-left: 4px solid var(--border-glow);
+            padding: 1rem 1.25rem;
+            border-radius: 0 6px 6px 0;
+            margin: 1rem 0;
+            font-size: 0.95rem;
+        }
+        .callout-box.important {
+            border-left-color: var(--clr-worker);
+            background-color: rgba(251, 146, 60, 0.05);
+        }
+
+        .mode-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .mode-item {
+            background-color: var(--bg-nested);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            text-align: center;
+        }
+        .mode-title {
+            font-weight: bold;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        /* Two Column Equal Split inside card */
+        .inner-split {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <header>
+            <h1>Autonomous Multi-Agent System Architecture Blueprint</h1>
+            <p>Production-Grade Platform Specification for Centralized Shared State Agentic Workflow Execution Engine</p>
+            <div class="meta-tags">
+                <span class="meta-badge">Role: Senior AI Systems Architect & Principal Software Engineer</span>
+                <span class="meta-badge">Framework Integration: LangGraph & FastAPI</span>
+                <span class="meta-badge">Validation Engine: Pydantic v2 Strong Typing</span>
+                <span class="meta-badge">Version: 1.0.0 (Production)</span>
+            </div>
+        </header>
+
+        <div class="card full-width" style="margin-bottom: 2rem;">
+            <h2>Communication Topology & Central Source of Truth</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+                <strong>Strict Architectural Constraint:</strong> Agents are entirely isolated and decoupled from one another. Direct point-to-point agent communication is strictly forbidden. All scheduling, synchronization, and message dispatch occurs natively by writing to and reading from the centralized <strong>Shared Workflow State</strong> block.
+            </p>
+
+            <div class="flow-container">
+                <div class="flow-node user">User Context / Prompt</div>
+                <div class="flow-arrow">│<br>▼</div>
+                
+                <div class="flow-node planner">Planner Agent (Thinks / Plans)</div>
+                <div class="flow-arrow">│<br>▼</div>
+                
+                <div class="flow-node state">Centralized Shared Workflow State</div>
+                
+                <div class="flow-split-container">
+                    <svg width="100%" height="40" viewBox="0 0 600 40" preserveAspectRatio="none" style="stroke: var(--border-glow); stroke-width: 2; fill: none; max-width: 800px;">
+                        <path d="M 300,0 L 300,15 M 100,15 L 500,15 M 100,15 L 100,40 M 300,15 L 300,40 M 500,15 L 500,40" />
+                    </svg>
+                </div>
+
+                <div class="flow-split-row" style="max-width: 800px;">
+                    <div class="flow-branch">
+                        <div class="flow-node" style="font-size: 0.85rem; padding: 0.5rem;">Central Permission Manager</div>
+                    </div>
+                    <div class="flow-branch">
+                        <div class="flow-node worker">Worker Agent (Executes)</div>
+                        <div class="flow-arrow">│<br>▼</div>
+                        <div class="flow-node" style="font-size: 0.85rem; padding: 0.5rem;">Extensible Tool Executor</div>
+                    </div>
+                    <div class="flow-branch">
+                        <div class="flow-node supervisor">Supervisor Agent (Monitors)</div>
+                    </div>
+                </div>
+
+                <div class="flow-split-container">
+                    <svg width="100%" height="40" viewBox="0 0 600 40" preserveAspectRatio="none" style="stroke: var(--border-glow); stroke-width: 2; fill: none; max-width: 800px;">
+                        <path d="M 100,0 L 100,25 M 300,0 L 300,25 M 500,0 L 500,25 M 100,25 L 500,25 M 300,25 L 300,40" />
+                    </svg>
+                </div>
+
+                <div class="flow-node state">Centralized Shared Workflow State</div>
+                <div class="flow-arrow">│<br>▼</div>
+                
+                <div class="flow-node" style="border-style: dashed; font-size: 0.9rem; min-width: 200px;">Supervisor Evaluates: Failure Detected?</div>
+                
+                <div class="flow-split-row" style="max-width: 600px; margin-top: 0.5rem;">
+                    <div class="flow-branch">
+                        <div style="color: var(--clr-healing); font-size: 0.8rem; font-weight: bold; margin-bottom: 0.2rem;">[YES]</div>
+                        <div class="flow-arrow" style="margin:0;">▼</div>
+                        <div class="flow-node healing">Healing Agent (RCA & Repair)</div>
+                        <div class="flow-arrow">│<br>▼</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); font-family: monospace;">Injects Recovery Tasks</div>
+                        <div class="flow-arrow">│<br>▼</div>
+                        <div class="flow-node state" style="padding: 0.4rem 1rem; min-width: 180px;">Shared Workflow State</div>
+                        <div class="flow-arrow">│<br>▼</div>
+                        <div class="flow-node worker" style="padding: 0.4rem 1rem; min-width: 180px;">Worker Executes Recovery</div>
+                    </div>
+                    
+                    <div class="flow-branch">
+                        <div style="color: var(--clr-state); font-size: 0.8rem; font-weight: bold; margin-bottom: 0.2rem;">[NO]</div>
+                        <div class="flow-arrow" style="margin:0;">▼</div>
+                        <div class="flow-node" style="border-color: var(--clr-state); color: var(--clr-state); margin-top: 4.5rem;">Final Workflow Complete</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="callout-box">
+                <strong>Core Architectural Mandate:</strong> Separation of execution and control loops remains absolute. No individual agent should perform another agent's assigned systemic responsibility.
+            </div>
+        </div>
+
+        <div class="grid-2">
+            
+            <div class="card planner-card">
+                <h2>Planner Agent Specification</h2>
+                <div style="margin-bottom: 1rem; font-style: italic; color: var(--clr-planner); font-size: 0.9rem;">Responsibilities: Thinks, Understands, Plans. Never Executes, Never Replans at runtime.</div>
+                
+                <h3>Internal Pipeline Logical Stages</h3>
+                <div class="pipeline-stack">
+                    <div class="pipeline-step"><span>Intent Analyzer</span><span class="step-idx">Stage 01</span></div>
+                    <div class="pipeline-step"><span>Capability Discovery</span><span class="step-idx">Stage 02</span></div>
+                    <div class="pipeline-step"><span>Requirement Clarification</span><span class="step-idx">Stage 03</span></div>
+                    <div class="pipeline-step"><span>Context Understanding</span><span class="step-idx">Stage 04</span></div>
+                    <div class="pipeline-step"><span>Permission Detection</span><span class="step-idx">Stage 05</span></div>
+                    <div class="pipeline-step"><span>Risk Analysis</span><span class="step-idx">Stage 06</span></div>
+                    <div class="pipeline-step"><span>Workflow Planning</span><span class="step-idx">Stage 07</span></div>
+                    <div class="pipeline-step"><span>Dependency Builder</span><span class="step-idx">Stage 08</span></div>
+                    <div class="pipeline-step"><span>Parallel Task Analyzer</span><span class="step-idx">Stage 09</span></div>
+                    <div class="pipeline-step"><span>Workflow Validator</span><span class="step-idx">Stage 10</span></div>
+                    <div class="pipeline-step"><span>JSON Generator</span><span class="step-idx">Stage 11</span></div>
+                    <div class="pipeline-step"><span>Execution Summary Generator</span><span class="step-idx">Stage 12</span></div>
+                </div>
+
+                <h3 style="margin-top: 1.5rem;">Functional Rules & Guardrails</h3>
+                <ul class="spec-list">
+                    <li>Must ask clarification questions dynamically until confidence score clears configured thresholds.</li>
+                    <li>Prohibited from ever assuming parameters or working with missing or ambiguous operational context.</li>
+                    <li>Breaks high-level requests into atomic, deterministic, strictly bounded operational tasks.</li>
+                    <li>Precomputes dependencies, execution timelines, permissions, expected artifacts, success/failure boundaries, and risk footprints.</li>
+                    <li>Compiles the final pipeline into a valid, verifiable structured Graph JSON schema.</li>
+                    <li>Transitions completely into a deep sleep/inactive state immediately upon pushing the approved graph payload to the state object.</li>
+                </ul>
+            </div>
+
+            <div class="card worker-card">
+                <h2>Worker Agent Specification</h2>
+                <div style="margin-bottom: 1rem; font-style: italic; color: var(--clr-worker); font-size: 0.9rem;">Responsibilities: Executes. Never plans, never improvises, never changes tasks, never retries independently.</div>
+                
+                <h3>Atomic Execution Flow Pipeline</h3>
+                <div class="pipeline-stack">
+                    <div class="pipeline-step"><span>Receive Task Assignment from Shared Queue</span><span class="step-idx">Step 1</span></div>
+                    <div class="pipeline-step"><span>Identify Explicit Registered Tool Asset</span><span class="step-idx">Step 2</span></div>
+                    <div class="pipeline-step"><span>Dynamically Load Underlying Module Component</span><span class="step-idx">Step 3</span></div>
+                    <div class="pipeline-step"><span>Execute Command via Isolated Plugin Workspace</span><span class="step-idx">Step 4</span></div>
+                    <div class="pipeline-step"><span>Intercept and Capture Raw System/Runtime Logs</span><span class="step-idx">Step 5</span></div>
+                    <div class="pipeline-step"><span>Capture and Register Generated Binary/Text Artifacts</span><span class="step-idx">Step 6</span></div>
+                    <div class="pipeline-step"><span>Measure Exact Execution Step Duration Profiles</span><span class="step-idx">Step 7</span></div>
+                    <div class="pipeline-step"><span>Construct Structured Output Result Contract Block</span><span class="step-idx">Step 8</span></div>
+                    <div class="pipeline-step"><span>Atomic Push: Commit State Context back to Shared Source of Truth</span><span class="step-idx">Step 9</span></div>
+                </div>
+
+                <h3 style="margin-top: 1.5rem;">Operational Parameters</h3>
+                <ul class="spec-list">
+                    <li>Executes exactly one single distinct task payload at any point in time.</li>
+                    <li>Maintains absolute mechanical compliance; never modifies task descriptions, execution order, or scope.</li>
+                    <li>If a task hits a runtime obstacle, the worker immediately reports failure and halts. It does not attempt local error interception or self-directed retries.</li>
+                </ul>
+            </div>
+
+        </div>
+
+        <div class="grid-2">
+            
+            <div class="card supervisor-card">
+                <h2>Supervisor Agent Specification</h2>
+                <div style="margin-bottom: 1rem; font-style: italic; color: var(--clr-supervisor); font-size: 0.9rem;">Responsibilities: Monitors, Validates, Tracks, Detects anomalies.</div>
+                
+                <h3>Continuous Evaluation Loops</h3>
+                <ul class="spec-list">
+                    <li>Performs asynchronous monitoring over the entire workflow graph lifecycles.</li>
+                    <li>Validates structural integrity of each finished task against its predefined success metrics.</li>
+                    <li>Evaluates artifact properties (existence, size, schemas, data consistency) immediately upon node exit.</li>
+                    <li>Orchestrates and tracks tasks operating under concurrent/parallel group mappings.</li>
+                    <li>Identifies missing resources, hanging processes, execution lag, or corrupted data pipelines.</li>
+                    <li>On failure, blocks downstream execution and serializes structured failure payloads to the state layer to call the Healing Agent.</li>
+                </ul>
+
+                <h3 style="margin-top: 1.25rem;">Runtime Assessment Criteria</h3>
+                <div class="tree-container" style="font-size: 0.8rem; background-color: var(--bg-nested);">
+                    Task Status == COMPLETED ?<br>
+                    ├── YES → Validate Output Artifacts → Meet Success Criteria → Mark Queue Complete → Dispatch Next<br>
+                    └── NO  → Compile Diagnostic Context → Log Structural Anomalies → Notify Healing Agent Engine
+                </div>
+            </div>
+
+            <div class="card healing-card">
+                <h2>Healing Agent Specification</h2>
+                <div style="margin-bottom: 1rem; font-style: italic; color: var(--clr-healing); font-size: 0.9rem;">Responsibilities: Root Cause Analysis, Recovery Workflows. Never calls the Planner again.</div>
+                
+                <h3>Recovery Flow Pipeline</h3>
+                <div class="pipeline-stack">
+                    <div class="pipeline-step"><span>Consume Structured Error Telemetry Report from State Block</span><span class="step-idx">Phase 1</span></div>
+                    <div class="pipeline-step"><span>Execute Systemic Root Cause Analysis (RCA)</span><span class="step-idx">Phase 2</span></div>
+                    <div class="pipeline-step"><span>Generate Custom Sub-Graph of Specific Recovery Tasks</span><span class="step-idx">Phase 3</span></div>
+                    <div class="pipeline-step"><span>Inject and Adjust Workflow Graph Task Configurations Real-Time</span><span class="step-idx">Phase 4</span></div>
+                    <div class="pipeline-step"><span>Release Tasks to Worker Allocation Queue</span><span class="step-idx">Phase 5</span></div>
+                    <div class="pipeline-step"><span>Verify Loop Health with Supervisor Assertions</span><span class="step-idx">Phase 6</span></div>
+                </div>
+
+                <h3 style="margin-top: 1.25rem;">Failure Isolation Constraints</h3>
+                <ul class="spec-list">
+                    <li>Operates exclusively inside the failure context boundary; completely isolated from the Planner Agent.</li>
+                    <li>Loops safely on fixed recovery parameters until structural alignment is met, or systematically flags a terminal exception to raise human engineering intervention flags.</li>
+                </ul>
+            </div>
+
+        </div>
+
+        <div class="card full-width" style="margin-bottom: 2rem;">
+            <h2>Execution Philosophy Model: Incremental vs Bulk</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+                The platform relies entirely on fine-grained, incremental task execution coupled with localized validation gates. This mimics advanced Integrated Development Environment (IDE) agentic execution trees.
+            </p>
+
+            <div class="inner-split">
+                <div style="background: var(--bg-nested); padding: 1.25rem; border-radius: 6px; border-left: 4px solid var(--clr-state);">
+                    <h3 style="color: var(--clr-state);">Approved System Design: Incremental Validation</h3>
+                    <div class="flow-arrow" style="text-align: left; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">User Prompt → Understand Goal → Plan → Approve Plan → Loop [ Execute One Task → Verify Output ] → Complete</div>
+                    <div class="callout-box" style="margin: 0; background: rgba(52, 211, 153, 0.02); font-size: 0.85rem;">
+                        <strong>Architectural Benefit:</strong> Provides strong protection against cascading runtime faults. Failures are captured, isolated, and resolved instantly at the single atomic node boundary.
+                    </div>
+                </div>
+                
+                <div style="background: var(--bg-nested); padding: 1.25rem; border-radius: 6px; border-left: 4px solid var(--clr-healing); opacity: 0.65;">
+                    <h3 style="color: var(--clr-healing);">Rejected System Design: Bulk Optimistic Planning</h3>
+                    <div class="flow-arrow" style="text-align: left; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">User Prompt → Plan Matrix → Execute Entire Structure Unchecked → Blind Hope/Faith Execution → System Crash</div>
+                    <div class="callout-box" style="margin: 0; background: rgba(248, 113, 113, 0.02); font-size: 0.85rem;">
+                        <strong>Architectural Hazard:</strong> Leads to catastrophic error compounding where later operations execute over unvalidated, corrupted, or missing foundational data frames.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            
+            <div class="card state-card">
+                <h2>Shared Workflow State Model Schema</h2>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+                    Universal state object pattern committed to data backplanes. Validated and enforced via runtime Pydantic classes.
+                </p>
+
+                <div class="tree-container" style="font-size: 0.85rem;">
+                    <span class="tree-root">WorkflowStateModel(PydanticBase)</span><br>
+                    ├── <span class="tree-dir">Workflow Metadata</span> <span class="tree-file">[UUID, Session IDs, Created Timestamp, Origin Core Client Identifier]</span><br>
+                    ├── <span class="tree-dir">User Goal</span> <span class="tree-file">[Raw Input Prompt text string, Contextual Scope Clarifications logs]</span><br>
+                    ├── <span class="tree-dir">Conversation</span> <span class="tree-file">[Historical chat message exchange context array for reference]</span><br>
+                    ├── <span class="tree-dir">Clarifications</span> <span class="tree-file">[Resolved ambiguities data structures, parameter maps]</span><br>
+                    ├── <span class="tree-dir">Execution Mode</span> <span class="tree-file">[Safe Mode | Assisted Mode | Autonomous Mode configuration state]</span><br>
+                    ├── <span class="tree-dir">Capabilities</span> <span class="tree-file">[Resolved capability discovery map of requested system features]</span><br>
+                    ├── <span class="tree-dir">Permissions</span> <span class="tree-file">[Active authorization matrix granted explicitly to session runtimes]</span><br>
+                    ├── <span class="tree-dir">Risks</span> <span class="tree-file">[Risk profiling level score, threat modeling flags, rollback profiles]</span><br>
+                    ├── <span class="tree-dir">Estimated Time</span> <span class="tree-file">[Cumulative projected processing timeline, milestone marks]</span><br>
+                    ├── <span class="tree-dir">Task Queue</span> <span class="tree-file">[Ordered collection array of pending executable task schemas]</span><br>
+                    ├── <span class="tree-dir">Running Tasks</span> <span class="tree-file">[Active dictionary tracker identifying nodes currently in-flight]</span><br>
+                    ├── <span class="tree-dir">Completed Tasks</span> <span class="tree-file">[Historical log list of all tasks successfully exiting execution gates]</span><br>
+                    ├── <span class="tree-dir">Failed Tasks</span> <span class="tree-file">[Telemetry logs of aborted tasks mapped directly to error context vectors]</span><br>
+                    ├── <span class="tree-dir">Parallel Groups</span> <span class="tree-file">[Execution groupings explicitly marked for concurrent thread safe runs]</span><br>
+                    ├── <span class="tree-dir">Dependencies</span> <span class="tree-file">[DAG mapping configuration outlining absolute operational prerequisites]</span><br>
+                    ├── <span class="tree-dir">Artifacts</span> <span class="tree-file">[Global tracking registry cataloging all intermediate and final file entries]</span><br>
+                    ├── <span class="tree-dir">Logs</span> <span class="tree-file">[Unified structured JSON telemetry streams emitted from internal layers]</span><br>
+                    ├── <span class="tree-dir">Recovery History</span> <span class="tree-file">[RCA logs, tracking patterns showing remediation events injected by Healing]</span><br>
+                    ├── <span class="tree-dir">Progress</span> <span class="tree-file">[Floating percentage value outlining total graph progress state metrics]</span><br>
+                    ├── <span class="tree-dir">Execution Summary</span> <span class="tree-file">[High-level system activity layout visible to consumer clients]</span><br>
+                    └── <span class="tree-dir">Final Outputs</span> <span class="tree-file">[Target results, compiled deliverables paths, or interface response keys]</span>
+                </div>
+            </div>
+
+            <div class="card" style="border-top: 4px solid var(--clr-system);">
+                <h2>Task Model Structural Definition</h2>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+                    Every single node component embedded inside the generated DAG workflow must map explicitly to the following configuration schema:
+                </p>
+
+                <table style="width:100%; border-collapse:collapse; font-size:0.85rem; color:var(--text-main);">
+                    <thead>
+                        <tr style="border-bottom:2px solid var(--border); text-align:left; color:var(--text-muted);">
+                            <th style="padding:0.4rem 0.25rem;">Field Name</th>
+                            <th style="padding:0.4rem 0.25rem;">Data Type / Purpose</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Unique Task ID</strong></td><td><code>UUIDv4</code> Primary Key tracking node uniqueness.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Parent Task</strong></td><td><code>Optional[UUIDv4]</code> mapping parent inheritance origins.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Workflow ID</strong></td><td><code>UUIDv4</code> matching back to the overarching root engine instance.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Task Name</strong></td><td>Concise descriptive title identifier string.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Description</strong></td><td>Highly explicit implementation context detailing concrete goal parameters.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Assigned Agent</strong></td><td>Target routing string matching specific operational handler blocks.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Required Tool</strong></td><td>Explicit identifier selecting plugin item inside central registry.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Category</strong></td><td>Functional grouping tags mapping classification hierarchies.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Priority</strong></td><td>Weight score enforcing internal task queue sorting behaviors.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Dependencies</strong></td><td>Array list of Task IDs specifying required prerequisites.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Preconditions</strong></td><td>State predicates that must validate to TRUE before starting execution loops.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Permissions</strong></td><td>System execution rights requested explicitly to handle this run.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Risk Level</strong></td><td>Hazard score mapping out safe execution constraint actions.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Expected Output</strong></td><td>Explicit semantic definitions detailing structural results.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Artifact Location</strong></td><td>Target sandbox path directory reserved for writing tasks.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Success Criteria</strong></td><td>Explicit, programmatic logic targets defining valid criteria parameters.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Failure Criteria</strong></td><td>Explicit logic rules defining runtime crash conditions or anomalies.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Estimated Duration</strong></td><td>Integer value profiling maximum expected runtime boundaries in seconds.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Current Status</strong></td><td>State Tracking: <code>PENDING | RUNNING | COMPLETED | FAILED</code></td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Retry Count</strong></td><td>Execution counter explicitly tracking iteration parameters.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Execution Logs</strong></td><td>Target array matching structural log schema context outputs.</td></tr>
+                        <tr style="border-bottom:1px solid var(--border);"><td><strong>Artifacts Produced</strong></td><td>List array capturing tracking IDs of outputs generated by this run.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <div class="card full-width" style="margin-bottom: 2rem;">
+            <h2>Subsystem Infrastructure Configurations</h2>
+            
+            <div class="grid-2" style="margin-top: 1rem; gap: 1.5rem;">
+                <div>
+                    <h3>Centralized Tool Registry</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                        The Planner checks the system capabilities map before generating any tasks. If a capability is not registered, the engine rejects the request immediately rather than creating invalid tasks.
+                    </p>
+                    <div class="tag-cloud">
+                        <span class="tag highlight">Browser Automation</span>
+                        <span class="tag highlight">Research Engine</span>
+                        <span class="tag highlight">Git Client</span>
+                        <span class="tag highlight">Python Interpreter</span>
+                        <span class="tag highlight">System Terminal</span>
+                        <span class="tag highlight">PowerShell Sandbox</span>
+                        <span class="tag highlight">Windows OS API</span>
+                        <span class="tag highlight">OCR Library</span>
+                        <span class="tag highlight">Vision Processing</span>
+                        <span class="tag highlight">PPTX Compiler</span>
+                        <span class="tag highlight">PDF Generator</span>
+                        <span class="tag highlight">Document Generation</span>
+                        <span class="tag highlight">File System I/O</span>
+                        <span class="tag highlight">Internet Search Engine</span>
+                    </div>
+                </div>
+
+                <div>
+                    <h3>Centralized Permission Manager</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                        Workers are completely passive execution nodes and can never request permissions directly. All permission checks are analyzed by the Planner and verified at runtime by the security layer.
+                    </p>
+                    <div class="tag-cloud" style="color: var(--clr-worker);">
+                        <span class="tag">Administrator Privileges</span>
+                        <span class="tag">Browser Sandbox Access</span>
+                        <span class="tag">File System Scoped Read/Write</span>
+                        <span class="tag">Terminal Access Rights</span>
+                        <span class="tag">Outbound WAN Internet</span>
+                        <span class="tag">OS Clipboard Controls</span>
+                        <span class="tag">Target Downloads Workspace</span>
+                        <span class="tag">Camera Interface Access</span>
+                        <span class="tag">Microphone Interface Access</span>
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border-color: var(--border); margin: 1.5rem 0;">
+
+            <div class="grid-2" style="gap: 1.5rem;">
+                <div>
+                    <h3>Deterministic Rollback Infrastructure</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                        Destructive operations must define corresponding rollback logic <strong>before</strong> the engine initiates execution loops. This ensures safe recovery paths if a catastrophic error occurs.
+                    </p>
+                    <div class="tree-container" style="font-size: 0.8rem;">
+                        • Delete File &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;→ [Pre-Execution Action]: Cache Target Data payload to Sandbox Backup Space<br>
+                        • Move File &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  → [Pre-Execution Action]: Registry tracking of Origin Absolute Path vectors<br>
+                        • Registry Change &nbsp; &nbsp;  → [Pre-Execution Action]: Export current key value snapshots to local delta state<br>
+                        • Driver Installation → [Pre-Execution Action]: Enforce generation of system Restore Point anchors<br>
+                        • Git Reset &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  → [Pre-Execution Action]: Stash uncommitted file changes, trace original SHA-1 references<br>
+                        • Env Variable &nbsp; &nbsp; &nbsp; &nbsp; → [Pre-Execution Action]: Snap original string variable mappings in local session store
+                    </div>
+                </div>
+
+                <div>
+                    <h3>Execution Summary Mode Framework</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                        The system must support clear operational mode flags defining human-in-the-loop validation levels.
+                    </p>
+                    <div class="mode-grid">
+                        <div class="mode-item" style="border-color: var(--clr-healing);">
+                            <div class="mode-title" style="color: var(--clr-healing);">Safe Mode</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Halts and explicitly prompts for human permission before triggering any task step.</div>
+                        </div>
+                        <div class="mode-item" style="border-color: var(--clr-worker);">
+                            <div class="mode-title" style="color: var(--clr-worker);">Assisted Mode</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Executes standard actions automatically; prompts only when high-risk tasks are flagged.</div>
+                        </div>
+                        <div class="mode-item" style="border-color: var(--clr-state);">
+                            <div class="mode-title" style="color: var(--clr-state);">Autonomous Mode</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">Executes the entire workflow automatically within pre-approved operational boundaries.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border-color: var(--border); margin: 1.5rem 0;">
+
+            <div class="inner-split">
+                <div>
+                    <h3>Structured Artifact Metadata Manager</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                        Every artifact generated by the platform must be registered with a unique tracking ID and path configuration. Typical output artifacts include:
+                    </p>
+                    <div class="tag-cloud">
+                        <span class="tag">research.md [Research Output Content]</span>
+                        <span class="tag">slides.pptx [Generated PowerPoint Media]</span>
+                        <span class="tag">report.pdf [Exported Documents]</span>
+                        <span class="tag">images/ [Extracted Graphical Assets]</span>
+                        <span class="tag">downloads/ [Incoming HTTP Web Targets]</span>
+                        <span class="tag">logs/ [Telemetry History Dumps]</span>
+                        <span class="tag">screenshots/ [OS/Browser UI Proof Captures]</span>
+                    </div>
+                </div>
+
+                <div>
+                    <h3>Strict Structured Logging Contract</h3>
+                    <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+                        Unstructured text logging is completely prohibited. Every task node must emit a clean, structured JSON tracking block matching this specification:
+                    </p>
+                    <div class="tree-container" style="font-size: 0.8rem; padding: 0.5rem 1rem;">
+                        { "start_time": "2026-07-04T23:15:36Z", "end_time": "2026-07-04T23:16:12Z", "duration_ms": 36000, "status": "COMPLETED", "warnings": [], "errors": [], "artifacts_registered": ["art-8829-pptx"] }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card full-width" style="margin-bottom: 2rem;">
+            <h2>Monolithic Repository Layout Blueprints</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1.25rem;">
+                Production-grade directory layouts designed to ensure clean separation of concerns, easy dependency injection, and comprehensive test scoping right from day one.
+            </p>
+
+            <div class="tree-container">
+                <span class="tree-root">root_workspace/</span><br>
+                ├── <span class="tree-dir">backend/</span><br>
+                │ &nbsp; ├── <span class="tree-dir">agents/</span> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="tree-file"># Autonomous core processing agent engines</span><br>
+                │ &nbsp; │ &nbsp; ├── <span class="tree-dir">planner/</span> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="tree-file"># Orchestrates logical planning pipelines, validation schemas, context gathering</span><br>
+                │ &nbsp; │ &nbsp; ├── <span class="tree-dir">worker/</span> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <span class="tree-file"># Decoupled, single-task plugin executor nodes</span><br>
+                │ &nbsp; │ &nbsp; ├── <span class="tree-dir">supervisor/</span> &nbsp; &nbsp; &nbsp;  <span class="tree-file"># Verification, graph assertion checking engines</span><br>
+                │ &nbsp; │ &nbsp; └── <span class="tree-dir">healing/</span> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="tree-file"># Root cause analysis engine and sub-graph injection controls</span><br>
+                │ &nbsp; ├── <span class="tree-dir">core/</span> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="tree-file"># Foundation system engine mechanisms</span><br>
+                │ &nbsp; │ &nbsp; ├── <span class="tree-dir">state/</span> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="tree-file"># Central shared state controllers, LangGraph adapters</span><br>
+                │ &nbsp; │ &nbsp; ├── <span class="tree-dir">permissions/</span> &nbsp; &nbsp; &nbsp; <span class="tree-file"># Permission manager, security policy gatekeeper blocks</span><br>
+                │ &nbsp; │ &nbsp; ├── <span class="tree-dir">workflow/</span> &nbsp; &nbsp; &nbsp; &nbsp;  <span class="tree-file"># Graph processors, task sequence builders, loop engines</span><br>
+                │ &nbsp; │ &nbsp; ├── <span class="tree-dir">artifacts/</span> &nbsp; &nbsp; &nbsp; &nbsp; <span class="tree-file"># File manager registries, tracking systems</span><br>
+                │ &nbsp; │ &nbsp; └── <span class="tree-dir">rollback/</span> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="tree-file"># Pre-execution context backup and rollback engines</span><br>
+                │ &nbsp; ├── <span class="tree-dir">models/</span> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="tree-file"># Strong Pydantic typing structural schemas</span><br>
+                │ &nbsp; │ &nbsp; ├── <span class="tree-file">task.py</span> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <span class="tree-file"># Concrete data layer specification for executable task nodes</span><br>
+                │ &nbsp; │ &nbsp; ├── <span class="tree-file">workflow.py</span> &nbsp; &nbsp; &nbsp;  <span class="tree-file"># Global state dictionary wrappers and validation objects</span><br>
+                │ &nbsp; │ &nbsp; └── <span class="tree-file">permission.py</span> &nbsp; &nbsp;  <span class="tree-file"># System structural matrices tracking active access parameters</span><br>
+                │ &nbsp; ├── <span class="tree-dir">tools/</span> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;<span class="tree-file"># Extensible atomic plug-and-play capability items</span><br>
+                │ &nbsp; │ &nbsp; ├── <span class="tree-dir">browser/</span> | <span class="tree-dir">research/</span> | <span class="tree-dir">powershell/</span> | <span class="tree-dir">git/</span> | <span class="tree-dir">coding/</span><br>
+                │ &nbsp; │ &nbsp; └── <span class="tree-dir">ppt/</span> | <span class="tree-dir">pdf/</span> | <span class="tree-dir">ocr/</span> | <span class="tree-dir">vision/</span><br>
+                │ &nbsp; ├── <span class="tree-dir">memory/</span> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="tree-file"># Vector semantic store connections and situational short-term cache</span><br>
+                │ &nbsp; └── <span class="tree-dir">api/</span> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;  <span class="tree-file"># FastAPI web application endpoints routing schema requests</span><br>
+                └── <span class="tree-dir">frontend/</span> &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; <span class="tree-file"># React single page app user dashboard built using Tailwind styling</span>
+            </div>
+        </div>
+
+        <div class="grid-3">
+            
+            <div class="card" style="border-bottom: 4px solid var(--clr-planner);">
+                <h3>Phase 1-3: Core Backplanes</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                    Establish core data contracts and basic message passing components.
+                </p>
+                <ul class="spec-list" style="font-size: 0.85rem;">
+                    <li><strong>Phase 1: Shared State</strong> — Model the primary state schema as a Pydantic object and establish the centralized LangGraph message handling layer.</li>
+                    <li><strong>Phase 2: Planner Agent</strong> — Build out internal analytical stages, from initial intent understanding to structured workflow JSON graph output compilation.</li>
+                    <li><strong>Phase 3: Worker Agent</strong> — Implement the tool loading pipeline, log recording hooks, and isolated plugin execution spaces.</li>
+                </ul>
+            </div>
+
+            <div class="card" style="border-bottom: 4px solid var(--clr-supervisor);">
+                <h3>Phase 4-6: Validation Loop</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                    Deploy the foundation production workflow alongside runtime verification and recovery engines.
+                </p>
+                <ul class="spec-list" style="font-size: 0.85rem;">
+                    <li><strong>Phase 4: PowerPoint Deliverable Workflow</strong> — Ship the target end-to-end processing script line: <code>Natural Language → Research Engine → PPTX Assembly → PDF Export Compilation</code>.</li>
+                    <li><strong>Phase 5: Supervisor Agent</strong> — Deploy async graph observers to continuously check artifact outputs and validate task results at runtime.</li>
+                    <li><strong>Phase 6: Healing Agent</strong> — Build automated root cause analysis engines to handle failure interception and inject recovery paths on the fly.</li>
+                </ul>
+            </div>
+
+            <div class="card" style="border-bottom: 4px solid var(--clr-state);">
+                <h3>Phase 7+: Scaling Engine</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                    Extend capabilities globally across any target task without modifying the core system architecture.
+                </p>
+                <ul class="spec-list" style="font-size: 0.85rem;">
+                    <li><strong>Horizontal Expansion</strong> — Onboard new capability models seamlessly via decoupled plugin registries.</li>
+                    <li><strong>Zero Core Engine Code Changes</strong> — Add support for diverse operational targets like Windows system troubleshooting, automated driver setup, or complex Git operations entirely through configuration layers.</li>
+                </ul>
+            </div>
+
+        </div>
+
+        <div class="card full-width" style="border: 1px solid var(--clr-state); background: rgba(52, 211, 153, 0.02);">
+            <h2 style="color: var(--clr-state); border-bottom-color: rgba(52, 211, 153, 0.2);">System Architecture Blueprint Summary</h2>
+            <p style="margin-bottom: 1rem;">
+                This architecture shifts the development model completely: instead of coding hard-coded scripts for single tasks (like generating a PowerPoint presentation), you are constructing a highly generic, deterministic, runtime-scalable <strong>autonomous execution engine</strong>.
+            </p>
+
+            <div class="inner-split" style="align-items: center; margin-top: 1.5rem;">
+                <div class="flow-vertical" style="background-color: var(--bg-deep); padding: 1.25rem; border-radius: 6px; border: 1px solid var(--border);">
+                    <div style="font-weight: bold; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem; text-align: center;">Operational Capability Matrix Layer</div>
+                    <div class="tag-cloud" style="justify-content: center;">
+                        <span class="tag">Create PPTX Slides</span>
+                        <span class="tag">Analyze Academic Research Paper</span>
+                        <span class="tag">Build React Web Application</span>
+                        <span class="tag">Fix Wi-Fi Connections</span>
+                        <span class="tag">Resolve Merge Git Conflicts</span>
+                        <span class="tag">Install OS Kernel Driver</span>
+                        <span class="tag">Organize File Directories</span>
+                        <span class="tag">Create Resume Layouts</span>
+                        <span class="tag">Generate Executive Reports</span>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 style="color: var(--text-main); margin-bottom: 0.5rem;">The Architecture Axiom</h4>
+                    <p style="font-size: 0.95rem; color: var(--text-muted); line-height: 1.5;">
+                        The core processing layers—the <strong>Planner Engine</strong>, <strong>Worker Handler</strong>, <strong>Supervisor Evaluator</strong>, and <strong>Centralized Shared State Registry</strong>—remain entirely unchanged across sessions. Every capability on the left is treated simply as a distinct configuration mapping generated dynamically at runtime by the tool selection registries.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

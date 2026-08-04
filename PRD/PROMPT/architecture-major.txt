@@ -1,0 +1,483 @@
+High-Level Architecture
+                 User
+                   │
+                   ▼
+        Conversation Manager
+                   │
+                   ▼
+          Planner Agent
+                   │
+         (Workflow Graph)
+                   │
+                   ▼
+        Shared Workflow State
+                   │
+        ┌──────────┼──────────┐
+        ▼          ▼          ▼
+ Permission     Worker      Supervisor
+  Manager        Agent         Agent
+        │          │             │
+        │          ▼             │
+        │     Tool Executor      │
+        │          │             │
+        └──────────┼─────────────┘
+                   ▼
+          Shared Workflow State
+                   │
+         Failure Detected?
+            Yes        No
+             │          │
+             ▼          ▼
+      Healing Agent   Complete
+             │
+     Recovery Workflow
+             │
+             ▼
+     Shared Workflow State
+             │
+             ▼
+         Worker Again
+
+Notice something important:
+
+No agent talks directly to another agent.
+
+Everything communicates through the Shared Workflow State.
+
+That is much cleaner and scalable.
+
+Similar to VS Code Agent
+
+Internally, think of it like this:
+
+User
+
+↓
+
+Understand Goal
+
+↓
+
+Plan
+
+↓
+
+Approve Plan
+
+↓
+
+Execute One Task
+
+↓
+
+Verify
+
+↓
+
+Execute Next Task
+
+↓
+
+Verify
+
+↓
+
+Execute Next Task
+
+↓
+
+Finished
+
+Not
+
+Plan
+
+↓
+
+Execute everything
+
+↓
+
+Hope it works
+
+Execution should be incremental.
+
+Planner Pipeline
+User Prompt
+
+↓
+
+Intent Detection
+
+↓
+
+Capability Discovery
+
+↓
+
+Requirement Clarification
+
+↓
+
+Risk Analysis
+
+↓
+
+Permission Analysis
+
+↓
+
+Workflow Planning
+
+↓
+
+Dependency Graph
+
+↓
+
+Parallel Analysis
+
+↓
+
+Validation
+
+↓
+
+Generate Workflow JSON
+
+↓
+
+Execution Preview
+
+↓
+
+User Approval
+
+↓
+
+Shared Workflow State
+
+Only after approval should execution begin.
+
+Worker Pipeline
+
+Instead of one Worker doing everything...
+
+Worker
+
+↓
+
+Receive Task
+
+↓
+
+Identify Tool
+
+↓
+
+Load Module
+
+↓
+
+Execute
+
+↓
+
+Capture Logs
+
+↓
+
+Capture Output
+
+↓
+
+Update Status
+
+↓
+
+Return Result
+
+Worker should never decide what to do next.
+
+Tool Executor
+
+Think of the Worker as a manager.
+
+Actual work is done by plugins.
+
+Worker
+
+↓
+
+Tool Registry
+
+↓
+
+Research Tool
+
+Browser Tool
+
+Git Tool
+
+PowerShell Tool
+
+Python Tool
+
+PPT Tool
+
+PDF Tool
+
+OCR Tool
+
+Vision Tool
+
+Very similar to how VS Code calls different tools.
+
+Planner Output
+
+Instead of returning only tasks...
+
+Planner should return an Execution Plan.
+
+Goal
+
+Clarifications
+
+Capabilities Required
+
+Permissions
+
+Risks
+
+Workflow Graph
+
+Task List
+
+Dependencies
+
+Parallel Groups
+
+Artifacts
+
+Estimated Time
+
+Success Criteria
+
+Failure Criteria
+
+Execution Summary
+Worker Output
+
+Every task returns the same structure.
+
+Task ID
+
+Started
+
+Completed
+
+Duration
+
+Status
+
+Logs
+
+Artifacts
+
+Warnings
+
+Errors
+
+Screenshots (optional)
+
+Supervisor never needs to guess.
+
+Supervisor Flow
+Task Completed?
+
+↓
+
+Validate
+
+↓
+
+Passed?
+
+↓
+
+YES
+
+↓
+
+Mark Complete
+
+↓
+
+Next Task
+
+----------------
+
+NO
+
+↓
+
+Create Error Report
+
+↓
+
+Healing Agent
+Healing Flow
+Receive Error
+
+↓
+
+Understand Failure
+
+↓
+
+Root Cause
+
+↓
+
+Generate Recovery Tasks
+
+↓
+
+Update Workflow
+
+↓
+
+Worker Executes
+
+↓
+
+Supervisor Verifies
+
+↓
+
+Finished
+
+Planner is never called again.
+
+Shared Workflow State
+
+Everything revolves around one state object.
+
+Workflow
+
+├── Metadata
+
+├── User Goal
+
+├── Conversation
+
+├── Clarifications
+
+├── Execution Mode
+
+├── Permissions
+
+├── Risks
+
+├── Task Queue
+
+├── Running Tasks
+
+├── Completed Tasks
+
+├── Failed Tasks
+
+├── Parallel Groups
+
+├── Artifacts
+
+├── Logs
+
+├── Recovery History
+
+├── Current Stage
+
+├── Overall Progress
+
+└── Final Outputs
+Folder Structure
+
+I would build it like this from Day 1:
+
+backend/
+
+agents/
+    planner/
+    worker/
+    supervisor/
+    healing/
+
+core/
+    state/
+    permissions/
+    workflow/
+    artifacts/
+    rollback/
+
+models/
+    task.py
+    workflow.py
+    permission.py
+
+tools/
+    browser/
+    research/
+    powershell/
+    git/
+    coding/
+    ppt/
+    pdf/
+    ocr/
+    vision/
+
+memory/
+
+api/
+
+frontend/
+Why this architecture?
+
+Instead of coding for PPT generation, you're building an execution engine.
+
+Then these become just different workflows:
+
+Create PPT
+
+↓
+
+Research Paper
+
+↓
+
+Build React App
+
+↓
+
+Fix Wi-Fi
+
+↓
+
+Resolve Git Conflict
+
+↓
+
+Install Driver
+
+↓
+
+Organize Files
+
+↓
+
+Create Resume
+
+↓
+
+Generate Report
+
+The Planner and Worker don't change—only the selected tools and generated workflow do.
