@@ -1,19 +1,20 @@
 [project]
-name = "backend"
+name = "aether-phoenix-backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "Backend for AetherPhoenix AI Desktop Assistant"
 readme = "README.md"
 authors = [
     { name = "CGKruthin", email = "kruthin9900@gmail.com" }
 ]
-requires-python = ">=3.14"
+requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.141.1",
     "pydantic>=2.13.4",
+    "pydantic-settings>=2.0.0",
     "uvicorn>=0.52.1",
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.13.0",
 ]
-
-
 
 [dependency-groups]
 dev = [
@@ -32,3 +33,7 @@ ignore = []
 [tool.black]
 line-length = 88
 target-version = ["py312"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
