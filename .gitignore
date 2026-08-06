@@ -99,3 +99,9 @@ logs/
 # Temp
 tmp/
 temp/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
