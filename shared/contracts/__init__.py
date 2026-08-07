@@ -1,6 +1,7 @@
 """Runtime contracts for AI Desktop Assistant agents and components."""
 
 from shared.contracts.artifact import Artifact, ArtifactType
+from shared.contracts.capability import Capability
 from shared.contracts.event import EventSource, EventType, RuntimeEvent
 from shared.contracts.execution import (
     ExecutionMetrics,
@@ -37,6 +38,8 @@ __all__ = [
     # Artifact
     "Artifact",
     "ArtifactType",
+    # Capability
+    "Capability",
     # Event
     "EventType",
     "EventSource",
