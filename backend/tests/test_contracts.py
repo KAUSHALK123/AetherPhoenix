@@ -1,11 +1,9 @@
 """Unit tests for Sprint 0 runtime contracts and shared interfaces."""
 
-from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
-
 from shared.contracts.artifact import Artifact, ArtifactType
 from shared.contracts.event import EventSource, EventType, RuntimeEvent
 from shared.contracts.execution import (
@@ -13,7 +11,6 @@ from shared.contracts.execution import (
     ExecutionResult,
     HealingResult,
     SupervisorValidation,
-    TaskError,
 )
 from shared.contracts.permission import (
     PermissionRequest,
@@ -22,11 +19,9 @@ from shared.contracts.permission import (
     RiskLevel,
 )
 from shared.contracts.task import (
-    DependencyType,
     RollbackInfo,
     Task,
     TaskCategory,
-    TaskDependency,
     TaskPriority,
     TaskStatus,
 )
@@ -36,7 +31,6 @@ from shared.contracts.workflow import (
     ProgressState,
     SharedWorkflowState,
     WorkflowMetadata,
-    WorkflowStatus,
 )
 
 
