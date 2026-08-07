@@ -4,7 +4,6 @@ from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
-
 from shared.contracts.artifact import Artifact, ArtifactType
 from shared.contracts.event import EventSource, EventType, RuntimeEvent
 from shared.contracts.execution import (

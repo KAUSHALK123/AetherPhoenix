@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any
+
 from pydantic import BaseModel, Field
 
 
@@ -24,7 +25,8 @@ class BaseAgent(ABC):
 
     @abstractmethod
     async def initialize(self) -> None:
-        """Lifecycle hook: Called when the agent is registered and initialized by the kernel."""
+        """Lifecycle hook: Called when the agent is registered
+        and initialized by the kernel."""
         pass
 
     @abstractmethod
