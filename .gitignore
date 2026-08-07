@@ -27,7 +27,9 @@ MANIFEST
 venv/
 .env
 .env.*
+!.env.example
 .venv
+
 env.bak/
 venv.bak/
 
@@ -96,6 +98,12 @@ $RECYCLE.BIN/
 logs/
 *.log
 
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
 # Temp
 tmp/
 temp/
+
