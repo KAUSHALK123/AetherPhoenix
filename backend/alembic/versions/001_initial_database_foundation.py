@@ -5,11 +5,8 @@ Revises:
 Create Date: 2026-08-07 18:48:00.000000
 
 """
+
 from typing import Sequence, Union
-
-from alembic import op
-import sqlalchemy as sa
-
 
 # revision identifiers, used by Alembic.
 revision: str = "001_initial_db"
