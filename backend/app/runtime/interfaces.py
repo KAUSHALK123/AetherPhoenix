@@ -29,7 +29,8 @@ class BaseAgent(ABC):
 
     @abstractmethod
     async def shutdown(self) -> None:
-        """Lifecycle hook: Called when the kernel shuts down or the agent is unregistered."""
+        """Lifecycle hook: Called when the kernel shuts down
+        or the agent is unregistered."""
         pass
 
     @abstractmethod

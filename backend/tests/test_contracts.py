@@ -1,6 +1,5 @@
 """Unit tests for Sprint 0 runtime contracts and shared interfaces."""
 
-from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
@@ -13,7 +12,6 @@ from shared.contracts.execution import (
     ExecutionResult,
     HealingResult,
     SupervisorValidation,
-    TaskError,
 )
 from shared.contracts.permission import (
     PermissionRequest,
@@ -22,11 +20,9 @@ from shared.contracts.permission import (
     RiskLevel,
 )
 from shared.contracts.task import (
-    DependencyType,
     RollbackInfo,
     Task,
     TaskCategory,
-    TaskDependency,
     TaskPriority,
     TaskStatus,
 )
@@ -36,7 +32,6 @@ from shared.contracts.workflow import (
     ProgressState,
     SharedWorkflowState,
     WorkflowMetadata,
-    WorkflowStatus,
 )
 
 
