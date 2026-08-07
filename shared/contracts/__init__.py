@@ -25,6 +25,7 @@ from shared.contracts.task import (
     TaskPriority,
     TaskStatus,
 )
+from shared.contracts.tool import Tool, ToolHealth, ToolState
 from shared.contracts.workflow import (
     ExecutionMode,
     PlannerOutput,
@@ -63,6 +64,10 @@ __all__ = [
     "TaskDependency",
     "RollbackInfo",
     "Task",
+    # Tool
+    "Tool",
+    "ToolState",
+    "ToolHealth",
     # Workflow
     "WorkflowStatus",
     "ExecutionMode",
