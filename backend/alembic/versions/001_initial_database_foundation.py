@@ -1,7 +1,7 @@
 """initial_database_foundation
 
 Revision ID: 001_initial_db
-Revises: 
+Revises:
 Create Date: 2026-08-07 18:48:00.000000
 
 """
