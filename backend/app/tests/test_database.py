@@ -1,6 +1,7 @@
 """Tests for database foundation configuration."""
 
 from sqlalchemy.orm import Session
+
 from app.database import Base, SessionLocal, engine, get_db, init_db
 
 

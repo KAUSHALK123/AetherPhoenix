@@ -1,0 +1,90 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+    branches:
+      - '**'
+  push:
+    branches:
+      - develop
+
+jobs:
+  frontend-check:
+    name: Frontend Build Verification
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: |
+          if [ -f "package.json" ]; then
+            npm install
+          else
+            echo "No package.json found. Skipping npm install."
+          fi
+
+      - name: Build Frontend
+        run: |
+          if [ -f "package.json" ]; then
+            npm run build --if-present
+          else
+            echo "No package.json found. Skipping npm run build."
+          fi
+
+  backend-check:
+    name: Backend Quality & Startup Verification
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: uv pip install --system -r requirements.txt
+
+      - name: Install Linters
+        run: uv pip install --system -r requirements.txt ruff black uvicorn
+
+      - name: Run Ruff
+        run: ruff check .
+
+      - name: Run Black
+        run: black --check .
+
+      - name: Verify Backend Starts
+        run: |
+          if [ -f "app/main.py" ]; then
+            uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+            PID=$!
+            sleep 5
+            if kill -0 $PID 2>/dev/null; then
+              echo "Backend started successfully."
+              kill $PID
+            else
+              echo "Backend failed to start."
+              exit 1
+            fi
+          else
+            echo "app/main.py not found. Skipping backend start verification for now."
+          fi
