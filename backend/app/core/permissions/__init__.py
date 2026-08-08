@@ -1,12 +1,12 @@
+from .manager import PermissionManager
 from .models import (
-    PermissionType,
     ExecutionMode,
-    PermissionStatus,
     PermissionRequest,
     PermissionResponse,
+    PermissionStatus,
+    PermissionType,
 )
-from .manager import PermissionManager
-from .policies import PermissionPolicy, RISKY_PERMISSIONS
+from .policies import RISKY_PERMISSIONS, PermissionPolicy
 
 __all__ = [
     "PermissionType",

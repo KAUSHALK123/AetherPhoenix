@@ -1,6 +1,8 @@
 from enum import Enum
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, Field
+
 
 class PermissionType(str, Enum):
     BROWSER_ACCESS = "BROWSER_ACCESS"
@@ -13,15 +15,18 @@ class PermissionType(str, Enum):
     NETWORK_ACCESS = "NETWORK_ACCESS"
     ADMIN_PRIVILEGE = "ADMIN_PRIVILEGE"
 
+
 class ExecutionMode(str, Enum):
     SAFE = "SAFE"
     ASSISTED = "ASSISTED"
     AUTONOMOUS = "AUTONOMOUS"
 
+
 class PermissionStatus(str, Enum):
     PENDING = "PENDING"
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
+
 
 class PermissionRequest(BaseModel):
     request_id: str
@@ -31,6 +36,7 @@ class PermissionRequest(BaseModel):
     reason: str
     context: Dict[str, Any] = Field(default_factory=dict)
     status: PermissionStatus = Field(default=PermissionStatus.PENDING)
+
 
 class PermissionResponse(BaseModel):
     request_id: str
