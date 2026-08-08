@@ -1,14 +1,15 @@
 import uuid
+
 import pytest
+from shared.contracts import Task, TaskCategory, TaskPriority
 
 from app.agents.planner.priority_engine import PriorityAssignmentEngine
-from shared.contracts import Task, TaskCategory, TaskPriority
 
 
 def create_task(
     priority: TaskPriority = TaskPriority.MEDIUM,
     risk_level: str = "LOW",
-    dependencies: list = None
+    dependencies: list = None,
 ) -> Task:
     return Task(
         workflow_id=uuid.uuid4(),
@@ -19,7 +20,7 @@ def create_task(
         priority=priority,
         risk_level=risk_level,
         expected_output="Success",
-        dependencies=dependencies or []
+        dependencies=dependencies or [],
     )
 
 
@@ -46,9 +47,15 @@ def test_dependency_ordering():
     engine = PriorityAssignmentEngine()
 
     t_parent = create_task(priority=TaskPriority.MEDIUM)
-    t_child1 = create_task(priority=TaskPriority.MEDIUM, dependencies=[t_parent.task_id])
-    t_child2 = create_task(priority=TaskPriority.MEDIUM, dependencies=[t_parent.task_id])
-    t_grandchild = create_task(priority=TaskPriority.MEDIUM, dependencies=[t_child1.task_id, t_child2.task_id])
+    t_child1 = create_task(
+        priority=TaskPriority.MEDIUM, dependencies=[t_parent.task_id]
+    )
+    t_child2 = create_task(
+        priority=TaskPriority.MEDIUM, dependencies=[t_parent.task_id]
+    )
+    t_grandchild = create_task(
+        priority=TaskPriority.MEDIUM, dependencies=[t_child1.task_id, t_child2.task_id]
+    )
 
     tasks = [t_grandchild, t_child2, t_parent, t_child1]
     ordered_tasks = engine.assign_priorities(tasks)
@@ -67,9 +74,11 @@ def test_priority_propagation():
 
     # t_parent is LOW priority
     t_parent = create_task(priority=TaskPriority.LOW)
-    
+
     # t_child is CRITICAL priority and depends on t_parent
-    t_child = create_task(priority=TaskPriority.CRITICAL, dependencies=[t_parent.task_id])
+    t_child = create_task(
+        priority=TaskPriority.CRITICAL, dependencies=[t_parent.task_id]
+    )
 
     tasks = [t_child, t_parent]
     ordered_tasks = engine.assign_priorities(tasks)
@@ -77,7 +86,7 @@ def test_priority_propagation():
     # t_parent should be upgraded to CRITICAL because t_child is CRITICAL
     assert ordered_tasks[0].task_id == t_parent.task_id
     assert ordered_tasks[0].priority == TaskPriority.CRITICAL
-    
+
     assert ordered_tasks[1].task_id == t_child.task_id
     assert ordered_tasks[1].priority == TaskPriority.CRITICAL
 
@@ -109,7 +118,7 @@ def test_cycle_detection():
     t1 = create_task()
     t2 = create_task(dependencies=[t1.task_id])
     t3 = create_task(dependencies=[t2.task_id])
-    
+
     # Create a cycle
     t1.dependencies.append(t3.task_id)
 
