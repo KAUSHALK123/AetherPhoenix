@@ -1,8 +1,8 @@
 """Centralized Logging Framework for AetherPhoenix."""
 
-from backend.app.core.logging.formatter import JSONLogFormatter, TextLogFormatter
-from backend.app.core.logging.interface import ILogger
-from backend.app.core.logging.logger import (
+from app.core.logging.formatter import JSONLogFormatter, TextLogFormatter
+from app.core.logging.interface import ILogger
+from app.core.logging.logger import (
     StructuredLogger,
     create_console_handler,
     create_file_handler,

@@ -6,8 +6,8 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from backend.app.core.logging.formatter import JSONLogFormatter, TextLogFormatter
-from backend.app.core.logging.interface import ILogger
+from app.core.logging.formatter import JSONLogFormatter, TextLogFormatter
+from app.core.logging.interface import ILogger
 
 
 class StructuredLogger(ILogger):

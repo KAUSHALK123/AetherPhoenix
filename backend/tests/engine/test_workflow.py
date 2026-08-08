@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 import pytest
-from backend.app.engine.workflow import WorkflowEngine
+from app.engine.workflow import WorkflowEngine
 from shared.contracts.task import Task, TaskStatus
 from shared.contracts.workflow import (
     SharedWorkflowState,

@@ -1,5 +1,5 @@
 import pytest
-from backend.app.engine.registry import CapabilityRegistry
+from app.engine.registry import CapabilityRegistry
 from shared.contracts.capability import Capability
 from shared.contracts.task import TaskCategory
 

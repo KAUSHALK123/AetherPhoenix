@@ -1,8 +1,8 @@
 from typing import Dict, Optional
 
-from backend.app.core.logging import get_logger
-from backend.app.runtime.context import RuntimeContext
-from backend.app.runtime.interfaces import BaseAgent
+from app.core.logging import get_logger
+from app.runtime.context import RuntimeContext
+from app.runtime.interfaces import BaseAgent
 from shared.contracts.workflow import SharedWorkflowState
 
 logger = get_logger(__name__)

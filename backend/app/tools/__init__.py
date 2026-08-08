@@ -1,4 +1,4 @@
-from backend.app.tools.registry import ToolRegistry
+from app.tools.registry import ToolRegistry
 
 __all__ = [
     "ToolRegistry",
