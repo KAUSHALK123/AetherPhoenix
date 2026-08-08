@@ -57,6 +57,7 @@ class Event(BaseModel):
     Event model for the Event Bus.
     Represents a single event in the lightweight Pub/Sub architecture.
     """
+
     id: UUID = Field(default_factory=uuid4)
     workflow_id: Optional[str] = None
     task_id: Optional[str] = None

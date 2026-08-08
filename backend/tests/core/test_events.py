@@ -1,4 +1,3 @@
-
 import pytest
 
 from app.core.events.bus import EventBus, Publisher, Subscriber
@@ -22,7 +21,7 @@ async def test_event_publishing_and_subscribing(event_bus: EventBus):
     event = Event(
         event_type=EventType.WORKFLOW_CREATED,
         source_component="test_publisher",
-        payload={"message": "hello"}
+        payload={"message": "hello"},
     )
 
     await event_bus.publish(event)
@@ -90,10 +89,7 @@ async def test_error_in_subscriber_does_not_crash_bus(event_bus: EventBus, caplo
     event_bus.subscribe(EventType.WORKFLOW_CANCELLED, failing_callback)
     event_bus.subscribe(EventType.WORKFLOW_CANCELLED, successful_callback)
 
-    event = Event(
-        event_type=EventType.WORKFLOW_CANCELLED,
-        source_component="test"
-    )
+    event = Event(event_type=EventType.WORKFLOW_CANCELLED, source_component="test")
 
     await event_bus.publish(event)
 
@@ -121,9 +117,7 @@ async def test_publisher_and_subscriber_classes(event_bus: EventBus):
 
     sub.subscribe(EventType.TOOL_LOADED, sub.handle_event)
 
-    event = Event(
-        event_type=EventType.TOOL_LOADED, source_component="pub"
-    )
+    event = Event(event_type=EventType.TOOL_LOADED, source_component="pub")
     await pub.publish_event(event)
 
     assert len(sub.received) == 1
