@@ -1,9 +1,10 @@
 from typing import Any
 
 import pytest
+from shared.contracts.workflow import SharedWorkflowState
+
 from app.runtime.interfaces import AgentRegistration, BaseAgent
 from app.runtime.kernel import RuntimeKernel
-from shared.contracts.workflow import SharedWorkflowState
 
 
 class MockAgent(BaseAgent):

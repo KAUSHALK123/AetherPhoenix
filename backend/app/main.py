@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
 
+from fastapi import FastAPI
+
 from app.core.config import settings
 from app.core.logging import get_logger, setup_logging
-from fastapi import FastAPI
 
 # Setup centralized logging
 setup_logging(

@@ -1,11 +1,12 @@
 from typing import Optional
 from uuid import UUID
 
+from shared.contracts.task import Task, TaskStatus
+from shared.contracts.workflow import SharedWorkflowState, WorkflowStatus
+
 from app.core.logging import get_logger
 from app.engine.interfaces import BaseWorkflowEngine
 from app.engine.queue import ExecutionQueue
-from shared.contracts.task import Task, TaskStatus
-from shared.contracts.workflow import SharedWorkflowState, WorkflowStatus
 
 logger = get_logger(__name__)
 
