@@ -1,13 +1,14 @@
-import logging
 from typing import Optional
 from uuid import UUID
 
-from backend.app.engine.interfaces import BaseWorkflowEngine
-from backend.app.engine.queue import ExecutionQueue
 from shared.contracts.task import Task, TaskStatus
 from shared.contracts.workflow import SharedWorkflowState, WorkflowStatus
 
-logger = logging.getLogger(__name__)
+from app.core.logging import get_logger
+from app.engine.interfaces import BaseWorkflowEngine
+from app.engine.queue import ExecutionQueue
+
+logger = get_logger(__name__)
 
 
 class WorkflowEngine(BaseWorkflowEngine):

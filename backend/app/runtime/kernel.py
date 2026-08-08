@@ -1,11 +1,12 @@
-import logging
 from typing import Dict, Optional
 
-from backend.app.runtime.context import RuntimeContext
-from backend.app.runtime.interfaces import BaseAgent
 from shared.contracts.workflow import SharedWorkflowState
 
-logger = logging.getLogger(__name__)
+from app.core.logging import get_logger
+from app.runtime.context import RuntimeContext
+from app.runtime.interfaces import BaseAgent
+
+logger = get_logger(__name__)
 
 
 class RuntimeKernel:

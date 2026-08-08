@@ -1,6 +1,7 @@
 import pytest
-from backend.app.tools.registry import ToolRegistry
 from shared.contracts.tool import Tool, ToolHealth, ToolState
+
+from app.tools.registry import ToolRegistry
 
 
 @pytest.fixture

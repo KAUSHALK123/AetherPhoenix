@@ -1,6 +1,6 @@
 import uuid
 
-from backend.app.engine.queue import ExecutionQueue
+from app.engine.queue import ExecutionQueue
 
 
 def test_queue_enqueue():
