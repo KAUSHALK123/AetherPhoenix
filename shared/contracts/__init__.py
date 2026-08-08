@@ -1,6 +1,7 @@
 """Runtime contracts for AI Desktop Assistant agents and components."""
 
 from shared.contracts.artifact import Artifact, ArtifactType
+from shared.contracts.capability import Capability
 from shared.contracts.event import EventSource, EventType, RuntimeEvent
 from shared.contracts.execution import (
     ExecutionMetrics,
@@ -24,6 +25,7 @@ from shared.contracts.task import (
     TaskPriority,
     TaskStatus,
 )
+from shared.contracts.tool import Tool, ToolHealth, ToolState
 from shared.contracts.workflow import (
     ExecutionMode,
     PlannerOutput,
@@ -37,6 +39,8 @@ __all__ = [
     # Artifact
     "Artifact",
     "ArtifactType",
+    # Capability
+    "Capability",
     # Event
     "EventType",
     "EventSource",
@@ -60,6 +64,10 @@ __all__ = [
     "TaskDependency",
     "RollbackInfo",
     "Task",
+    # Tool
+    "Tool",
+    "ToolState",
+    "ToolHealth",
     # Workflow
     "WorkflowStatus",
     "ExecutionMode",
