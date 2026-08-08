@@ -1,17 +1,15 @@
 """Unit tests for Configuration Manager and RuntimeSettings."""
 
-import os
 from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
 from app.core.config import (
     ConfigurationManager,
     RuntimeSettings,
-    Settings,
     get_config,
     get_config_manager,
-    settings,
 )
 
 
@@ -165,7 +163,9 @@ def test_configuration_manager_lifecycle():
 
 
 def test_configuration_manager_update_validation():
-    """Verify updating manager with invalid settings raises ValidationError and preserves active settings."""
+    """Verify updating manager with invalid settings raises ValidationError
+    and preserves active settings.
+    """
     manager = get_config_manager()
     initial_port = manager.get_config().PORT
 
@@ -191,13 +191,14 @@ def test_to_dict_sensitive_masking():
 def test_backward_compatibility_imports():
     """Verify backward compatible exports and aliases."""
     from app.core import (
-        ConfigurationManager as CM,
-        RuntimeSettings as RS,
-        Settings as S,
-        get_config as gc,
-        settings as s,
+        ConfigurationManager,
+        RuntimeSettings,
+        Settings,
+        get_config,
+        settings,
     )
 
-    assert RS is Settings
-    assert isinstance(gc(), RS)
-    assert s.PROJECT_NAME == "AetherPhoenix"
+    assert ConfigurationManager is not None
+    assert Settings is RuntimeSettings
+    assert isinstance(get_config(), RuntimeSettings)
+    assert settings.PROJECT_NAME == "AetherPhoenix"

@@ -4,9 +4,9 @@ Provides centralized loading, validation, dynamic updating, and single source of
 for runtime infrastructure configuration across the application.
 """
 
-import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -51,13 +51,23 @@ class RuntimeSettings(BaseSettings):
     # Logging Infrastructure
     LOG_LEVEL: str = Field(default="INFO", description="Minimum log severity level")
     LOG_DIR: str = Field(default="logs", description="Directory path for log files")
-    LOG_FILE: str = Field(default="aether_phoenix.log", description="Log output filename")
-    LOG_FORMAT_JSON: bool = Field(default=True, description="Enable structured JSON log format")
-    LOG_CONSOLE_ENABLED: bool = Field(default=True, description="Enable stdout console logging")
-    LOG_FILE_ENABLED: bool = Field(default=True, description="Enable log file persistence")
+    LOG_FILE: str = Field(
+        default="aether_phoenix.log", description="Log output filename"
+    )
+    LOG_FORMAT_JSON: bool = Field(
+        default=True, description="Enable structured JSON log format"
+    )
+    LOG_CONSOLE_ENABLED: bool = Field(
+        default=True, description="Enable stdout console logging"
+    )
+    LOG_FILE_ENABLED: bool = Field(
+        default=True, description="Enable log file persistence"
+    )
 
     # Execution & Runtime Infrastructure
-    MAX_WORKERS: int = Field(default=4, description="Maximum concurrent worker threads/processes")
+    MAX_WORKERS: int = Field(
+        default=4, description="Maximum concurrent worker threads/processes"
+    )
     EXECUTION_TIMEOUT_SECONDS: int = Field(
         default=300, description="Task execution timeout in seconds"
     )
@@ -66,11 +76,15 @@ class RuntimeSettings(BaseSettings):
     )
 
     # Storage & Path Infrastructure
-    DATA_DIR: str = Field(default="data", description="Directory for persistent application data")
+    DATA_DIR: str = Field(
+        default="data", description="Directory for persistent application data"
+    )
     ARTIFACTS_DIR: str = Field(
         default="artifacts", description="Directory for generated workflow artifacts"
     )
-    TEMP_DIR: str = Field(default="tmp", description="Directory for temporary runtime files")
+    TEMP_DIR: str = Field(
+        default="tmp", description="Directory for temporary runtime files"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -122,7 +136,9 @@ class RuntimeSettings(BaseSettings):
     def validate_positive_seconds(cls, v: int) -> int:
         """Validate timeout and interval duration values."""
         if v <= 0:
-            raise ValueError(f"Timeout/Interval seconds must be greater than 0, got {v}")
+            raise ValueError(
+                f"Timeout/Interval seconds must be greater than 0, got {v}"
+            )
         return v
 
     @field_validator("DATABASE_URL")
@@ -148,7 +164,9 @@ def _sync_global_settings(new_settings: RuntimeSettings) -> None:
 
 
 class ConfigurationManager:
-    """Centralized manager for loading, validating, and managing application configuration."""
+    """Centralized manager for loading, validating, and managing application
+    configuration.
+    """
 
     def __init__(
         self,
