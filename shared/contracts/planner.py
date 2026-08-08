@@ -21,6 +21,15 @@ class UserRequirement(BaseModel):
     category: str = Field(default="general", description="General classification tag.")
 
 
+class ClarificationResult(BaseModel):
+    """
+    Result of the clarification engine's analysis.
+    """
+    needs_clarification: bool = Field(..., description="True if the request is incomplete.")
+    question: Optional[str] = Field(None, description="The follow-up question to ask the user.")
+    missing_fields: List[str] = Field(default_factory=list, description="List of missing required fields.")
+
+
 class PlannerRequest(BaseModel):
     """
     Represents a user request sent to the Planner Chat Interface.
