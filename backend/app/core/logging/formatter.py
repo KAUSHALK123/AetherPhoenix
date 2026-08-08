@@ -1,9 +1,8 @@
 """Log formatters for structured logging in AetherPhoenix."""
 
-from datetime import datetime, timezone
 import json
 import logging
-import traceback
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 
@@ -43,9 +42,7 @@ class JSONLogFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         """Formats log record into a JSON string."""
-        timestamp = datetime.fromtimestamp(
-            record.created, tz=timezone.utc
-        ).isoformat()
+        timestamp = datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat()
 
         log_data: Dict[str, Any] = {
             "timestamp": timestamp,
@@ -93,11 +90,14 @@ class TextLogFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         """Formats log record into a structured text string."""
-        timestamp = datetime.fromtimestamp(
-            record.created, tz=timezone.utc
-        ).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+        timestamp = datetime.fromtimestamp(record.created, tz=timezone.utc).strftime(
+            "%Y-%m-%d %H:%M:%S.%f"
+        )[:-3]
 
-        base_msg = f"[{timestamp}] [{record.levelname}] [{record.name}] {record.getMessage()}"
+        base_msg = (
+            f"[{timestamp}] [{record.levelname}] [{record.name}] "
+            f"{record.getMessage()}"
+        )
 
         extra_context: Dict[str, Any] = {}
         if hasattr(record, "extra_context") and isinstance(record.extra_context, dict):

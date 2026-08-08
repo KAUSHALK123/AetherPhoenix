@@ -1,8 +1,8 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
 
 from backend.app.core.config import settings
 from backend.app.core.logging import get_logger, setup_logging
+from fastapi import FastAPI
 
 # Setup centralized logging
 setup_logging(
@@ -36,4 +36,3 @@ app = FastAPI(
 async def health_check():
     logger.debug("Health check endpoint invoked")
     return {"status": "ok"}
-

@@ -1,10 +1,9 @@
 """Core logger implementation, handlers, setup and factory for AetherPhoenix."""
 
 import logging
-from logging.handlers import RotatingFileHandler
-import os
-from pathlib import Path
 import sys
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from backend.app.core.logging.formatter import JSONLogFormatter, TextLogFormatter
@@ -50,7 +49,8 @@ class StructuredLogger(ILogger):
         # Merge bound context and any extra kwargs passed to log call
         combined_context = self._context.copy()
 
-        # Any additional non-reserved kwargs passed directly to log call become part of context
+        # Any additional non-reserved kwargs passed directly to log call
+        # become part of context
         for key in list(kwargs.keys()):
             if key not in ("exc_info", "stack_info", "stacklevel"):
                 combined_context[key] = kwargs.pop(key)
@@ -104,7 +104,7 @@ def create_file_handler(
     log_path = Path(log_dir)
     try:
         log_path.mkdir(parents=True, exist_ok=True)
-    except Exception as e:
+    except Exception:
         # Fallback to current directory if specified directory creation fails
         log_path = Path(".")
 

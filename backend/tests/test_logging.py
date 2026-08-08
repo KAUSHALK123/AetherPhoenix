@@ -2,15 +2,13 @@
 
 import json
 import logging
-from pathlib import Path
 import tempfile
-import pytest
+from pathlib import Path
 
 from backend.app.core.logging.formatter import JSONLogFormatter, TextLogFormatter
 from backend.app.core.logging.interface import ILogger
 from backend.app.core.logging.logger import (
     StructuredLogger,
-    create_console_handler,
     create_file_handler,
     get_logger,
     setup_logging,
@@ -162,4 +160,3 @@ def test_setup_logging():
         for handler in list(root.handlers):
             handler.close()
             root.removeHandler(handler)
-
