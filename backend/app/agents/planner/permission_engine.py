@@ -63,7 +63,7 @@ class PermissionDetectionEngine:
             # External API access or Downloads
             if "api" in combined_text or "external api" in combined_text:
                 detected_permissions.add(PermissionType.INTERNET)
-                
+
             if "download" in combined_text:
                 detected_permissions.add(PermissionType.INTERNET)
                 detected_permissions.add(PermissionType.DOWNLOADS)
@@ -97,5 +97,5 @@ class PermissionDetectionEngine:
         permission_requests.sort(
             key=lambda req: (str(req.task_id), req.permission_type.value)
         )
-        
+
         return tasks, permission_requests
