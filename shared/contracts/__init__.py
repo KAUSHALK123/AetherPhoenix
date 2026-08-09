@@ -16,6 +16,17 @@ from shared.contracts.permission import (
     PermissionType,
     RiskLevel,
 )
+from shared.contracts.planner import (
+    ClarificationResult,
+    Goal,
+    GoalExtractionResult,
+    GoalPriority,
+    IntentCategory,
+    PlannerRequest,
+    PlannerResponse,
+    TaskDecompositionPlan,
+    UserRequirement,
+)
 from shared.contracts.task import (
     DependencyType,
     RollbackInfo,
@@ -37,6 +48,11 @@ from shared.contracts.workflow import (
     SharedWorkflowState,
     WorkflowMetadata,
     WorkflowStatus,
+)
+from shared.contracts.risk import (
+    RiskAssessment,
+    Conflict,
+    RiskAnalysisResult,
 )
 
 __all__ = [
@@ -60,6 +76,16 @@ __all__ = [
     "PermissionStatus",
     "RiskLevel",
     "PermissionRequest",
+    # Planner
+    "PlannerRequest",
+    "PlannerResponse",
+    "IntentCategory",
+    "GoalPriority",
+    "Goal",
+    "GoalExtractionResult",
+    "UserRequirement",
+    "ClarificationResult",
+    "TaskDecompositionPlan",
     # Task
     "TaskStatus",
     "TaskPriority",
@@ -82,4 +108,8 @@ __all__ = [
     "WorkflowMetadata",
     "ProgressState",
     "SharedWorkflowState",
+    # Risk
+    "RiskAssessment",
+    "Conflict",
+    "RiskAnalysisResult",
 ]
