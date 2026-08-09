@@ -1,7 +1,7 @@
 import pytest
-from app.planner.goal_parser import GoalParser
-
 from shared.contracts.planner import GoalPriority, IntentCategory
+
+from app.planner.goal_parser import GoalParser
 
 
 @pytest.fixture

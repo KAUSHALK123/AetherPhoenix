@@ -1,15 +1,16 @@
 import logging
 from typing import Any, Dict, Optional, Union
 
-from app.planner.goal_hierarchy import GoalHierarchyBuilder
-from app.planner.goal_metadata import GoalMetadataGenerator
-from app.planner.goal_parser import GoalParser
-from app.planner.goal_validator import GoalValidator
 from shared.contracts.planner import (
     Goal,
     GoalExtractionResult,
     PlannerRequest,
 )
+
+from app.planner.goal_hierarchy import GoalHierarchyBuilder
+from app.planner.goal_metadata import GoalMetadataGenerator
+from app.planner.goal_parser import GoalParser
+from app.planner.goal_validator import GoalValidator
 
 logger = logging.getLogger(__name__)
 

@@ -1,7 +1,7 @@
 import pytest
-from app.planner.goal_engine import GoalExtractionEngine
-
 from shared.contracts.planner import GoalExtractionResult, PlannerRequest
+
+from app.planner.goal_engine import GoalExtractionEngine
 
 
 @pytest.fixture

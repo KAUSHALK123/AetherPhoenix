@@ -1,7 +1,7 @@
 import pytest
-from app.planner.goal_metadata import GoalMetadataGenerator
-
 from shared.contracts.planner import Goal, IntentCategory
+
+from app.planner.goal_metadata import GoalMetadataGenerator
 
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 import pytest
-from app.planner.goal_validator import GoalValidator
-
 from shared.contracts.planner import Goal, IntentCategory
+
+from app.planner.goal_validator import GoalValidator
 
 
 @pytest.fixture

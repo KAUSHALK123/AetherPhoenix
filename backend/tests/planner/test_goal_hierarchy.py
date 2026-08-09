@@ -1,7 +1,7 @@
 import pytest
-from app.planner.goal_hierarchy import GoalHierarchyBuilder
-
 from shared.contracts.planner import Goal
+
+from app.planner.goal_hierarchy import GoalHierarchyBuilder
 
 
 @pytest.fixture

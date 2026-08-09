@@ -1,7 +1,7 @@
 import pytest
-from app.planner.clarifier import ClarificationEngine
-
 from shared.contracts.planner import IntentCategory, UserRequirement
+
+from app.planner.clarifier import ClarificationEngine
 
 
 @pytest.fixture
