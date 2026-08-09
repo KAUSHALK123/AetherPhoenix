@@ -45,6 +45,11 @@ from shared.contracts.workflow import (
     WorkflowMetadata,
     WorkflowStatus,
 )
+from shared.contracts.risk import (
+    RiskAssessment,
+    Conflict,
+    RiskAnalysisResult,
+)
 
 __all__ = [
     # Artifact
@@ -96,4 +101,8 @@ __all__ = [
     "PlannerOutput",
     "ProgressState",
     "SharedWorkflowState",
+    # Risk
+    "RiskAssessment",
+    "Conflict",
+    "RiskAnalysisResult",
 ]
