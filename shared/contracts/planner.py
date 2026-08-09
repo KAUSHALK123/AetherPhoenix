@@ -1,3 +1,4 @@
+import uuid
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -11,34 +12,118 @@ class IntentCategory(str, Enum):
     UNKNOWN = "unknown"
 
 
+class GoalPriority(str, Enum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
 class UserRequirement(BaseModel):
     """
     Represents the parsed structure of a user's request.
     """
-    intent: IntentCategory = Field(default=IntentCategory.UNKNOWN, description="The primary goal of the request.")
-    requirements: List[str] = Field(default_factory=list, description="Specific things the user wants.")
-    constraints: List[str] = Field(default_factory=list, description="Limitations or constraints on the request.")
+
+    intent: IntentCategory = Field(
+        default=IntentCategory.UNKNOWN, description="The primary goal of the request."
+    )
+    requirements: List[str] = Field(
+        default_factory=list, description="Specific things the user wants."
+    )
+    constraints: List[str] = Field(
+        default_factory=list, description="Limitations or constraints on the request."
+    )
     category: str = Field(default="general", description="General classification tag.")
+
+
+class Goal(BaseModel):
+    """
+    Represents a structured goal node in the goal hierarchy.
+    """
+
+    goal_id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()),
+        description="Unique identifier for the goal.",
+    )
+    title: str = Field(..., description="Short title describing the goal.")
+    description: str = Field(..., description="Detailed description of the goal.")
+    category: IntentCategory = Field(
+        default=IntentCategory.UNKNOWN, description="Category of the goal intent."
+    )
+    priority: GoalPriority = Field(
+        default=GoalPriority.MEDIUM, description="Priority level of the goal."
+    )
+    expected_outcomes: List[str] = Field(
+        default_factory=list,
+        description="Expected outcomes or artifacts from fulfilling this goal.",
+    )
+    sub_goals: List["Goal"] = Field(
+        default_factory=list, description="Child sub-goals in the goal hierarchy."
+    )
+    parent_id: Optional[str] = Field(
+        None, description="Optional ID of the parent goal."
+    )
+    metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Metadata associated with this goal."
+    )
+
+
+Goal.model_rebuild()
+
+
+class GoalExtractionResult(BaseModel):
+    """
+    Result of the Goal Extraction Engine analysis.
+    """
+
+    primary_goal: Optional[Goal] = Field(
+        None, description="Root goal representing the main user objective."
+    )
+    goal_count: int = Field(
+        0, description="Total number of goals identified (primary + sub-goals)."
+    )
+    confidence_score: float = Field(
+        0.0, description="Confidence score of the goal extraction (0.0 to 1.0)."
+    )
+    is_valid: bool = Field(
+        True, description="Whether the extracted goal structure is valid."
+    )
+    validation_messages: List[str] = Field(
+        default_factory=list, description="Validation feedback or error messages."
+    )
+    extraction_metadata: Dict[str, Any] = Field(
+        default_factory=dict, description="Metadata about the extraction process."
+    )
 
 
 class ClarificationResult(BaseModel):
     """
     Result of the clarification engine's analysis.
     """
-    needs_clarification: bool = Field(..., description="True if the request is incomplete.")
-    question: Optional[str] = Field(None, description="The follow-up question to ask the user.")
-    missing_fields: List[str] = Field(default_factory=list, description="List of missing required fields.")
+
+    needs_clarification: bool = Field(
+        ..., description="True if the request is incomplete."
+    )
+    question: Optional[str] = Field(
+        None, description="The follow-up question to ask the user."
+    )
+    missing_fields: List[str] = Field(
+        default_factory=list, description="List of missing required fields."
+    )
 
 
 class PlannerRequest(BaseModel):
     """
     Represents a user request sent to the Planner Chat Interface.
     """
-    session_id: str = Field(..., description="Unique identifier for the conversation session.")
+
+    session_id: str = Field(
+        ..., description="Unique identifier for the conversation session."
+    )
     message: str = Field(..., description="The text message or goal from the user.")
     context: Optional[Dict[str, Any]] = Field(
         default_factory=dict,
-        description="Optional context such as file paths or metadata."
+        description="Optional context such as file paths or metadata.",
     )
 
 
@@ -46,7 +131,15 @@ class PlannerResponse(BaseModel):
     """
     Represents the output from the Planner Chat Interface back to the user.
     """
-    session_id: str = Field(..., description="Unique identifier for the conversation session.")
-    status: str = Field(..., description="Status of the request (e.g., 'clarifying', 'planning', 'ready').")
-    reply: Optional[str] = Field(None, description="A text reply, usually a clarification question.")
+
+    session_id: str = Field(
+        ..., description="Unique identifier for the conversation session."
+    )
+    status: str = Field(
+        ...,
+        description="Status of the request (e.g., 'clarifying', 'planning', 'ready').",
+    )
+    reply: Optional[str] = Field(
+        None, description="A text reply, usually a clarification question."
+    )
     action: Optional[str] = Field(None, description="The next action if applicable.")
