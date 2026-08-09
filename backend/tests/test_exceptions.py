@@ -178,9 +178,7 @@ class TestValidationException:
         assert isinstance(exc, AetherPhoenixException)
 
     def test_details_carries_field_info(self) -> None:
-        exc = ValidationException(
-            message="Field required", details={"field": "goal"}
-        )
+        exc = ValidationException(message="Field required", details={"field": "goal"})
         assert exc.details["field"] == "goal"
 
 
@@ -411,9 +409,7 @@ class TestErrorDetail:
         assert detail.details["tool"] == "browser"
 
     def test_details_accepts_string(self) -> None:
-        detail = ErrorDetail(
-            code="TOOL_ERROR", message="Failed", details="exit code 1"
-        )
+        detail = ErrorDetail(code="TOOL_ERROR", message="Failed", details="exit code 1")
         assert detail.details == "exit code 1"
 
     def test_serializes_to_dict(self) -> None:
@@ -450,21 +446,15 @@ class TestErrorResponse:
     """Tests for the ErrorResponse Pydantic model."""
 
     def test_success_is_always_false(self) -> None:
-        resp = ErrorResponse(
-            error=ErrorDetail(code="RUNTIME_ERROR", message="Crash")
-        )
+        resp = ErrorResponse(error=ErrorDetail(code="RUNTIME_ERROR", message="Crash"))
         assert resp.success is False
 
     def test_timestamp_auto_populated(self) -> None:
-        resp = ErrorResponse(
-            error=ErrorDetail(code="RUNTIME_ERROR", message="Crash")
-        )
+        resp = ErrorResponse(error=ErrorDetail(code="RUNTIME_ERROR", message="Crash"))
         assert isinstance(resp.timestamp, datetime)
 
     def test_request_id_auto_populated(self) -> None:
-        resp = ErrorResponse(
-            error=ErrorDetail(code="RUNTIME_ERROR", message="Crash")
-        )
+        resp = ErrorResponse(error=ErrorDetail(code="RUNTIME_ERROR", message="Crash"))
         # Must be parseable as a UUID
         uuid.UUID(resp.request_id)
 

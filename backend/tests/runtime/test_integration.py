@@ -114,11 +114,11 @@ def test_event_propagation_and_logging(caplog):
         workflow_id=uuid4(),
         event_type=EventType.WORKFLOW_CREATED,
         source_component=EventSource.RUNTIME_KERNEL,
-        payload={"status": "testing"}
+        payload={"status": "testing"},
     )
-    
+
     caplog.set_level(logging.INFO)
-    
+
     # We must run the async publish
     asyncio.run(bus.publish(event))
 
