@@ -62,9 +62,9 @@ class TaskDecompositionEngine:
             dependency_graph=dep_graph_str,
             task_hierarchy=hierarchy_str,
             execution_order=execution_order,
-            estimated_total_duration_seconds=total_duration
-            if total_duration > 0
-            else None,
+            estimated_total_duration_seconds=(
+                total_duration if total_duration > 0 else None
+            ),
         )
 
     def _generate_tasks(
