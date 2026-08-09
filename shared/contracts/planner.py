@@ -1,5 +1,25 @@
-from typing import Any, Dict, Optional
+from enum import Enum
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
+
+
+class IntentCategory(str, Enum):
+    DATA_RETRIEVAL = "data_retrieval"
+    SYSTEM_MODIFICATION = "system_modification"
+    CONTENT_GENERATION = "content_generation"
+    UNKNOWN = "unknown"
+
+
+class UserRequirement(BaseModel):
+    """
+    Represents the parsed structure of a user's request.
+    """
+    intent: IntentCategory = Field(default=IntentCategory.UNKNOWN, description="The primary goal of the request.")
+    requirements: List[str] = Field(default_factory=list, description="Specific things the user wants.")
+    constraints: List[str] = Field(default_factory=list, description="Limitations or constraints on the request.")
+    category: str = Field(default="general", description="General classification tag.")
+
 
 class PlannerRequest(BaseModel):
     """
