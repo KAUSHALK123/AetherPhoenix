@@ -1,8 +1,11 @@
 import uuid
 from enum import Enum
 from typing import Any, Dict, List, Optional
+from uuid import UUID
 
 from pydantic import BaseModel, Field
+
+from shared.contracts.task import Task
 
 
 class IntentCategory(str, Enum):
@@ -143,3 +146,30 @@ class PlannerResponse(BaseModel):
         None, description="A text reply, usually a clarification question."
     )
     action: Optional[str] = Field(None, description="The next action if applicable.")
+
+
+class TaskDecompositionPlan(BaseModel):
+    """
+    Output model of the Task Decomposition Engine.
+    Contains tasks, dependency graph, hierarchy mapping, and ordered execution plan.
+    """
+    workflow_id: UUID = Field(..., description="Unique ID of the workflow.")
+    goal: str = Field(..., description="Original goal string.")
+    tasks: List[Task] = Field(default_factory=list, description="Decomposed tasks.")
+    dependency_graph: Dict[str, List[str]] = Field(
+        default_factory=dict,
+        description="Dependency mapping of task_id string -> list of prerequisite task_id strings."
+    )
+    task_hierarchy: Dict[str, List[str]] = Field(
+        default_factory=dict,
+        description="Task hierarchy mapping parent_task_id string -> list of child_task_id strings."
+    )
+    execution_order: List[UUID] = Field(
+        default_factory=list,
+        description="Topologically sorted execution order of task UUIDs."
+    )
+    estimated_total_duration_seconds: Optional[int] = Field(
+        default=None,
+        description="Estimated total duration in seconds."
+    )
+

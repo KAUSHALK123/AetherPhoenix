@@ -24,6 +24,7 @@ from shared.contracts.planner import (
     IntentCategory,
     PlannerRequest,
     PlannerResponse,
+    TaskDecompositionPlan,
     UserRequirement,
 )
 from shared.contracts.task import (
@@ -75,6 +76,7 @@ __all__ = [
     "GoalExtractionResult",
     "UserRequirement",
     "ClarificationResult",
+    "TaskDecompositionPlan",
     # Task
     "TaskStatus",
     "TaskPriority",
