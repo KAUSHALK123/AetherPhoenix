@@ -1,8 +1,8 @@
 import pytest
-from shared.contracts.planner import PlannerRequest
-
 from app.planner.chat import PlannerChatInterface
 from app.planner.session import SessionManager
+
+from shared.contracts.planner import PlannerRequest
 
 
 @pytest.fixture

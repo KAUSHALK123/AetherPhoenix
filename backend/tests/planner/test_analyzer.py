@@ -1,7 +1,7 @@
 import pytest
-from shared.contracts.planner import IntentCategory, PlannerRequest
-
 from app.planner.analyzer import RequirementAnalyzer
+
+from shared.contracts.planner import IntentCategory, PlannerRequest
 
 
 @pytest.fixture

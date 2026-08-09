@@ -1,8 +1,7 @@
 import logging
 
-from shared.contracts.planner import PlannerRequest, PlannerResponse
-
 from app.planner.session import SessionManager
+from shared.contracts.planner import PlannerRequest, PlannerResponse
 
 logger = logging.getLogger(__name__)
 
