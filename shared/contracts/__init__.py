@@ -17,11 +17,12 @@ from shared.contracts.permission import (
     RiskLevel,
 )
 from shared.contracts.planner import (
+    ClarificationResult,
     IntentCategory,
     PlannerRequest,
     PlannerResponse,
+    TaskDecompositionPlan,
     UserRequirement,
-    ClarificationResult,
 )
 from shared.contracts.task import (
     DependencyType,
@@ -69,6 +70,7 @@ __all__ = [
     "IntentCategory",
     "UserRequirement",
     "ClarificationResult",
+    "TaskDecompositionPlan",
     # Task
     "TaskStatus",
     "TaskPriority",
