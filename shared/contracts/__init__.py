@@ -21,6 +21,7 @@ from shared.contracts.planner import (
     PlannerRequest,
     PlannerResponse,
     UserRequirement,
+    ClarificationResult,
 )
 from shared.contracts.task import (
     DependencyType,
@@ -67,6 +68,7 @@ __all__ = [
     "PlannerResponse",
     "IntentCategory",
     "UserRequirement",
+    "ClarificationResult",
     # Task
     "TaskStatus",
     "TaskPriority",
