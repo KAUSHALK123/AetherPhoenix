@@ -18,6 +18,9 @@ from shared.contracts.permission import (
 )
 from shared.contracts.planner import (
     ClarificationResult,
+    Goal,
+    GoalExtractionResult,
+    GoalPriority,
     IntentCategory,
     PlannerRequest,
     PlannerResponse,
@@ -68,6 +71,9 @@ __all__ = [
     "PlannerRequest",
     "PlannerResponse",
     "IntentCategory",
+    "GoalPriority",
+    "Goal",
+    "GoalExtractionResult",
     "UserRequirement",
     "ClarificationResult",
     "TaskDecompositionPlan",
