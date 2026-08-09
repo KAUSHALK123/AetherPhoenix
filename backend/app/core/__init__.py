@@ -1,1 +1,1 @@
-"""Core module initialization."""
+# Core infrastructure package
