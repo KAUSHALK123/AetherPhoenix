@@ -16,6 +16,7 @@ from shared.contracts.permission import (
     PermissionType,
     RiskLevel,
 )
+from shared.contracts.planner import PlannerRequest, PlannerResponse
 from shared.contracts.task import (
     DependencyType,
     RollbackInfo,
@@ -56,6 +57,9 @@ __all__ = [
     "PermissionStatus",
     "RiskLevel",
     "PermissionRequest",
+    # Planner
+    "PlannerRequest",
+    "PlannerResponse",
     # Task
     "TaskStatus",
     "TaskPriority",
