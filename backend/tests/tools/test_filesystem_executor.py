@@ -1,13 +1,15 @@
 from uuid import uuid4
 
 import pytest
+
 from app.core.config import get_config
+from app.core.permissions.manager import PermissionManager
 from app.core.permissions.models import (
+    ExecutionMode,
     PermissionRequest,
     PermissionStatus,
     PermissionType,
 )
-from app.core.permissions.manager import PermissionManager
 from app.tools.filesystem.executor import FileSystemExecutor
 from app.tools.filesystem.models import (
     CopyFileRequest,
@@ -49,9 +51,6 @@ def workspace(tmp_path):
     config.WORKSPACE_DIR = str(tmp_path)
     yield tmp_path
     config.WORKSPACE_DIR = original_workspace
-
-
-from app.core.permissions.models import ExecutionMode
 
 
 @pytest.fixture

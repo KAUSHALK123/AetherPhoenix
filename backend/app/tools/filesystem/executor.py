@@ -4,10 +4,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from app.core.permissions.models import PermissionRequest, PermissionType
-
 from app.core.config import get_config
 from app.core.permissions.manager import PermissionManager
+from app.core.permissions.models import PermissionType
 from app.tools.filesystem.models import (
     CopyFileRequest,
     CreateDirectoryRequest,
