@@ -2,7 +2,11 @@ from uuid import uuid4
 
 import pytest
 from app.core.config import get_config
-from app.core.permissions.models import PermissionRequest, PermissionStatus, PermissionType
+from app.core.permissions.models import (
+    PermissionRequest,
+    PermissionStatus,
+    PermissionType,
+)
 from app.core.permissions.manager import PermissionManager
 from app.tools.filesystem.executor import FileSystemExecutor
 from app.tools.filesystem.models import (
@@ -34,7 +38,7 @@ class MockPermissionManagerDenied(PermissionManager):
             task_id=task_id,
             permission_type=permission_type,
             reason=reason,
-            status=PermissionStatus.REJECTED
+            status=PermissionStatus.REJECTED,
         )
 
 
@@ -48,6 +52,7 @@ def workspace(tmp_path):
 
 
 from app.core.permissions.models import ExecutionMode
+
 
 @pytest.fixture
 def executor(workspace):

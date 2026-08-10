@@ -172,9 +172,9 @@ class FileSystemExecutor:
             permission_type=PermissionType.FILE_DELETE,
             reason=f"Requires permission to delete path: {request.path}",
         )
-        
+
         has_permission = self.permission_manager.validate_permission(req.request_id)
-        
+
         if not has_permission:
             logger.warning(f"Delete permission denied for {target_path}")
             raise PermissionError(f"Permission denied to delete {request.path}")
