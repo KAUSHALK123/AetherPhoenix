@@ -111,6 +111,7 @@ class PlannerAgent:
 
         self.capability_engine = CapabilityDiscoveryEngine(registry=cap_reg)
         self.parallel_engine = ParallelTaskAnalyzer()
+        self.active_sessions: dict[str, str] = {}
 
     def process_request(self, request: PlannerRequest) -> PlannerResponse:
         """
@@ -121,12 +122,22 @@ class PlannerAgent:
             "PlannerAgent processing request for session: %s", request.session_id
         )
 
+        # Restore session context if this is a clarification answer
+        if request.session_id in self.active_sessions:
+            original_goal = self.active_sessions[request.session_id]
+            # Combine original goal with clarification answer
+            combined_message = f"{original_goal} (Clarification provided: {request.message})"  # noqa: E501
+            request.message = combined_message
+        else:
+            combined_message = request.message
+
         # Stage 1 & 2: User Requirement Analysis
         user_req = self.requirement_analyzer.analyze_request(request)
 
         # Stage 3: Clarification
         clarification = self.clarification_engine.evaluate_requirement(user_req)
         if clarification.needs_clarification:
+            self.active_sessions[request.session_id] = combined_message
             return PlannerResponse(
                 session_id=request.session_id,
                 status="clarifying",
@@ -138,6 +149,7 @@ class PlannerAgent:
         goal_result = self.goal_engine.extract_goals(request)
         if not goal_result.primary_goal:
             # Fallback if validation totally fails
+            self.active_sessions.pop(request.session_id, None)
             return PlannerResponse(
                 session_id=request.session_id,
                 status="error",
@@ -146,6 +158,7 @@ class PlannerAgent:
             )
 
         if goal_result.confidence_score < 0.6:
+            self.active_sessions[request.session_id] = combined_message
             return PlannerResponse(
                 session_id=request.session_id,
                 status="clarifying",
@@ -175,6 +188,7 @@ class PlannerAgent:
         tasks, unsupported_caps = self.capability_engine.discover_capabilities(tasks)
         if unsupported_caps:
             decomposition_plan.unsupported_capabilities = unsupported_caps
+            self.active_sessions.pop(request.session_id, None)
             return PlannerResponse(
                 session_id=request.session_id,
                 status="error",
@@ -251,6 +265,8 @@ class PlannerAgent:
 
         # Serialize to JSON as per requirements
         plan_json = planner_output.model_dump_json()
+
+        self.active_sessions.pop(request.session_id, None)
 
         return PlannerResponse(
             session_id=request.session_id,
