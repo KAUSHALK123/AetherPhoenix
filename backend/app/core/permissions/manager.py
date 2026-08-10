@@ -19,7 +19,9 @@ class PermissionManager:
     def set_mode(self, mode: ExecutionMode):
         self.mode = mode
 
-    async def check_permission(self, action: str, permission_type: PermissionType) -> bool:
+    async def check_permission(
+        self, action: str, permission_type: PermissionType
+    ) -> bool:
         """
         Backward-compatibility method for executor testing.
         Automatically approves if safe, otherwise rejects.
@@ -28,7 +30,7 @@ class PermissionManager:
             workflow_id="test",
             task_id="test",
             permission_type=permission_type,
-            reason=f"Action: {action}"
+            reason=f"Action: {action}",
         )
         return self.validate_permission(req.request_id)
 
