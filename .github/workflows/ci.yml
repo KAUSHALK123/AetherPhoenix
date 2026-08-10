@@ -75,7 +75,7 @@ jobs:
       - name: Verify Backend Starts
         run: |
           if [ -f "app/main.py" ]; then
-            uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+            PYTHONPATH=.. uvicorn app.main:app --host 127.0.0.1 --port 8000 &
             PID=$!
             sleep 5
             if kill -0 $PID 2>/dev/null; then
