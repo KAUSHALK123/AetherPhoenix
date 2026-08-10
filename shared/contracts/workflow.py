@@ -9,7 +9,6 @@ from shared.contracts.artifact import Artifact
 from shared.contracts.event import RuntimeEvent
 from shared.contracts.execution import HealingResult
 from shared.contracts.permission import PermissionRequest
-from shared.contracts.planner import PlannerOutput
 from shared.contracts.task import Task
 
 
@@ -49,7 +48,16 @@ class WorkflowMetadata(BaseModel):
     estimated_duration_seconds: Optional[int] = None
 
 
+class PlannerOutput(BaseModel):
+    """Structured plan output produced by the Planner Agent."""
 
+    workflow_spec: str
+    dependency_graph: Dict[str, List[str]] = Field(default_factory=dict)
+    estimated_time_seconds: int = Field(default=0, ge=0)
+    risks: List[str] = Field(default_factory=list)
+    required_permissions: List[str] = Field(default_factory=list)
+    expected_outputs: List[str] = Field(default_factory=list)
+    confidence_score: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
 class ProgressState(BaseModel):

@@ -1,33 +1,104 @@
-import logging
-from uuid import UUID
+import uuid
+from typing import Dict, List, Optional
 
-from shared.contracts.permission import (
+from .models import (
+    ExecutionMode,
     PermissionRequest,
+    PermissionResponse,
     PermissionStatus,
     PermissionType,
 )
-
-logger = logging.getLogger(__name__)
+from .policies import PermissionPolicy
 
 
 class PermissionManager:
-    """Stub for Permission Manager to handle permission workflows."""
+    def __init__(self, mode: ExecutionMode = ExecutionMode.SAFE):
+        self.mode = mode
+        self.requests: Dict[str, PermissionRequest] = {}
 
-    async def request_permission(self, request: PermissionRequest) -> PermissionRequest:
-        logger.info(
-            f"Automatically granting permission request {request.permission_type}"
-        )
-        request.status = PermissionStatus.GRANTED
-        return request
+    def set_mode(self, mode: ExecutionMode):
+        self.mode = mode
 
-    async def check_permission(
-        self, workflow_id: UUID, permission_type: PermissionType
-    ) -> bool:
-        logger.info(
-            f"Automatically returning True for check_permission "
-            f"{permission_type} on {workflow_id}"
+    def request_permission(
+        self,
+        workflow_id: str,
+        task_id: str,
+        permission_type: PermissionType,
+        reason: str,
+        context: Optional[Dict] = None,
+    ) -> PermissionRequest:
+        """
+        Registers a new permission request.
+        """
+        request_id = str(uuid.uuid4())
+        req = PermissionRequest(
+            request_id=request_id,
+            workflow_id=workflow_id,
+            task_id=task_id,
+            permission_type=permission_type,
+            reason=reason,
+            context=context or {},
         )
+        self.requests[request_id] = req
+        return req
+
+    def validate_permission(self, request_id: str) -> bool:
+        """
+        Validates whether a permission is approved or automatically allowed.
+        """
+        req = self.requests.get(request_id)
+        if not req:
+            raise ValueError(f"Permission request {request_id} not found.")
+
+        # If it requires explicit approval based on policy
+        if PermissionPolicy.requires_approval(req.permission_type, self.mode):
+            return req.status == PermissionStatus.APPROVED
+
+        # If it doesn't require approval, it's auto-approved.
+        req.status = PermissionStatus.APPROVED
         return True
 
-    def is_granted(self, permission_id: UUID) -> bool:
-        return True
+    def approve_permission(
+        self, request_id: str, message: Optional[str] = None
+    ) -> PermissionResponse:
+        """
+        Explicitly approves a pending permission request.
+        """
+        req = self.requests.get(request_id)
+        if not req:
+            raise ValueError(f"Permission request {request_id} not found.")
+
+        req.status = PermissionStatus.APPROVED
+        return PermissionResponse(
+            request_id=request_id, status=PermissionStatus.APPROVED, message=message
+        )
+
+    def reject_permission(
+        self, request_id: str, message: Optional[str] = None
+    ) -> PermissionResponse:
+        """
+        Explicitly rejects a pending permission request.
+        """
+        req = self.requests.get(request_id)
+        if not req:
+            raise ValueError(f"Permission request {request_id} not found.")
+
+        req.status = PermissionStatus.REJECTED
+        return PermissionResponse(
+            request_id=request_id, status=PermissionStatus.REJECTED, message=message
+        )
+
+    def get_pending_requests(
+        self, workflow_id: Optional[str] = None
+    ) -> List[PermissionRequest]:
+        """
+        Returns a list of pending requests, optionally filtered by workflow.
+        """
+        pending = [
+            req
+            for req in self.requests.values()
+            if req.status == PermissionStatus.PENDING
+        ]
+        if workflow_id:
+            pending = [req for req in pending if req.workflow_id == workflow_id]
+        return pending
