@@ -108,6 +108,79 @@ def test_planner_clarification_loop():
     )
 
 
+def test_clarification_continuation():
+    """Test F: Multi-turn clarification loop continuation"""
+    # 1. Start vague session
+    response1 = client.post(
+        "/api/v1/planner/generate",
+        json={"goal": "Create a plan to organize Downloads."},
+    )
+    assert response1.status_code == 200
+    data1 = response1.json()
+    assert data1["status"] == "clarifying", data1.get("reply")
+    session_id = data1["session_id"]
+    assert session_id
+
+    # 2. Provide clarification answer using the same session_id
+    response2 = client.post(
+        "/api/v1/planner/generate",
+        json={
+            "goal": "Sort by PDF.",
+            "session_id": session_id,
+        },
+    )
+    assert response2.status_code == 200
+    data2 = response2.json()
+    assert data2["status"] == "ready", data2.get("reply")
+
+    # 3. Verify final plan incorporates both original goal and clarification
+    plan = json.loads(data2["reply"])
+    execution_summary = plan.get("execution_summary", "")
+    assert "organize Downloads" in execution_summary
+    assert "PDF" in execution_summary
+
+
+def test_session_isolation():
+    """Test G: Session states do not bleed into each other"""
+    # 1. Start vague session A
+    response_a1 = client.post(
+        "/api/v1/planner/generate",
+        json={"goal": "Create a plan to organize Downloads."},
+    )
+    data_a1 = response_a1.json()
+    assert data_a1["status"] == "clarifying"
+    session_id_a = data_a1["session_id"]
+
+    # 2. Start vague session B
+    response_b1 = client.post(
+        "/api/v1/planner/generate",
+        json={"goal": "Make a presentation."},
+    )
+    data_b1 = response_b1.json()
+    assert data_b1["status"] == "clarifying"
+    session_id_b = data_b1["session_id"]
+
+    assert session_id_a != session_id_b
+
+    # 3. Complete session A
+    response_a2 = client.post(
+        "/api/v1/planner/generate",
+        json={
+            "goal": "Sort by file type.",
+            "session_id": session_id_a,
+        },
+    )
+    data_a2 = response_a2.json()
+    assert data_a2["status"] == "ready"
+
+    plan_a = json.loads(data_a2["reply"])
+    execution_summary_a = plan_a.get("execution_summary", "")
+
+    assert "organize Downloads" in execution_summary_a
+    assert "presentation" not in execution_summary_a
+    assert "cars" not in execution_summary_a
+
+
 def test_planner_parallel_groups():
     """Test E: 'Independent research tasks'"""
     response = client.post(
