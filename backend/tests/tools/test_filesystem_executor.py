@@ -1,9 +1,8 @@
 from uuid import uuid4
 
 import pytest
-from shared.contracts.permission import PermissionRequest, PermissionStatus
-
 from app.core.config import get_config
+from app.core.permissions.models import PermissionRequest, PermissionStatus, PermissionType
 from app.core.permissions.manager import PermissionManager
 from app.tools.filesystem.executor import FileSystemExecutor
 from app.tools.filesystem.models import (
@@ -18,12 +17,25 @@ from app.tools.filesystem.models import (
 
 
 class MockPermissionManagerDenied(PermissionManager):
-    async def check_permission(self, workflow_id, permission_type):
+    def validate_permission(self, request_id: str) -> bool:
         return False
 
-    async def request_permission(self, request: PermissionRequest) -> PermissionRequest:
-        request.status = PermissionStatus.REJECTED
-        return request
+    def request_permission(
+        self,
+        workflow_id: str,
+        task_id: str,
+        permission_type: PermissionType,
+        reason: str,
+        context=None,
+    ) -> PermissionRequest:
+        return PermissionRequest(
+            request_id="dummy",
+            workflow_id=workflow_id,
+            task_id=task_id,
+            permission_type=permission_type,
+            reason=reason,
+            status=PermissionStatus.REJECTED
+        )
 
 
 @pytest.fixture
@@ -35,9 +47,12 @@ def workspace(tmp_path):
     config.WORKSPACE_DIR = original_workspace
 
 
+from app.core.permissions.models import ExecutionMode
+
 @pytest.fixture
 def executor(workspace):
-    return FileSystemExecutor()
+    manager = PermissionManager(mode=ExecutionMode.AUTONOMOUS)
+    return FileSystemExecutor(permission_manager=manager)
 
 
 @pytest.mark.asyncio

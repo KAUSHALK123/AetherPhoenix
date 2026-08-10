@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from shared.contracts.permission import PermissionRequest, PermissionType, RiskLevel
+from app.core.permissions.models import PermissionRequest, PermissionType
 
 from app.core.config import get_config
 from app.core.permissions.manager import PermissionManager
@@ -166,22 +166,18 @@ class FileSystemExecutor:
             raise FileNotFoundError(f"Path not found: {request.path}")
 
         # Check permissions for delete operation
-        has_permission = await self.permission_manager.check_permission(
-            workflow_id=workflow_id, permission_type=PermissionType.FILE_SYSTEM
+        req = self.permission_manager.request_permission(
+            workflow_id=str(workflow_id),
+            task_id="delete_file",
+            permission_type=PermissionType.FILE_DELETE,
+            reason=f"Requires permission to delete path: {request.path}",
         )
-
+        
+        has_permission = self.permission_manager.validate_permission(req.request_id)
+        
         if not has_permission:
-            # If not already granted, request it
-            perm_req = PermissionRequest(
-                workflow_id=workflow_id,
-                permission_type=PermissionType.FILE_SYSTEM,
-                reason=f"Requires permission to delete path: {request.path}",
-                risk_level=RiskLevel.MEDIUM,
-            )
-            response = await self.permission_manager.request_permission(perm_req)
-            if response.status != "GRANTED":
-                logger.warning(f"Delete permission denied for {target_path}")
-                raise PermissionError(f"Permission denied to delete {request.path}")
+            logger.warning(f"Delete permission denied for {target_path}")
+            raise PermissionError(f"Permission denied to delete {request.path}")
 
         if target_path.is_dir():
             if not request.recursive:
