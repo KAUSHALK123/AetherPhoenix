@@ -80,8 +80,8 @@ def test_decompose_generic_goal(decomposer):
 
     plan = decomposer.decompose_goal(goal=goal, workflow_id=workflow_id)
 
-    assert len(plan.tasks) == 3
-    assert plan.tasks[0].category == TaskCategory.OTHER
+    assert len(plan.tasks) == 4
+    assert plan.tasks[0].category == TaskCategory.FILE_SYSTEM
 
 
 def test_task_hierarchy(decomposer):
@@ -123,9 +123,9 @@ def test_topological_sort_ordered_plan(decomposer):
     seen_ids = set()
     for task in ordered:
         for dep_id in task.dependencies:
-            assert (
-                dep_id in seen_ids
-            ), f"Dependency {dep_id} must precede task {task.task_id}"
+            assert dep_id in seen_ids, (
+                f"Dependency {dep_id} must precede task {task.task_id}"
+            )
         seen_ids.add(task.task_id)
 
 

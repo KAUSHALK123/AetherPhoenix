@@ -101,3 +101,5 @@ class Task(BaseModel):
     started_at: Optional[datetime] = None
     finished_at: Optional[datetime] = None
     rollback_info: Optional[RollbackInfo] = None
+    execution_logs: List[str] = Field(default_factory=list)
+    artifacts_produced: List[str] = Field(default_factory=list)

@@ -93,6 +93,10 @@ class TaskDecompositionEngine:
             w in lower_goal for w in ["system", "fix", "repair", "driver", "config"]
         ):
             return self._decompose_system_goal(goal, workflow_id)
+        elif any(
+            w in lower_goal for w in ["organize", "move", "copy", "delete", "file", "folder", "directory", "downloads"]
+        ):
+            return self._decompose_filesystem_goal(goal, workflow_id)
         else:
             return self._decompose_generic_goal(goal, workflow_id)
 
@@ -103,12 +107,13 @@ class TaskDecompositionEngine:
             workflow_id=workflow_id,
             task_name="Phase 1: Research & Outline",
             description="Gather topics and create outline for presentation",
-            assigned_agent="PlannerAgent",
+            assigned_agent="System",
             required_tool="",
             category=TaskCategory.WEB_RESEARCH,
             priority=TaskPriority.HIGH,
             dependencies=[],
             expected_output="Topic outline and reference materials",
+            artifact_location=None,
             estimated_duration_seconds=120,
             status=TaskStatus.CREATED,
         )
@@ -124,6 +129,9 @@ class TaskDecompositionEngine:
             priority=TaskPriority.HIGH,
             dependencies=[],
             expected_output="Raw topic notes",
+            artifact_location=None,
+            success_criteria=["Research notes are collected and documented"],
+            failure_criteria=["Unable to find information online"],
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
         )
@@ -139,6 +147,9 @@ class TaskDecompositionEngine:
             priority=TaskPriority.MEDIUM,
             dependencies=[subtask_research.task_id],
             expected_output="Structured slide outline",
+            artifact_location=None,
+            success_criteria=["Slide titles and bullets are logically organized"],
+            failure_criteria=["Missing outline structure"],
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
         )
@@ -148,12 +159,13 @@ class TaskDecompositionEngine:
             workflow_id=workflow_id,
             task_name="Phase 2: Presentation Generation",
             description="Generate PPT slides and export deliverables",
-            assigned_agent="PlannerAgent",
+            assigned_agent="System",
             required_tool="",
             category=TaskCategory.PPT_GENERATION,
             priority=TaskPriority.HIGH,
             dependencies=[phase1.task_id],
             expected_output="Final presentation file",
+            artifact_location=None,
             estimated_duration_seconds=180,
             status=TaskStatus.CREATED,
         )
@@ -169,6 +181,9 @@ class TaskDecompositionEngine:
             priority=TaskPriority.HIGH,
             dependencies=[subtask_outline.task_id],
             expected_output="Presentation deck (.pptx)",
+            artifact_location=None,
+            success_criteria=["PPTX file is created and readable"],
+            failure_criteria=["Failed to generate valid PPTX"],
             estimated_duration_seconds=120,
             status=TaskStatus.CREATED,
         )
@@ -184,6 +199,9 @@ class TaskDecompositionEngine:
             priority=TaskPriority.LOW,
             dependencies=[subtask_generate_ppt.task_id],
             expected_output="PDF handout (.pdf)",
+            artifact_location=None,
+            success_criteria=["PDF file is created"],
+            failure_criteria=["PDF generation failed"],
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
         )
@@ -203,7 +221,7 @@ class TaskDecompositionEngine:
             workflow_id=workflow_id,
             task_name="Phase 1: Research Execution",
             description=f"Conduct research for goal: '{goal}'",
-            assigned_agent="PlannerAgent",
+            assigned_agent="System",
             required_tool="",
             category=TaskCategory.WEB_RESEARCH,
             priority=TaskPriority.HIGH,
@@ -224,6 +242,8 @@ class TaskDecompositionEngine:
             priority=TaskPriority.HIGH,
             dependencies=[],
             expected_output="Search result links and snippets",
+            success_criteria=["Relevant URLs are found"],
+            failure_criteria=["No search results returned"],
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
         )
@@ -239,6 +259,8 @@ class TaskDecompositionEngine:
             priority=TaskPriority.MEDIUM,
             dependencies=[task_search.task_id],
             expected_output="Extracted text and notes",
+            success_criteria=["Text content is extracted from URLs"],
+            failure_criteria=["Failed to scrape pages"],
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
         )
@@ -254,6 +276,8 @@ class TaskDecompositionEngine:
             priority=TaskPriority.MEDIUM,
             dependencies=[task_extract.task_id],
             expected_output="Summary research report",
+            success_criteria=["A cohesive summary is generated"],
+            failure_criteria=["Unable to synthesize extracted data"],
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
         )
@@ -266,7 +290,7 @@ class TaskDecompositionEngine:
             workflow_id=workflow_id,
             task_name="Phase 1: Code Implementation",
             description=f"Implement software solution for: '{goal}'",
-            assigned_agent="PlannerAgent",
+            assigned_agent="System",
             required_tool="",
             category=TaskCategory.CODE_GENERATION,
             priority=TaskPriority.HIGH,
@@ -287,6 +311,8 @@ class TaskDecompositionEngine:
             priority=TaskPriority.HIGH,
             dependencies=[],
             expected_output="Technical spec and file list",
+            success_criteria=["Architecture spec is detailed"],
+            failure_criteria=["Missing design elements"],
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
         )
@@ -302,6 +328,8 @@ class TaskDecompositionEngine:
             priority=TaskPriority.HIGH,
             dependencies=[task_design.task_id],
             expected_output="Generated source code files",
+            success_criteria=["Code is written and syntactically valid"],
+            failure_criteria=["Syntax errors in code"],
             estimated_duration_seconds=120,
             status=TaskStatus.CREATED,
         )
@@ -317,6 +345,8 @@ class TaskDecompositionEngine:
             priority=TaskPriority.MEDIUM,
             dependencies=[task_code.task_id],
             expected_output="Passing test execution results",
+            success_criteria=["Tests pass successfully"],
+            failure_criteria=["Test failures encountered"],
             estimated_duration_seconds=120,
             status=TaskStatus.CREATED,
         )
@@ -329,7 +359,7 @@ class TaskDecompositionEngine:
             workflow_id=workflow_id,
             task_name="Phase 1: System Operation",
             description=f"System operation for: '{goal}'",
-            assigned_agent="PlannerAgent",
+            assigned_agent="System",
             required_tool="",
             category=TaskCategory.POWERSHELL,
             priority=TaskPriority.HIGH,
@@ -351,6 +381,8 @@ class TaskDecompositionEngine:
             priority=TaskPriority.HIGH,
             dependencies=[],
             expected_output="System status logs",
+            success_criteria=["Status logs generated"],
+            failure_criteria=["Command execution failed"],
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
         )
@@ -367,11 +399,82 @@ class TaskDecompositionEngine:
             risk_level="MEDIUM",
             dependencies=[task_inspect.task_id],
             expected_output="Modification execution output",
+            success_criteria=["System modification applied without errors"],
+            failure_criteria=["Modification script returned error code"],
             estimated_duration_seconds=120,
             status=TaskStatus.CREATED,
         )
 
         return [phase_root, task_inspect, task_execute]
+
+    def _decompose_filesystem_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
+        """Decomposes a file system management goal into tasks."""
+        phase_root = Task(
+            workflow_id=workflow_id,
+            task_name="Phase 1: Filesystem Management",
+            description=f"Manage files and directories for: '{goal}'",
+            assigned_agent="System",
+            required_tool="",
+            category=TaskCategory.FILE_SYSTEM,
+            priority=TaskPriority.MEDIUM,
+            dependencies=[],
+            expected_output="Filesystem operations completed",
+            estimated_duration_seconds=120,
+            status=TaskStatus.CREATED,
+        )
+
+        task_inspect = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name="Inspect Target Directory",
+            description="List and categorize existing files",
+            assigned_agent="WorkerAgent",
+            required_tool="",
+            category=TaskCategory.FILE_SYSTEM,
+            priority=TaskPriority.MEDIUM,
+            dependencies=[],
+            expected_output="List of files and their metadata",
+            success_criteria=["File list retrieved successfully"],
+            failure_criteria=["Target directory not found or inaccessible"],
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        task_determine = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name="Determine Organization Strategy",
+            description="Define how files should be categorized or moved",
+            assigned_agent="WorkerAgent",
+            required_tool="",
+            category=TaskCategory.OTHER,
+            priority=TaskPriority.MEDIUM,
+            dependencies=[task_inspect.task_id],
+            expected_output="Mapping of source files to target destinations",
+            success_criteria=["Strategy defines mapping for all required files"],
+            failure_criteria=["Unable to determine file categories"],
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        task_execute = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name="Execute File Operations",
+            description="Move or copy files based on the strategy",
+            assigned_agent="WorkerAgent",
+            required_tool="",
+            category=TaskCategory.FILE_SYSTEM,
+            priority=TaskPriority.MEDIUM,
+            dependencies=[task_determine.task_id],
+            expected_output="Operations log detailing moved files",
+            success_criteria=["All mapped operations succeeded"],
+            failure_criteria=["One or more file operations failed"],
+            estimated_duration_seconds=60,
+            status=TaskStatus.CREATED,
+        )
+
+        return [phase_root, task_inspect, task_determine, task_execute]
 
     def _decompose_generic_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
         """Generic fallback goal decomposition logic."""
@@ -379,7 +482,7 @@ class TaskDecompositionEngine:
             workflow_id=workflow_id,
             task_name="Phase 1: Goal Execution",
             description=f"Overall goal execution phase for: '{goal}'",
-            assigned_agent="PlannerAgent",
+            assigned_agent="System",
             required_tool="",
             category=TaskCategory.OTHER,
             priority=TaskPriority.MEDIUM,
@@ -392,14 +495,16 @@ class TaskDecompositionEngine:
         subtask_analyze = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
-            task_name="Analyze Requirements",
-            description=f"Analyze requirements for '{goal}'",
+            task_name="Evaluate Goal Context",
+            description=f"Review context and requirements for '{goal}'",
             assigned_agent="WorkerAgent",
             required_tool="",
             category=TaskCategory.OTHER,
             priority=TaskPriority.MEDIUM,
             dependencies=[],
-            expected_output="Parsed task requirements",
+            expected_output="Contextual analysis document",
+            success_criteria=["Context accurately captured"],
+            failure_criteria=["Insufficient context available"],
             estimated_duration_seconds=30,
             status=TaskStatus.CREATED,
         )
@@ -407,14 +512,16 @@ class TaskDecompositionEngine:
         subtask_run = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
-            task_name="Execute Actions",
-            description=f"Perform core actions for '{goal}'",
+            task_name="Execute Primary Action",
+            description=f"Perform the core operation for '{goal}'",
             assigned_agent="WorkerAgent",
             required_tool="",
             category=TaskCategory.OTHER,
             priority=TaskPriority.MEDIUM,
             dependencies=[subtask_analyze.task_id],
-            expected_output="Action execution output",
+            expected_output="Operation results",
+            success_criteria=["Operation completes and satisfies goal"],
+            failure_criteria=["Operation fails or returns errors"],
             estimated_duration_seconds=90,
             status=TaskStatus.CREATED,
         )

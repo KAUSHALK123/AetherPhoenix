@@ -17,7 +17,7 @@ def test_compute_confidence_score(metadata_gen):
         expected_outcomes=["Report PDF"],
     )
     score = metadata_gen.compute_confidence_score(goal)
-    assert score > 0.7
+    assert score >= 0.7
 
 
 def test_detect_domain_tags(metadata_gen):

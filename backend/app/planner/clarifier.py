@@ -27,6 +27,11 @@ class ClarificationEngine:
 
         if not requirement.requirements:
             missing_fields.append("requirements")
+            
+        # Detect vague file organization requests
+        req_text = " ".join(requirement.requirements).lower()
+        if "organize" in req_text and "categoriz" not in req_text and "sort" not in req_text:
+            missing_fields.append("categorization_strategy")
 
         return missing_fields
 
@@ -51,6 +56,10 @@ class ClarificationEngine:
             return (
                 "I understand the general goal, but could you specify "
                 "exactly what you need?"
+            )
+        elif "categorization_strategy" in missing_fields:
+            return (
+                "How would you like the files categorized?"
             )
 
         return "Could you provide more context for your request?"

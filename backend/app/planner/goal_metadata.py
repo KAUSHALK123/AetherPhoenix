@@ -48,13 +48,22 @@ class GoalMetadataGenerator:
         # Sub-goals structure bonus
         if goal.sub_goals:
             score += 0.1
+        else:
+            score -= 0.1
 
         # Description length bonus
         words = goal.description.split()
         if len(words) >= 5:
             score += 0.05
 
-        return min(1.0, round(score, 2))
+        # Context bonus
+        context = goal.metadata.get("context")
+        if context:
+            score += 0.1
+        else:
+            score -= 0.1
+
+        return min(1.0, max(0.0, round(score, 2)))
 
     def detect_domain_tags(self, text: str) -> List[str]:
         """

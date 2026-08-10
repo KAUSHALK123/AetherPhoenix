@@ -173,6 +173,10 @@ class TaskDecompositionPlan(BaseModel):
         default=None,
         description="Estimated total duration in seconds."
     )
+    unsupported_capabilities: List[str] = Field(
+        default_factory=list,
+        description="Capabilities identified but not supported."
+    )
 
 
 class PlanVersion(str, Enum):
@@ -206,6 +210,8 @@ class PlannerOutput(BaseModel):
     required_permissions: List[str] = Field(default_factory=list)
     expected_outputs: List[str] = Field(default_factory=list)
     confidence_score: float = Field(default=1.0, ge=0.0, le=1.0)
+    execution_summary: str = Field(default="", description="Summary of the execution plan")
+    parallel_groups: List[List[UUID]] = Field(default_factory=list, description="Groups of tasks that can run in parallel")
 
     @field_validator("dependency_graph")
     @classmethod

@@ -98,27 +98,30 @@ class RiskAnalysisEngine:
         Evaluate a single task to determine its risk level and score.
         """
         risk_level = RiskLevel.SAFE
-        reasoning = "Task is considered safe."
+        reasoning = "Task only involves safe operations with no side-effects."
 
         # Check explicit task risk level
         explicit_risk = task.risk_level.upper()
         if explicit_risk in [r.value for r in RiskLevel]:
             risk_level = RiskLevel(explicit_risk)
-            reasoning = f"Task explicitly defines risk level as {explicit_risk}."
+            if risk_level == RiskLevel.LOW:
+                reasoning = "Standard operation with minimal system impact."
+            elif risk_level != RiskLevel.SAFE:
+                reasoning = f"Task risk evaluated as {explicit_risk} based on initial parameters."
 
         # Check Category
         if risk_level in [RiskLevel.SAFE, RiskLevel.LOW]:
             if task.category in self._HIGH_RISK_CATEGORIES:
                 risk_level = self._HIGH_RISK_CATEGORIES[task.category]
                 reasoning = (
-                    f"Category {task.category.value} is considered "
-                    f"{risk_level.value} risk."
+                    f"Task category '{task.category.value}' inherently carries a "
+                    f"{risk_level.value} risk due to potential system-wide impact."
                 )
             elif task.category in self._MEDIUM_RISK_CATEGORIES:
                 risk_level = self._MEDIUM_RISK_CATEGORIES[task.category]
                 reasoning = (
-                    f"Category {task.category.value} is considered "
-                    f"{risk_level.value} risk."
+                    f"Task category '{task.category.value}' carries a "
+                    f"{risk_level.value} risk because it modifies user data or files."
                 )
 
         # Check Permissions
@@ -130,16 +133,23 @@ class RiskAnalysisEngine:
                     > self._RISK_SCORES[risk_level]
                 ):
                     risk_level = RiskLevel.CRITICAL
-                    reasoning = f"Requires critical permission: {perm}."
+                    reasoning = (
+                        f"Execution requires critical system permission: {perm}, "
+                        "which can alter system state."
+                    )
                 break
 
         # Check Destructive operations
         if self._is_destructive(task):
+            destructive_reasoning = (
+                "Operation modifies filesystem contents or configuration "
+                "and may cause irreversible data loss."
+            )
             if self._RISK_SCORES[RiskLevel.HIGH] > self._RISK_SCORES[risk_level]:
                 risk_level = RiskLevel.HIGH
-                reasoning = (
-                    "Task description indicates potentially destructive operations."
-                )
+                reasoning = destructive_reasoning
+            else:
+                reasoning += f" {destructive_reasoning}"
 
         return RiskAssessment(
             task_id=task.task_id,

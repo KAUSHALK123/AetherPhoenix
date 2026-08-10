@@ -65,8 +65,10 @@ class PermissionDetectionEngine:
                 detected_permissions.add(PermissionType.INTERNET)
 
             if "download" in combined_text:
-                detected_permissions.add(PermissionType.INTERNET)
-                detected_permissions.add(PermissionType.DOWNLOADS)
+                if "downloads folder" not in combined_text and "downloads directory" not in combined_text:
+                    if task.category != TaskCategory.FILE_SYSTEM:
+                        detected_permissions.add(PermissionType.INTERNET)
+                        detected_permissions.add(PermissionType.DOWNLOADS)
 
             # Desktop Control or System Modifications
             if "registry" in combined_text:
