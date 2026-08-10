@@ -65,7 +65,10 @@ class PermissionDetectionEngine:
                 detected_permissions.add(PermissionType.INTERNET)
 
             if "download" in combined_text:
-                if "downloads folder" not in combined_text and "downloads directory" not in combined_text:
+                if (
+                    "downloads folder" not in combined_text
+                    and "downloads directory" not in combined_text
+                ):  # noqa: E501
                     if task.category != TaskCategory.FILE_SYSTEM:
                         detected_permissions.add(PermissionType.INTERNET)
                         detected_permissions.add(PermissionType.DOWNLOADS)

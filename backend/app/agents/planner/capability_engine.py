@@ -19,7 +19,7 @@ class CapabilityDiscoveryEngine:
 
     def discover_capabilities(self, tasks: List[Task]) -> Tuple[List[Task], List[str]]:
         """
-        Iterates over tasks, finds a matching capability by category, 
+        Iterates over tasks, finds a matching capability by category,
         and assigns the required tool.
         Returns the modified tasks and a list of unsupported capability categories.
         """

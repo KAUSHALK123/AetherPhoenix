@@ -36,62 +36,79 @@ class PlannerAgent:
         self.risk_engine = RiskAnalysisEngine()
         self.permission_engine = PermissionDetectionEngine()
         self.permission_engine = PermissionDetectionEngine()
-        
+
         # Initialize CapabilityRegistry with mock defaults for Planner V1 testing
-        from app.engine.registry import CapabilityRegistry
         from shared.contracts.capability import Capability
         from shared.contracts.task import TaskCategory
-        
+
+        from app.engine.registry import CapabilityRegistry
+
         cap_reg = CapabilityRegistry()
-        cap_reg.register(Capability(
-            name="local_file_manager",
-            description="Manages local files and folders",
-            category=TaskCategory.FILE_SYSTEM,
-            required_tools=["file_manager_tool"]
-        ))
-        cap_reg.register(Capability(
-            name="web_searcher",
-            description="Searches the web for information",
-            category=TaskCategory.WEB_RESEARCH,
-            required_tools=["web_search_tool"]
-        ))
-        cap_reg.register(Capability(
-            name="content_generator",
-            description="Generates content like presentations and reports",
-            category=TaskCategory.OTHER,
-            required_tools=["content_tool"]
-        ))
-        cap_reg.register(Capability(
-            name="ppt_generator",
-            description="Generates PPT presentations",
-            category=TaskCategory.PPT_GENERATION,
-            required_tools=["ppt_tool"]
-        ))
-        cap_reg.register(Capability(
-            name="pdf_generator",
-            description="Generates PDF presentations",
-            category=TaskCategory.PDF_GENERATION,
-            required_tools=["pdf_tool"]
-        ))
-        cap_reg.register(Capability(
-            name="powershell_executor",
-            description="Executes powershell commands",
-            category=TaskCategory.POWERSHELL,
-            required_tools=["powershell"]
-        ))
-        cap_reg.register(Capability(
-            name="code_generator",
-            description="Generates code",
-            category=TaskCategory.CODE_GENERATION,
-            required_tools=["coder"]
-        ))
-        cap_reg.register(Capability(
-            name="python_executor",
-            description="Executes python",
-            category=TaskCategory.PYTHON,
-            required_tools=["python"]
-        ))
-        
+        cap_reg.register(
+            Capability(
+                name="local_file_manager",
+                description="Manages local files and folders",
+                category=TaskCategory.FILE_SYSTEM,
+                required_tools=["file_manager_tool"],
+            )
+        )
+        cap_reg.register(
+            Capability(
+                name="web_searcher",
+                description="Searches the web for information",
+                category=TaskCategory.WEB_RESEARCH,
+                required_tools=["web_search_tool"],
+            )
+        )
+        cap_reg.register(
+            Capability(
+                name="content_generator",
+                description="Generates content like presentations and reports",
+                category=TaskCategory.OTHER,
+                required_tools=["content_tool"],
+            )
+        )
+        cap_reg.register(
+            Capability(
+                name="ppt_generator",
+                description="Generates PPT presentations",
+                category=TaskCategory.PPT_GENERATION,
+                required_tools=["ppt_tool"],
+            )
+        )
+        cap_reg.register(
+            Capability(
+                name="pdf_generator",
+                description="Generates PDF presentations",
+                category=TaskCategory.PDF_GENERATION,
+                required_tools=["pdf_tool"],
+            )
+        )
+        cap_reg.register(
+            Capability(
+                name="powershell_executor",
+                description="Executes powershell commands",
+                category=TaskCategory.POWERSHELL,
+                required_tools=["powershell"],
+            )
+        )
+        cap_reg.register(
+            Capability(
+                name="code_generator",
+                description="Generates code",
+                category=TaskCategory.CODE_GENERATION,
+                required_tools=["coder"],
+            )
+        )
+        cap_reg.register(
+            Capability(
+                name="python_executor",
+                description="Executes python",
+                category=TaskCategory.PYTHON,
+                required_tools=["python"],
+            )
+        )
+
         self.capability_engine = CapabilityDiscoveryEngine(registry=cap_reg)
         self.parallel_engine = ParallelTaskAnalyzer()
 
@@ -132,14 +149,14 @@ class PlannerAgent:
             return PlannerResponse(
                 session_id=request.session_id,
                 status="clarifying",
-                reply="Your request is a bit too vague. Could you provide more specific details?",
+                reply="Your request is a bit too vague. Could you provide more specific details?",  # noqa: E501
                 action="await_user_input",
             )
 
         goal_title = goal_result.primary_goal.title
 
         # Stage 5: Task Decomposition
-        # workflow_id will be derived from session_id if possible, or we can just parse it
+        # workflow_id will be derived from session_id if possible, or we can just parse it  # noqa: E501
         import uuid
 
         try:
@@ -177,7 +194,7 @@ class PlannerAgent:
         risk_result = self.risk_engine.analyze_tasks(tasks)
 
         # Parallel Task Analysis
-        # We need to pass the dependency graph formatted with UUIDs, but decomposition_plan
+        # We need to pass the dependency graph formatted with UUIDs, but decomposition_plan  # noqa: E501
         # stores it as string -> list[str]. Let's parse it back.
         import uuid
 
@@ -193,7 +210,9 @@ class PlannerAgent:
         deduplicated_permissions = list(dedup)
 
         # Generate Execution Summary
-        perms_str = ', '.join(deduplicated_permissions) if deduplicated_permissions else 'None'
+        perms_str = (
+            ", ".join(deduplicated_permissions) if deduplicated_permissions else "None"
+        )
         dur = decomposition_plan.estimated_total_duration_seconds or 60
         execution_summary = (
             f"**Execution Plan Summary**\n"
@@ -202,7 +221,7 @@ class PlannerAgent:
             f"- **Estimated Duration**: {dur} seconds\n"
             f"- **Overall Risk**: {risk_result.overall_risk_level.value}\n"
             f"- **Required Permissions**: {perms_str}\n"
-            f"- **Parallel Execution**: {len(parallel_groups)} execution phases identified.\n"
+            f"- **Parallel Execution**: {len(parallel_groups)} execution phases identified.\n"  # noqa: E501
             f"- **Overall Confidence**: {goal_result.confidence_score * 100:.1f}%\n"
         )
 

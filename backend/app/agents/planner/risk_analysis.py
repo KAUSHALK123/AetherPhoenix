@@ -107,7 +107,7 @@ class RiskAnalysisEngine:
             if risk_level == RiskLevel.LOW:
                 reasoning = "Standard operation with minimal system impact."
             elif risk_level != RiskLevel.SAFE:
-                reasoning = f"Task risk evaluated as {explicit_risk} based on initial parameters."
+                reasoning = f"Task risk evaluated as {explicit_risk} based on initial parameters."  # noqa: E501
 
         # Check Category
         if risk_level in [RiskLevel.SAFE, RiskLevel.LOW]:

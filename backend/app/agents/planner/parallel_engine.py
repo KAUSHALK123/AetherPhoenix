@@ -36,7 +36,7 @@ class ParallelTaskAnalyzer:
             all_deps = set(task.dependencies)
             if task.parent_task_id:
                 all_deps.add(task.parent_task_id)
-                
+
             for dep in all_deps:
                 if dep in task_ids:
                     adj_list[dep].append(task.task_id)

@@ -18,18 +18,18 @@ def test_planner_organize_downloads():
     response = client.post(
         "/api/v1/planner/generate",
         json={
-            "goal": "Create a plan to organize my Downloads folder by categorizing into PDFs, images, and videos."
+            "goal": "Create a plan to organize my Downloads folder by categorizing into PDFs, images, and videos."  # noqa: E501
         },
     )
     assert response.status_code == 200
     data = response.json()
     assert data["status"] == "ready", data.get("reply", "No reply")
-    
+
     plan = json.loads(data["reply"])
-    
+
     # 1. No INTERNET permission
     assert "INTERNET" not in plan.get("required_permissions", [])
-    
+
     # 2. Risk should be LOW or MEDIUM (not CRITICAL)
     assert "CRITICAL" not in plan.get("execution_summary", "")
     assert "HIGH" not in plan.get("execution_summary", "")
@@ -53,14 +53,16 @@ def test_planner_delete_downloads():
 
     plan = json.loads(data["reply"])
     summary = plan.get("execution_summary", "")
-    
+
     # 1. HIGH or CRITICAL risk detected
     assert "HIGH" in summary or "CRITICAL" in summary
-    
+
     # 2. Reasoning is specific to data loss
     risks = plan.get("risks", [])
-    assert any("data loss" in risk or "irreversible" in risk for risk in risks), f"Risks did not contain 'data loss' or 'irreversible'. Actual risks: {risks}"
-    
+    assert any(
+        "data loss" in risk or "irreversible" in risk for risk in risks
+    ), f"Risks did not contain 'data loss' or 'irreversible'. Actual risks: {risks}"
+
     # 3. No actual PlannerAgent execution task
     tasks = plan.get("tasks", [])
     for task in tasks:
@@ -78,10 +80,10 @@ def test_planner_create_ppt():
     assert data["status"] == "ready", data.get("reply", "No reply")
 
     plan = json.loads(data["reply"])
-    
+
     # 1. INTERNET permission detected
     assert "INTERNET" in plan.get("required_permissions", [])
-    
+
     # 2. Sequential dependencies exists
     dep_graph = plan.get("dependency_graph", {})
     has_deps = any(len(deps) > 0 for deps in dep_graph.values())
@@ -96,10 +98,14 @@ def test_planner_clarification_loop():
     )
     assert response.status_code == 200
     data = response.json()
-    
-    # Due to low confidence score (lack of context/requirements), it should ask for clarification
+
+    # Due to low confidence score (lack of context/requirements), it should ask for clarification  # noqa: E501
     assert data["status"] == "clarifying", data.get("reply", "No reply")
-    assert "vague" in data.get("reply", "").lower() or "details" in data.get("reply", "").lower() or "clarify" in data.get("reply", "").lower()
+    assert (
+        "vague" in data.get("reply", "").lower()
+        or "details" in data.get("reply", "").lower()
+        or "clarify" in data.get("reply", "").lower()
+    )
 
 
 def test_planner_parallel_groups():
@@ -110,11 +116,11 @@ def test_planner_parallel_groups():
     )
     assert response.status_code == 200
     data = response.json()
-    
+
     if data["status"] == "ready":
         plan = json.loads(data["reply"])
         groups = plan.get("parallel_groups", [])
-        
+
         # Should not place parent tasks and child tasks in the same group
         tasks = {t["task_id"]: t for t in plan.get("tasks", [])}
         for group in groups:

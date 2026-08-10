@@ -94,7 +94,17 @@ class TaskDecompositionEngine:
         ):
             return self._decompose_system_goal(goal, workflow_id)
         elif any(
-            w in lower_goal for w in ["organize", "move", "copy", "delete", "file", "folder", "directory", "downloads"]
+            w in lower_goal
+            for w in [
+                "organize",
+                "move",
+                "copy",
+                "delete",
+                "file",
+                "folder",
+                "directory",
+                "downloads",
+            ]
         ):
             return self._decompose_filesystem_goal(goal, workflow_id)
         else:
