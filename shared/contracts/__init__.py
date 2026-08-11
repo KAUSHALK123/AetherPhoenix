@@ -10,6 +10,17 @@ from shared.contracts.execution import (
     SupervisorValidation,
     TaskError,
 )
+from shared.contracts.pdf import (
+    CodeBlockElement,
+    HeadingElement,
+    ListElement,
+    PDFDocumentInput,
+    PDFElement,
+    PDFElementType,
+    PDFGenerationResult,
+    ParagraphElement,
+    TableElement,
+)
 from shared.contracts.permission import (
     PermissionRequest,
     PermissionStatus,
@@ -71,6 +82,16 @@ __all__ = [
     "ExecutionResult",
     "SupervisorValidation",
     "HealingResult",
+    # PDF
+    "PDFElementType",
+    "HeadingElement",
+    "ParagraphElement",
+    "ListElement",
+    "TableElement",
+    "CodeBlockElement",
+    "PDFElement",
+    "PDFDocumentInput",
+    "PDFGenerationResult",
     # Permission
     "PermissionType",
     "PermissionStatus",
