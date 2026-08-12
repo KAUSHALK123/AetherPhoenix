@@ -172,4 +172,3 @@ class PermissionManager:
                 ),
                 details={"permission_type": perm_str, "workflow_id": wf_id_str},
             )
-

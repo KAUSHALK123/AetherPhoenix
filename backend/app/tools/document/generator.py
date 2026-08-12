@@ -130,9 +130,7 @@ class DocumentGenerator:
     def check_permissions(self, workflow_id: Optional[UUID]) -> None:
         """Enforces permission check if PermissionManager is provided."""
         if self.permission_manager and workflow_id:
-            logger.info(
-                f"Enforcing permission check for workflow {workflow_id}"
-            )
+            logger.info(f"Enforcing permission check for workflow {workflow_id}")
             for p in ["FILE_WRITE", "FILE_SYSTEM_WRITE", "FILE_SYSTEM"]:
                 try:
                     self.permission_manager.enforce_permission(p, workflow_id)
