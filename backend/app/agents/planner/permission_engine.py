@@ -41,7 +41,16 @@ class PermissionDetectionEngine:
                 detected_risk = RiskLevel.HIGH
             elif task.category == TaskCategory.WEB_RESEARCH:
                 detected_permissions.add(PermissionType.INTERNET)
-            elif task.category in [TaskCategory.PPT_GENERATION, TaskCategory.PDF_GENERATION, TaskCategory.CODE_GENERATION, TaskCategory.FILE_COMPRESSION]:
+            elif task.category in [
+                TaskCategory.PPT_GENERATION,
+                TaskCategory.PDF_GENERATION,
+                TaskCategory.CODE_GENERATION,
+                TaskCategory.FILE_COMPRESSION,
+            ]:
+                # FILE_SYSTEM represents read access 
+                # (e.g. reading templates or existing code)
+                # FILE_SYSTEM_WRITE represents write access 
+                # (e.g. saving the generated file). Both are deliberately required.
                 detected_permissions.add(PermissionType.FILE_SYSTEM)
                 detected_permissions.add(PermissionType.FILE_SYSTEM_WRITE)
 

@@ -1,17 +1,21 @@
 import logging
 from typing import Optional
 
-from playwright.async_api import async_playwright, Page, Browser, Playwright
-from shared.contracts.permission import PermissionType
-from shared.contracts.tool import Tool, ToolState, ToolHealth
+from playwright.async_api import Browser, Page, Playwright, async_playwright
 from shared.contracts.capability import Capability
+from shared.contracts.permission import PermissionType
 from shared.contracts.task import TaskCategory
-from app.tools.registry import ToolRegistry
+from shared.contracts.tool import Tool, ToolHealth, ToolState
+
 from app.engine.registry import CapabilityRegistry
+from app.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
 
-def register_browser_capability(tool_registry: ToolRegistry, cap_registry: CapabilityRegistry):
+
+def register_browser_capability(
+    tool_registry: ToolRegistry, cap_registry: CapabilityRegistry
+):
     """Registers the browser tool and capability into the system."""
     browser_tool = Tool(
         name="browser_automation",
@@ -20,7 +24,10 @@ def register_browser_capability(tool_registry: ToolRegistry, cap_registry: Capab
         health=ToolHealth.HEALTHY,
         adapter="app.tools.browser.BrowserTool",
         dependencies=["playwright"],
-        required_permissions=[PermissionType.BROWSER_ACCESS.value, PermissionType.INTERNET.value]
+        required_permissions=[
+            PermissionType.BROWSER_ACCESS.value,
+            PermissionType.INTERNET.value,
+        ],
     )
     tool_registry.register(browser_tool)
 
@@ -28,9 +35,10 @@ def register_browser_capability(tool_registry: ToolRegistry, cap_registry: Capab
         name="web_searcher",
         description="Searches and extracts content from the web",
         category=TaskCategory.BROWSER,
-        required_tools=["browser_automation"]
+        required_tools=["browser_automation"],
     )
     cap_registry.register(browser_cap)
+
 
 class BrowserTool:
     """
@@ -46,12 +54,14 @@ class BrowserTool:
 
     def _check_permission(self, permission: PermissionType) -> None:
         if self.permission_checker and not self.permission_checker(permission):
-            raise PermissionError(f"Action denied: Missing {permission.value} permission.")
+            raise PermissionError(
+                f"Action denied: Missing {permission.value} permission."
+            )
 
     async def start_session(self) -> None:
         """Starts a headless Playwright Chromium instance."""
         self._check_permission(PermissionType.BROWSER_ACCESS)
-        
+
         if self._browser is not None:
             logger.warning("Browser session already running.")
             return
@@ -75,9 +85,12 @@ class BrowserTool:
     async def navigate(self, url: str) -> bool:
         """Navigates to a specific URL."""
         self._check_permission(PermissionType.INTERNET)
-        
+
         if not self._page:
-            raise RuntimeError("Browser session not started. Call start_session() first.")
+            raise RuntimeError(
+                "Browser session not started. "
+                "Call start_session() first."
+            )
 
         try:
             logger.info(f"Navigating to {url}")
@@ -95,7 +108,7 @@ class BrowserTool:
         try:
             if include_html:
                 return await self._page.content()
-            
+
             # Simple text extraction
             text_content = await self._page.evaluate("document.body.innerText")
             return text_content or ""

@@ -126,7 +126,9 @@ class PlannerAgent:
         if request.session_id in self.active_sessions:
             original_goal = self.active_sessions[request.session_id]
             # Combine original goal with clarification answer
-            combined_message = f"{original_goal} (Clarification provided: {request.message})"  # noqa: E501
+            combined_message = (
+                f"{original_goal} (Clarification provided: {request.message})"  # noqa: E501
+            )
             request.message = combined_message
         else:
             combined_message = request.message
@@ -223,6 +225,36 @@ class PlannerAgent:
         dedup = set([p.permission_type.value for p in permission_requests])
         deduplicated_permissions = list(dedup)
 
+        # Compute dynamic confidence score
+        from shared.contracts.task import TaskType
+
+        total_leaf_tasks = sum(1 for t in tasks if t.task_type == TaskType.LEAF)
+        resolved_tools = sum(
+            1 for t in tasks if t.task_type == TaskType.LEAF and t.required_tool
+        )
+
+        plan_confidence = goal_result.confidence_score
+
+        # Tool Resolution Penalty
+        if total_leaf_tasks > 0:
+            tool_resolution_ratio = resolved_tools / total_leaf_tasks
+            if tool_resolution_ratio < 1.0:
+                plan_confidence -= 0.2 * (1.0 - tool_resolution_ratio)
+
+        # Clarification Bonus
+        if "Clarification provided:" in combined_message:
+            plan_confidence += 0.1
+
+        # Invalid Dependencies Penalty
+        task_ids = {t.task_id for t in tasks}
+        invalid_deps = sum(
+            1 for t in tasks for dep in t.dependencies if dep not in task_ids
+        )
+        if invalid_deps > 0:
+            plan_confidence -= 0.2
+
+        final_confidence = min(1.0, max(0.0, round(plan_confidence, 2)))
+
         # Generate Execution Summary
         perms_str = (
             ", ".join(deduplicated_permissions) if deduplicated_permissions else "None"
@@ -236,7 +268,7 @@ class PlannerAgent:
             f"- **Overall Risk**: {risk_result.overall_risk_level.value}\n"
             f"- **Required Permissions**: {perms_str}\n"
             f"- **Parallel Execution**: {len(parallel_groups)} execution phases identified.\n"  # noqa: E501
-            f"- **Overall Confidence**: {goal_result.confidence_score * 100:.1f}%\n"
+            f"- **Overall Confidence**: {final_confidence * 100:.1f}%\n"
         )
 
         # Stage 9: Generate Planner Output Contract
@@ -258,7 +290,7 @@ class PlannerAgent:
             ],
             required_permissions=deduplicated_permissions,
             expected_outputs=goal_result.primary_goal.expected_outcomes,
-            confidence_score=goal_result.confidence_score,
+            confidence_score=final_confidence,
             execution_summary=execution_summary,
             parallel_groups=parallel_groups,
         )
