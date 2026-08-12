@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from shared.contracts.planner import TaskDecompositionPlan
-from shared.contracts.task import Task, TaskCategory, TaskPriority, TaskStatus
+from shared.contracts.task import Task, TaskType, TaskCategory, TaskPriority, TaskStatus
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +117,10 @@ class TaskDecompositionEngine:
             workflow_id=workflow_id,
             task_name="Phase 1: Research & Outline",
             description="Gather topics and create outline for presentation",
+            task_type=TaskType.PHASE,
             assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
             required_tool="",
             category=TaskCategory.WEB_RESEARCH,
             priority=TaskPriority.HIGH,
@@ -169,7 +172,10 @@ class TaskDecompositionEngine:
             workflow_id=workflow_id,
             task_name="Phase 2: Presentation Generation",
             description="Generate PPT slides and export deliverables",
+            task_type=TaskType.PHASE,
             assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
             required_tool="",
             category=TaskCategory.PPT_GENERATION,
             priority=TaskPriority.HIGH,
@@ -216,6 +222,10 @@ class TaskDecompositionEngine:
             status=TaskStatus.CREATED,
         )
 
+        
+        subtask_generate_ppt.artifact_location = f"{workflow_id}/{subtask_generate_ppt.task_id}/presentation.pptx"
+        subtask_export_pdf.artifact_location = f"{workflow_id}/{subtask_export_pdf.task_id}/handout.pdf"
+        
         return [
             phase1,
             subtask_research,
@@ -231,7 +241,10 @@ class TaskDecompositionEngine:
             workflow_id=workflow_id,
             task_name="Phase 1: Research Execution",
             description=f"Conduct research for goal: '{goal}'",
+            task_type=TaskType.PHASE,
             assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
             required_tool="",
             category=TaskCategory.WEB_RESEARCH,
             priority=TaskPriority.HIGH,
@@ -300,7 +313,10 @@ class TaskDecompositionEngine:
             workflow_id=workflow_id,
             task_name="Phase 1: Code Implementation",
             description=f"Implement software solution for: '{goal}'",
+            task_type=TaskType.PHASE,
             assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
             required_tool="",
             category=TaskCategory.CODE_GENERATION,
             priority=TaskPriority.HIGH,
@@ -369,7 +385,10 @@ class TaskDecompositionEngine:
             workflow_id=workflow_id,
             task_name="Phase 1: System Operation",
             description=f"System operation for: '{goal}'",
+            task_type=TaskType.PHASE,
             assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
             required_tool="",
             category=TaskCategory.POWERSHELL,
             priority=TaskPriority.HIGH,
@@ -423,7 +442,10 @@ class TaskDecompositionEngine:
             workflow_id=workflow_id,
             task_name="Phase 1: Filesystem Management",
             description=f"Manage files and directories for: '{goal}'",
+            task_type=TaskType.PHASE,
             assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
             required_tool="",
             category=TaskCategory.FILE_SYSTEM,
             priority=TaskPriority.MEDIUM,
@@ -492,7 +514,10 @@ class TaskDecompositionEngine:
             workflow_id=workflow_id,
             task_name="Phase 1: Goal Execution",
             description=f"Overall goal execution phase for: '{goal}'",
+            task_type=TaskType.PHASE,
             assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
             required_tool="",
             category=TaskCategory.OTHER,
             priority=TaskPriority.MEDIUM,

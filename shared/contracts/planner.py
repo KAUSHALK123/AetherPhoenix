@@ -6,7 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator, field_validator
 
-from shared.contracts.task import Task
+from shared.contracts.task import Task, TaskType
 
 
 class IntentCategory(str, Enum):
@@ -249,4 +249,14 @@ class PlannerOutput(BaseModel):
                 if dep not in task_ids:
                     raise ValueError(f"Dependency {dep} for task {task_id} is missing from tasks list")
                     
+        return self
+
+    @model_validator(mode="after")
+    def validate_tasks_tools(self) -> "PlannerOutput":
+        """Ensures leaf tasks have tools and phase tasks do not."""
+        for task in self.tasks:
+            if task.task_type == TaskType.LEAF and not task.required_tool:
+                raise ValueError(f"LEAF task {task.task_id} must have a non-empty required_tool")
+            if task.task_type == TaskType.PHASE and task.required_tool:
+                raise ValueError(f"PHASE task {task.task_id} must have an empty required_tool")
         return self
