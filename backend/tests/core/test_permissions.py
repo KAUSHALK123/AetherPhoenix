@@ -3,6 +3,7 @@
 from uuid import uuid4
 
 import pytest
+from shared.contracts.execution_log import ExecutionMode
 from shared.contracts.permission import PermissionStatus, PermissionType, RiskLevel
 
 from app.core.events.bus import EventBus
@@ -145,14 +146,6 @@ def test_list_permissions_filtering(permission_manager):
 
     pending_perms = permission_manager.list_permissions(status=PermissionStatus.PENDING)
     assert len(pending_perms) == 1
-import pytest
-
-from app.core.permissions import (
-    ExecutionMode,
-    PermissionManager,
-    PermissionStatus,
-    PermissionType,
-)
 
 
 def test_request_permission():
