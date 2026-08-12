@@ -1,5 +1,4 @@
-"""Centralized Logging Framework for AetherPhoenix."""
-
+from app.core.logging.execution_logger import WorkerExecutionLogger
 from app.core.logging.formatter import JSONLogFormatter, TextLogFormatter
 from app.core.logging.interface import ILogger
 from app.core.logging.logger import (
@@ -9,6 +8,7 @@ from app.core.logging.logger import (
     get_logger,
     setup_logging,
 )
+from app.core.logging.sanitizer import sanitize_log_data
 
 __all__ = [
     "ILogger",
@@ -19,4 +19,6 @@ __all__ = [
     "create_file_handler",
     "get_logger",
     "setup_logging",
+    "WorkerExecutionLogger",
+    "sanitize_log_data",
 ]
