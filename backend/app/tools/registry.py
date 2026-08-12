@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from shared.contracts.tool import Tool, ToolHealth, ToolState
 
@@ -11,22 +11,31 @@ class ToolRegistry:
 
     def __init__(self):
         self._tools: Dict[str, Tool] = {}
+        self._instances: Dict[str, Any] = {}
 
-    def register(self, tool: Tool) -> None:
-        """Registers a new tool. Raises ValueError if name already exists."""
+    def register(self, tool: Tool, instance: Optional[Any] = None) -> None:
+        """Registers a new tool contract and optional implementation instance."""
         if tool.name in self._tools:
             raise ValueError(f"Tool with name '{tool.name}' is already registered.")
 
         self._tools[tool.name] = tool
+        if instance is not None:
+            self._instances[tool.name] = instance
 
     def unregister(self, tool_name: str) -> None:
-        """Removes a tool from the registry."""
+        """Removes a tool and its instance from the registry."""
         if tool_name in self._tools:
             del self._tools[tool_name]
+        if tool_name in self._instances:
+            del self._instances[tool_name]
 
     def get(self, tool_name: str) -> Optional[Tool]:
         """Retrieves a tool by its unique name."""
         return self._tools.get(tool_name)
+
+    def get_instance(self, tool_name: str) -> Optional[Any]:
+        """Retrieves a concrete tool implementation instance by name."""
+        return self._instances.get(tool_name)
 
     def list_all(self) -> List[Tool]:
         """Returns all registered tools."""

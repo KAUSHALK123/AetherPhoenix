@@ -21,6 +21,8 @@ The logging framework is located in `backend/app/core/logging/` and consists of:
    - Console handler writes formatted logs to `sys.stdout`.
    - File handler writes formatted logs to a rotating file in the configured log directory (defaults to `./logs/aether_phoenix.log`).
 5. **Configuration (`setup_logging`)**: Central initialization function invoked at application startup.
+6. **Worker Execution Logger (`WorkerExecutionLogger`)**: Specialized execution logger for Worker Agent operations, tracking granular execution lifecycle, tool execution, durations, error information, correlation IDs, and sanitizing payloads.
+7. **Sanitizer (`sanitize_log_data`)**: Recursive payload sanitizer masking sensitive values (passwords, tokens, API keys) and truncating oversized strings.
 
 ---
 
@@ -81,13 +83,54 @@ Output log entry (JSON format):
 }
 ```
 
-### Passing Extra Context Parameters Directly
+### Worker Execution Logging (`WorkerExecutionLogger`)
 
-You can also pass extra context parameters directly to individual log calls:
+Worker Agent operations utilize `WorkerExecutionLogger` to emit traceable, structured execution events throughout the execution lifecycle.
+
+#### Execution Event Schema (`WorkerExecutionLog`)
+
+Execution events are structured according to `WorkerExecutionLog`:
+
+| Field | Type | Description |
+|---|---|---|
+| `execution_id` | `UUID` | Unique execution run identifier per task attempt |
+| `correlation_id` | `str \| None` | Cross-cutting trace or session identifier for request tracking |
+| `workflow_id` | `UUID` | ID of the parent workflow |
+| `task_id` | `UUID` | ID of the executed task |
+| `task_name` | `str` | Name of the executed task |
+| `tool_name` | `str` | Name of the resolved tool |
+| `phase` | `ExecutionPhase` | Granular execution phase (`TASK_START`, `TOOL_SELECTION`, `TOOL_EXECUTION`, `OUTPUT_COLLECTION`, `TASK_COMPLETE`, `TASK_FAILED`) |
+| `status` | `ExecutionStatus` | Current phase status (`STARTED`, `IN_PROGRESS`, `TOOL_STARTED`, `TOOL_COMPLETED`, `TOOL_FAILED`, `COMPLETED`, `FAILED`, `CANCELLED`) |
+| `duration_ms` | `float` | Elapsed execution duration in milliseconds |
+| `inputs` | `dict[str, Any]` | Sanitized task or tool input payload |
+| `outputs` | `dict[str, Any]` | Sanitized task or tool output result |
+| `error_code` | `str \| None` | Standardized error code if phase or task failed |
+| `error_message` | `str \| None` | Human-readable error description |
+| `timestamp` | `datetime` | UTC timestamp of the log event |
+| `metadata` | `dict[str, Any]` | Supplementary contextual metadata |
+
+#### Worker Execution Example
 
 ```python
-logger.info("Processing step", step_index=2, status="SUCCESS")
+from app.core.logging import WorkerExecutionLogger
+
+exec_logger = WorkerExecutionLogger.from_task(
+    task=task,
+    correlation_id="trace_abc_123",
+)
+
+exec_logger.log_task_start(inputs={"file_path": "data.csv"})
+exec_logger.log_tool_selected(tool_name="csv_parser")
+exec_logger.log_tool_start(tool_name="csv_parser", inputs={"file_path": "data.csv"})
+exec_logger.log_tool_complete(tool_name="csv_parser", duration_ms=45.2, outputs={"rows": 100})
+exec_logger.log_task_complete(duration_ms=110.5, artifacts_count=1)
 ```
+
+#### Sensitive Data Sanitization
+
+All input and output payloads emitted via `WorkerExecutionLogger` are passed through `sanitize_log_data()`:
+- Keys containing sensitive keywords (`api_key`, `password`, `secret`, `token`, `auth`, `credentials`, `private_key`, `bearer`, etc.) are masked as `"***REDACTED***"`.
+- String contents exceeding 500 characters are automatically truncated.
 
 ---
 
@@ -108,9 +151,13 @@ Logging behavior is configured via `backend/app/core/config.py` / Environment Va
 
 ## Testing
 
-Unit tests for the logging framework are located in `backend/tests/test_logging.py`. Run the suite with:
+Unit tests for the logging framework and worker execution logging system are located in:
+- `backend/tests/test_logging.py`
+- `backend/tests/core/test_execution_logger.py`
+
+Run the test suite with:
 
 ```bash
-$env:PYTHONPATH="c:\Users\akshitha\Desktop\AetherPhoenix;c:\Users\akshitha\Desktop\AetherPhoenix\backend"
-python -m pytest backend/tests -k "not trio"
+$env:PYTHONPATH="c:\Users\dhany\majorproject\AetherPhoenix;c:\Users\dhany\majorproject\AetherPhoenix\backend"
+backend\.venv\Scripts\python.exe -m pytest backend/tests
 ```
