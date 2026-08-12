@@ -97,17 +97,53 @@ class RiskAnalysisEngine:
         """
         Evaluate a single task to determine its risk level and score.
         """
-        risk_level = RiskLevel.SAFE
-        reasoning = "Task only involves safe operations with no side-effects."
+        if task.category in [
+            TaskCategory.PPT_GENERATION,
+            TaskCategory.PDF_GENERATION,
+            TaskCategory.CODE_GENERATION,
+            TaskCategory.FILE_COMPRESSION,
+        ]:
+            risk_level = RiskLevel.LOW
+            reasoning = f"Task category '{task.category.value}' writes files to disk."
+        elif task.category in [
+            TaskCategory.WEB_RESEARCH,
+            TaskCategory.SEARCH,
+            TaskCategory.OCR,
+            TaskCategory.VISION,
+        ]:
+            risk_level = RiskLevel.SAFE
+            reasoning = (
+                f"Task category '{task.category.value}' "
+                "performs safe read-only or analysis activity."
+            )
+        elif task.category in [TaskCategory.BROWSER, TaskCategory.DESKTOP]:
+            risk_level = RiskLevel.LOW
+            reasoning = (
+                f"Task category '{task.category.value}' " "involves UI interaction."
+            )
+        elif task.category == TaskCategory.PYTHON:
+            risk_level = RiskLevel.MEDIUM
+            reasoning = "Task category 'PYTHON' executes arbitrary code."
+        elif task.category == TaskCategory.OTHER:
+            risk_level = RiskLevel.LOW
+            reasoning = "Task category 'OTHER' has unknown system impact."
+        else:
+            risk_level = RiskLevel.LOW
+            reasoning = (
+                f"Task category '{task.category.value}' "
+                "involves potential system state changes."
+            )
 
         # Check explicit task risk level
         explicit_risk = task.risk_level.upper()
         if explicit_risk in [r.value for r in RiskLevel]:
-            risk_level = RiskLevel(explicit_risk)
-            if risk_level == RiskLevel.LOW:
-                reasoning = "Standard operation with minimal system impact."
-            elif risk_level != RiskLevel.SAFE:
-                reasoning = f"Task risk evaluated as {explicit_risk} based on initial parameters."  # noqa: E501
+            explicit_level = RiskLevel(explicit_risk)
+            if self._RISK_SCORES[explicit_level] > self._RISK_SCORES[risk_level]:
+                risk_level = explicit_level
+                reasoning = (
+                    f"Task risk elevated to {explicit_risk} "
+                    "based on explicit parameters."
+                )
 
         # Check Category
         if risk_level in [RiskLevel.SAFE, RiskLevel.LOW]:

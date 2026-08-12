@@ -26,6 +26,9 @@ from shared.contracts.planner import (
     PlannerResponse,
     TaskDecompositionPlan,
     UserRequirement,
+    PlanVersion,
+    PlanMetadata,
+    PlannerOutput,
 )
 from shared.contracts.task import (
     DependencyType,
@@ -37,11 +40,6 @@ from shared.contracts.task import (
     TaskStatus,
 )
 from shared.contracts.tool import Tool, ToolHealth, ToolState
-from shared.contracts.planner import (
-    PlanVersion,
-    PlanMetadata,
-    PlannerOutput,
-)
 from shared.contracts.workflow import (
     ExecutionMode,
     ProgressState,
@@ -86,6 +84,9 @@ __all__ = [
     "UserRequirement",
     "ClarificationResult",
     "TaskDecompositionPlan",
+    "PlanVersion",
+    "PlanMetadata",
+    "PlannerOutput",
     # Task
     "TaskStatus",
     "TaskPriority",
@@ -98,10 +99,6 @@ __all__ = [
     "Tool",
     "ToolState",
     "ToolHealth",
-    # Planner
-    "PlanVersion",
-    "PlanMetadata",
-    "PlannerOutput",
     # Workflow
     "WorkflowStatus",
     "ExecutionMode",
