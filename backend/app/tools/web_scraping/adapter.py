@@ -87,8 +87,7 @@ class WebScrapingAdapter(BaseToolAdapter):
                 url = data.get("url", "")
                 rules_raw = data.get("extraction_rules", [])
                 rules = [
-                    ExtractionRule(**r) if isinstance(r, dict) else r
-                    for r in rules_raw
+                    ExtractionRule(**r) if isinstance(r, dict) else r for r in rules_raw
                 ]
                 timeout = float(data.get("timeout_seconds", 10.0))
                 parse_meta = bool(data.get("parse_metadata", True))

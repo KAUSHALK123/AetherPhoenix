@@ -119,14 +119,11 @@ class RiskAnalysisEngine:
                 f"Task category '{task.category.value}' performs safe read-only "
                 "network activity."
             )
-        elif task.category == TaskCategory.BROWSER:
-                f"Task category '{task.category.value}' "
-                "performs safe read-only or analysis activity."
-            )
+
         elif task.category in [TaskCategory.BROWSER, TaskCategory.DESKTOP]:
             risk_level = RiskLevel.LOW
             reasoning = (
-                f"Task category '{task.category.value}' " "involves UI interaction."
+                f"Task category '{task.category.value}' involves UI interaction."
             )
         elif task.category == TaskCategory.PYTHON:
             risk_level = RiskLevel.MEDIUM

@@ -47,9 +47,7 @@ def sanitize_log_data(data: Any, max_string_len: int = 500) -> Any:
         return sanitized_dict
 
     elif isinstance(data, (list, tuple)):
-        return [
-            sanitize_log_data(item, max_string_len=max_string_len) for item in data
-        ]
+        return [sanitize_log_data(item, max_string_len=max_string_len) for item in data]
 
     elif isinstance(data, (bytes, bytearray)):
         return f"<Binary data ({len(data)} bytes)>"

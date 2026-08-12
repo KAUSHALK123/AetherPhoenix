@@ -172,9 +172,7 @@ class WebScraper:
         try:
             soup = bs4.BeautifulSoup(html_content, "html.parser")
             page_title = (
-                soup.title.string.strip()
-                if soup.title and soup.title.string
-                else None
+                soup.title.string.strip() if soup.title and soup.title.string else None
             )
 
             extracted_data: dict[str, Any] = {}

@@ -11,7 +11,6 @@ from shared.contracts.task import (
     TaskStatus,
     TaskType,
 )
-from shared.contracts.task import Task, TaskCategory, TaskPriority, TaskStatus, TaskType
 
 logger = logging.getLogger(__name__)
 
@@ -230,10 +229,10 @@ class TaskDecompositionEngine:
         )
 
         subtask_generate_ppt.artifact_location = (
-            f"{workflow_id}/{subtask_generate_ppt.task_id}" "/presentation.pptx"
+            f"{workflow_id}/{subtask_generate_ppt.task_id}/presentation.pptx"
         )
         subtask_export_pdf.artifact_location = (
-            f"{workflow_id}/{subtask_export_pdf.task_id}" "/handout.pdf"
+            f"{workflow_id}/{subtask_export_pdf.task_id}/handout.pdf"
         )
 
         return [

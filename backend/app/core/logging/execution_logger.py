@@ -123,9 +123,7 @@ class WorkerExecutionLogger:
         )
         return event
 
-    def log_tool_selected(
-        self, tool_name: str | None = None
-    ) -> WorkerExecutionLog:
+    def log_tool_selected(self, tool_name: str | None = None) -> WorkerExecutionLog:
         """Logs tool selection phase."""
         selected_tool = tool_name or self.tool_name
         self.tool_name = selected_tool
