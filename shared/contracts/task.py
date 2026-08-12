@@ -5,6 +5,12 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
+class TaskType(str, Enum):
+    """Distinguishes between container/phase tasks and executable leaf tasks."""
+
+    PHASE = "PHASE"
+    LEAF = "LEAF"
+
 
 class TaskStatus(str, Enum):
     """Execution status of an individual task."""
@@ -36,6 +42,7 @@ class TaskCategory(str, Enum):
     DESKTOP = "DESKTOP"
     FILE_SYSTEM = "FILE_SYSTEM"
     WEB_RESEARCH = "WEB_RESEARCH"
+    WEB_SCRAPING = "WEB_SCRAPING"
     OCR = "OCR"
     VISION = "VISION"
     GIT = "GIT"
@@ -82,6 +89,7 @@ class Task(BaseModel):
     workflow_id: UUID
     task_name: str
     description: str
+    task_type: TaskType = TaskType.LEAF
     assigned_agent: str = "WorkerAgent"
     required_tool: str
     category: TaskCategory
