@@ -118,11 +118,10 @@ class PermissionManager:
             pending = [req for req in pending if req.workflow_id == workflow_id]
         return pending
 
-    def enforce_permission(
-        self, permission_type: Any, workflow_id: Any
-    ) -> None:
+    def enforce_permission(self, permission_type: Any, workflow_id: Any) -> None:
         """
-        Enforces permission verification, raising PermissionDeniedException if not granted.
+        Enforces permission verification, raising PermissionDeniedException
+        if not granted.
         """
         wf_id_str = str(workflow_id)
         for req in self.requests.values():
@@ -132,16 +131,22 @@ class PermissionManager:
             ):
                 if req.status == PermissionStatus.APPROVED:
                     return
-                elif req.status in (PermissionStatus.REJECTED, PermissionStatus.PENDING):
+                elif req.status in (
+                    PermissionStatus.REJECTED,
+                    PermissionStatus.PENDING,
+                ):
                     perm_str = getattr(permission_type, "value", str(permission_type))
-                    if (
-                        PermissionPolicy.requires_approval(req.permission_type, self.mode)
-                        and req.status != PermissionStatus.APPROVED
-                    ):
+                    requires_app = PermissionPolicy.requires_approval(
+                        req.permission_type, self.mode
+                    )
+                    if requires_app and req.status != PermissionStatus.APPROVED:
                         from app.core.exceptions import PermissionDeniedException
 
                         raise PermissionDeniedException(
-                            message=f"Permission '{perm_str}' denied for workflow {workflow_id}.",
+                            message=(
+                                f"Permission '{perm_str}' denied for "
+                                f"workflow {workflow_id}."
+                            ),
                             details={
                                 "permission_type": perm_str,
                                 "workflow_id": wf_id_str,
@@ -161,7 +166,10 @@ class PermissionManager:
             from app.core.exceptions import PermissionDeniedException
 
             raise PermissionDeniedException(
-                message=f"Permission '{perm_str}' not granted for workflow {workflow_id}.",
+                message=(
+                    f"Permission '{perm_str}' not granted for "
+                    f"workflow {workflow_id}."
+                ),
                 details={"permission_type": perm_str, "workflow_id": wf_id_str},
             )
 
