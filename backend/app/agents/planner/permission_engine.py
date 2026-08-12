@@ -47,6 +47,10 @@ class PermissionDetectionEngine:
                 TaskCategory.CODE_GENERATION,
                 TaskCategory.FILE_COMPRESSION,
             ]:
+                # FILE_SYSTEM represents read access
+                # (e.g. reading templates or existing code)
+                # FILE_SYSTEM_WRITE represents write access
+                # (e.g. saving the generated file). Both are deliberately required.
                 detected_permissions.add(PermissionType.FILE_SYSTEM)
                 detected_permissions.add(PermissionType.FILE_SYSTEM_WRITE)
 

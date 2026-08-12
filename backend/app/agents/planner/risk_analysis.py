@@ -104,18 +104,42 @@ class RiskAnalysisEngine:
             TaskCategory.PPT_GENERATION,
             TaskCategory.PDF_GENERATION,
             TaskCategory.CODE_GENERATION,
+            TaskCategory.FILE_COMPRESSION,
         ]:
             risk_level = RiskLevel.LOW
             reasoning = f"Task category '{task.category.value}' writes files to disk."
-        elif task.category in [TaskCategory.WEB_RESEARCH, TaskCategory.SEARCH]:
+        elif task.category in [
+            TaskCategory.WEB_RESEARCH,
+            TaskCategory.SEARCH,
+            TaskCategory.OCR,
+            TaskCategory.VISION,
+        ]:
             risk_level = RiskLevel.SAFE
             reasoning = (
                 f"Task category '{task.category.value}' performs safe read-only "
                 "network activity."
             )
         elif task.category == TaskCategory.BROWSER:
+                f"Task category '{task.category.value}' "
+                "performs safe read-only or analysis activity."
+            )
+        elif task.category in [TaskCategory.BROWSER, TaskCategory.DESKTOP]:
             risk_level = RiskLevel.LOW
-            reasoning = "Task involves browser interactions."
+            reasoning = (
+                f"Task category '{task.category.value}' " "involves UI interaction."
+            )
+        elif task.category == TaskCategory.PYTHON:
+            risk_level = RiskLevel.MEDIUM
+            reasoning = "Task category 'PYTHON' executes arbitrary code."
+        elif task.category == TaskCategory.OTHER:
+            risk_level = RiskLevel.LOW
+            reasoning = "Task category 'OTHER' has unknown system impact."
+        else:
+            risk_level = RiskLevel.LOW
+            reasoning = (
+                f"Task category '{task.category.value}' "
+                "involves potential system state changes."
+            )
 
         # Check explicit task risk level
         explicit_risk = task.risk_level.upper()
@@ -130,6 +154,10 @@ class RiskAnalysisEngine:
                         f"Task risk evaluated as {explicit_risk} based on "
                         "initial parameters."
                     )
+                reasoning = (
+                    f"Task risk elevated to {explicit_risk} "
+                    "based on explicit parameters."
+                )
 
         # Check Category
         if risk_level in [RiskLevel.SAFE, RiskLevel.LOW]:

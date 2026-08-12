@@ -1,20 +1,18 @@
-from app.tools.registry import ToolRegistry
-from app.tools.web_research import (
-    BaseResearchTool,
-    ContentExtractor,
-    DuckDuckGoSearchEngine,
+"""Web Research capability module for Worker Agent."""
+
+from app.tools.web_research.extractor import ContentExtractor
+from app.tools.web_research.interface import BaseResearchTool, SearchEngineInterface
+from app.tools.web_research.schemas import (
     ExtractedPageContent,
-    MockSearchEngine,
-    SearchEngineInterface,
     SourceMetadata,
     SourceStatus,
     StructuredResearchResult,
     WebResearchRequest,
-    WebResearchTool,
 )
+from app.tools.web_research.search import DuckDuckGoSearchEngine, MockSearchEngine
+from app.tools.web_research.tool import WebResearchTool
 
 __all__ = [
-    "ToolRegistry",
     "WebResearchTool",
     "BaseResearchTool",
     "SearchEngineInterface",
