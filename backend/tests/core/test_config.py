@@ -24,7 +24,7 @@ def reset_config_state():
 
 def test_default_settings():
     """Verify default runtime infrastructure settings."""
-    cfg = RuntimeSettings()
+    cfg = RuntimeSettings(_env_file=None)
     assert cfg.PROJECT_NAME == "AetherPhoenix"
     assert cfg.VERSION == "0.1.0"
     assert cfg.ENVIRONMENT == "development"

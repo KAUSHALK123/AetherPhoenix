@@ -49,9 +49,6 @@ class WorkflowMetadata(BaseModel):
     estimated_duration_seconds: Optional[int] = None
 
 
-
-
-
 class ProgressState(BaseModel):
     """Real-time progress calculation for UI and monitoring."""
 
