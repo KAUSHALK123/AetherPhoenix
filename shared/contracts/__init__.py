@@ -10,6 +10,11 @@ from shared.contracts.execution import (
     SupervisorValidation,
     TaskError,
 )
+from shared.contracts.execution_log import (
+    ExecutionPhase,
+    ExecutionStatus,
+    WorkerExecutionLog,
+)
 from shared.contracts.permission import (
     PermissionRequest,
     PermissionStatus,
@@ -69,6 +74,9 @@ __all__ = [
     "ExecutionResult",
     "SupervisorValidation",
     "HealingResult",
+    "ExecutionPhase",
+    "ExecutionStatus",
+    "WorkerExecutionLog",
     # Permission
     "PermissionType",
     "PermissionStatus",

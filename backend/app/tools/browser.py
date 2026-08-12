@@ -88,7 +88,7 @@ class BrowserTool:
 
         if not self._page:
             raise RuntimeError(
-                "Browser session not started. " "Call start_session() first."
+                "Browser session not started. Call start_session() first."
             )
 
         try:
