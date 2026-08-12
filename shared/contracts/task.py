@@ -42,6 +42,7 @@ class TaskCategory(str, Enum):
     DESKTOP = "DESKTOP"
     FILE_SYSTEM = "FILE_SYSTEM"
     WEB_RESEARCH = "WEB_RESEARCH"
+    WEB_SCRAPING = "WEB_SCRAPING"
     OCR = "OCR"
     VISION = "VISION"
     GIT = "GIT"
