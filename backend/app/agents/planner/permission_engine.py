@@ -41,7 +41,12 @@ class PermissionDetectionEngine:
                 detected_risk = RiskLevel.HIGH
             elif task.category == TaskCategory.WEB_RESEARCH:
                 detected_permissions.add(PermissionType.INTERNET)
-            elif task.category in [TaskCategory.PPT_GENERATION, TaskCategory.PDF_GENERATION, TaskCategory.CODE_GENERATION, TaskCategory.FILE_COMPRESSION]:
+            elif task.category in [
+                TaskCategory.PPT_GENERATION,
+                TaskCategory.PDF_GENERATION,
+                TaskCategory.CODE_GENERATION,
+                TaskCategory.FILE_COMPRESSION,
+            ]:
                 detected_permissions.add(PermissionType.FILE_SYSTEM)
                 detected_permissions.add(PermissionType.FILE_SYSTEM_WRITE)
 
