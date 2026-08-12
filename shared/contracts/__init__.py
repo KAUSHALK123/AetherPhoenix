@@ -2,6 +2,14 @@
 
 from shared.contracts.artifact import Artifact, ArtifactType
 from shared.contracts.capability import Capability
+from shared.contracts.document import (
+    DocumentElement,
+    DocumentElementType,
+    DocumentFormat,
+    DocumentGenerationResult,
+    DocumentSection,
+    StructuredDocumentInput,
+)
 from shared.contracts.event import EventSource, EventType, RuntimeEvent
 from shared.contracts.execution import (
     ExecutionMetrics,
@@ -75,6 +83,13 @@ __all__ = [
     "ArtifactType",
     # Capability
     "Capability",
+    # Document
+    "DocumentFormat",
+    "DocumentElementType",
+    "DocumentElement",
+    "DocumentSection",
+    "StructuredDocumentInput",
+    "DocumentGenerationResult",
     # Event
     "EventType",
     "EventSource",

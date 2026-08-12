@@ -1,5 +1,5 @@
 import uuid
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .models import (
     ExecutionMode,
@@ -117,3 +117,51 @@ class PermissionManager:
         if workflow_id:
             pending = [req for req in pending if req.workflow_id == workflow_id]
         return pending
+
+    def enforce_permission(
+        self, permission_type: Any, workflow_id: Any
+    ) -> None:
+        """
+        Enforces permission verification, raising PermissionDeniedException if not granted.
+        """
+        wf_id_str = str(workflow_id)
+        for req in self.requests.values():
+            if req.workflow_id == wf_id_str and (
+                req.permission_type == permission_type
+                or str(req.permission_type) == str(permission_type)
+            ):
+                if req.status == PermissionStatus.APPROVED:
+                    return
+                elif req.status in (PermissionStatus.REJECTED, PermissionStatus.PENDING):
+                    perm_str = getattr(permission_type, "value", str(permission_type))
+                    if (
+                        PermissionPolicy.requires_approval(req.permission_type, self.mode)
+                        and req.status != PermissionStatus.APPROVED
+                    ):
+                        from app.core.exceptions import PermissionDeniedException
+
+                        raise PermissionDeniedException(
+                            message=f"Permission '{perm_str}' denied for workflow {workflow_id}.",
+                            details={
+                                "permission_type": perm_str,
+                                "workflow_id": wf_id_str,
+                            },
+                        )
+                    return
+
+        perm_enum = permission_type
+        if isinstance(permission_type, str):
+            try:
+                perm_enum = PermissionType(permission_type)
+            except ValueError:
+                pass
+
+        perm_str = getattr(permission_type, "value", str(permission_type))
+        if PermissionPolicy.requires_approval(perm_enum, self.mode):
+            from app.core.exceptions import PermissionDeniedException
+
+            raise PermissionDeniedException(
+                message=f"Permission '{perm_str}' not granted for workflow {workflow_id}.",
+                details={"permission_type": perm_str, "workflow_id": wf_id_str},
+            )
+
