@@ -104,9 +104,7 @@ class RiskAnalysisEngine:
             TaskCategory.FILE_COMPRESSION,
         ]:
             risk_level = RiskLevel.LOW
-            reasoning = (
-                f"Task category '{task.category.value}' writes files to disk."
-            )
+            reasoning = f"Task category '{task.category.value}' writes files to disk."
         elif task.category in [
             TaskCategory.WEB_RESEARCH,
             TaskCategory.SEARCH,
@@ -121,8 +119,7 @@ class RiskAnalysisEngine:
         elif task.category in [TaskCategory.BROWSER, TaskCategory.DESKTOP]:
             risk_level = RiskLevel.LOW
             reasoning = (
-                f"Task category '{task.category.value}' "
-                "involves UI interaction."
+                f"Task category '{task.category.value}' " "involves UI interaction."
             )
         elif task.category == TaskCategory.PYTHON:
             risk_level = RiskLevel.MEDIUM
