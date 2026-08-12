@@ -10,20 +10,21 @@ from shared.contracts.execution import (
     SupervisorValidation,
     TaskError,
 )
-from shared.contracts.pdf import (
-    CodeBlockElement,
-    HeadingElement,
-    ListElement,
-    PDFDocumentInput,
-    PDFElement,
-    PDFElementType,
-    PDFGenerationResult,
-    ParagraphElement,
-    TableElement,
 from shared.contracts.execution_log import (
     ExecutionPhase,
     ExecutionStatus,
     WorkerExecutionLog,
+)
+from shared.contracts.pdf import (
+    CodeBlockElement,
+    HeadingElement,
+    ListElement,
+    ParagraphElement,
+    PDFDocumentInput,
+    PDFElement,
+    PDFElementType,
+    PDFGenerationResult,
+    TableElement,
 )
 from shared.contracts.permission import (
     PermissionRequest,
@@ -37,13 +38,18 @@ from shared.contracts.planner import (
     GoalExtractionResult,
     GoalPriority,
     IntentCategory,
-    PlannerRequest,
-    PlannerResponse,
-    TaskDecompositionPlan,
-    UserRequirement,
-    PlanVersion,
     PlanMetadata,
     PlannerOutput,
+    PlannerRequest,
+    PlannerResponse,
+    PlanVersion,
+    TaskDecompositionPlan,
+    UserRequirement,
+)
+from shared.contracts.risk import (
+    Conflict,
+    RiskAnalysisResult,
+    RiskAssessment,
 )
 from shared.contracts.task import (
     DependencyType,
@@ -61,11 +67,6 @@ from shared.contracts.workflow import (
     SharedWorkflowState,
     WorkflowMetadata,
     WorkflowStatus,
-)
-from shared.contracts.risk import (
-    RiskAssessment,
-    Conflict,
-    RiskAnalysisResult,
 )
 
 __all__ = [
