@@ -95,8 +95,7 @@ class TextLogFormatter(logging.Formatter):
         )[:-3]
 
         base_msg = (
-            f"[{timestamp}] [{record.levelname}] [{record.name}] "
-            f"{record.getMessage()}"
+            f"[{timestamp}] [{record.levelname}] [{record.name}] {record.getMessage()}"
         )
 
         extra_context: Dict[str, Any] = {}

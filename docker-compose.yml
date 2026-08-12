@@ -10,8 +10,10 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - ./shared:/app/shared
     environment:
       - ENVIRONMENT=development
+      - PYTHONPATH=/app
     networks:
       - aether_network
 

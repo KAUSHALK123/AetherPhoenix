@@ -34,6 +34,7 @@ class PermissionStatus(str, Enum):
 class RiskLevel(str, Enum):
     """Assessed risk level for requested operations."""
 
+    SAFE = "SAFE"
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"

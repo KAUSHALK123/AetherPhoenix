@@ -85,6 +85,10 @@ class RuntimeSettings(BaseSettings):
     TEMP_DIR: str = Field(
         default="tmp", description="Directory for temporary runtime files"
     )
+    WORKSPACE_DIR: str = Field(
+        default="workspace",
+        description="Base directory for permitted filesystem operations",
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
