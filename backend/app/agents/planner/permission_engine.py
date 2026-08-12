@@ -41,6 +41,9 @@ class PermissionDetectionEngine:
                 detected_risk = RiskLevel.HIGH
             elif task.category == TaskCategory.WEB_RESEARCH:
                 detected_permissions.add(PermissionType.INTERNET)
+            elif task.category in [TaskCategory.PPT_GENERATION, TaskCategory.PDF_GENERATION, TaskCategory.CODE_GENERATION, TaskCategory.FILE_COMPRESSION]:
+                detected_permissions.add(PermissionType.FILE_SYSTEM)
+                detected_permissions.add(PermissionType.FILE_SYSTEM_WRITE)
 
             # Keyword-based analysis in description and name for specific
             # sensitive actions
@@ -72,6 +75,11 @@ class PermissionDetectionEngine:
                     if task.category != TaskCategory.FILE_SYSTEM:
                         detected_permissions.add(PermissionType.INTERNET)
                         detected_permissions.add(PermissionType.DOWNLOADS)
+
+            # File write / export
+            if any(word in combined_text for word in ["write", "export", "generate"]):
+                detected_permissions.add(PermissionType.FILE_SYSTEM)
+                detected_permissions.add(PermissionType.FILE_SYSTEM_WRITE)
 
             # Desktop Control or System Modifications
             if "registry" in combined_text:

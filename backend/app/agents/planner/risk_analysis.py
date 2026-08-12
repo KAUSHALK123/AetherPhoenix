@@ -100,14 +100,26 @@ class RiskAnalysisEngine:
         risk_level = RiskLevel.SAFE
         reasoning = "Task only involves safe operations with no side-effects."
 
+        if task.category in [TaskCategory.PPT_GENERATION, TaskCategory.PDF_GENERATION, TaskCategory.CODE_GENERATION]:
+            risk_level = RiskLevel.LOW
+            reasoning = f"Task category '{task.category.value}' writes files to disk."
+        elif task.category in [TaskCategory.WEB_RESEARCH, TaskCategory.SEARCH]:
+            risk_level = RiskLevel.SAFE
+            reasoning = f"Task category '{task.category.value}' performs safe read-only network activity."
+        elif task.category == TaskCategory.BROWSER:
+            risk_level = RiskLevel.LOW
+            reasoning = "Task involves browser interactions."
+
         # Check explicit task risk level
         explicit_risk = task.risk_level.upper()
         if explicit_risk in [r.value for r in RiskLevel]:
-            risk_level = RiskLevel(explicit_risk)
-            if risk_level == RiskLevel.LOW:
-                reasoning = "Standard operation with minimal system impact."
-            elif risk_level != RiskLevel.SAFE:
-                reasoning = f"Task risk evaluated as {explicit_risk} based on initial parameters."  # noqa: E501
+            explicit_level = RiskLevel(explicit_risk)
+            if self._RISK_SCORES[explicit_level] > self._RISK_SCORES[risk_level]:
+                risk_level = explicit_level
+                if risk_level == RiskLevel.LOW:
+                    reasoning = "Standard operation with minimal system impact."
+                elif risk_level != RiskLevel.SAFE:
+                    reasoning = f"Task risk evaluated as {explicit_risk} based on initial parameters."
 
         # Check Category
         if risk_level in [RiskLevel.SAFE, RiskLevel.LOW]:
