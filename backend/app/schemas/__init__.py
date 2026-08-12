@@ -30,6 +30,13 @@ from shared.contracts import (
     WorkflowStatus,
 )
 
+from app.schemas.ppt import (
+    PPTGenerationResult,
+    PresentationSchema,
+    SlideContent,
+    SlideType,
+)
+
 __all__ = [
     "Artifact",
     "ArtifactType",
@@ -58,4 +65,8 @@ __all__ = [
     "PlannerOutput",
     "ProgressState",
     "SharedWorkflowState",
+    "SlideType",
+    "SlideContent",
+    "PresentationSchema",
+    "PPTGenerationResult",
 ]
