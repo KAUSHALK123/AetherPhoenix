@@ -1,3 +1,8 @@
+from app.tools.document import (
+    DocumentGenerator,
+    DocumentToolAdapter,
+    register_document_tool,
+)
 from app.tools.pdf import PDFGenerator, PDFToolAdapter, register_pdf_tool
 from app.tools.registry import ToolRegistry
 from app.tools.web_research import (
@@ -16,6 +21,9 @@ from app.tools.web_research import (
 
 __all__ = [
     "ToolRegistry",
+    "DocumentGenerator",
+    "DocumentToolAdapter",
+    "register_document_tool",
     "PDFGenerator",
     "PDFToolAdapter",
     "register_pdf_tool",
