@@ -4,6 +4,13 @@ from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from shared.contracts.planner import TaskDecompositionPlan
+from shared.contracts.task import (
+    Task,
+    TaskCategory,
+    TaskPriority,
+    TaskStatus,
+    TaskType,
+)
 from shared.contracts.task import Task, TaskCategory, TaskPriority, TaskStatus, TaskType
 
 logger = logging.getLogger(__name__)

@@ -97,6 +97,9 @@ class RiskAnalysisEngine:
         """
         Evaluate a single task to determine its risk level and score.
         """
+        risk_level = RiskLevel.SAFE
+        reasoning = "Task only involves safe operations with no side-effects."
+
         if task.category in [
             TaskCategory.PPT_GENERATION,
             TaskCategory.PDF_GENERATION,
@@ -113,6 +116,10 @@ class RiskAnalysisEngine:
         ]:
             risk_level = RiskLevel.SAFE
             reasoning = (
+                f"Task category '{task.category.value}' performs safe read-only "
+                "network activity."
+            )
+        elif task.category == TaskCategory.BROWSER:
                 f"Task category '{task.category.value}' "
                 "performs safe read-only or analysis activity."
             )
@@ -140,6 +147,13 @@ class RiskAnalysisEngine:
             explicit_level = RiskLevel(explicit_risk)
             if self._RISK_SCORES[explicit_level] > self._RISK_SCORES[risk_level]:
                 risk_level = explicit_level
+                if risk_level == RiskLevel.LOW:
+                    reasoning = "Standard operation with minimal system impact."
+                elif risk_level != RiskLevel.SAFE:
+                    reasoning = (
+                        f"Task risk evaluated as {explicit_risk} based on "
+                        "initial parameters."
+                    )
                 reasoning = (
                     f"Task risk elevated to {explicit_risk} "
                     "based on explicit parameters."
