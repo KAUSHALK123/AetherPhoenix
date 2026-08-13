@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from shared.contracts.artifact import Artifact
 from shared.contracts.event import RuntimeEvent
-from shared.contracts.execution import HealingResult
+from shared.contracts.execution import HealingResult, SupervisorValidation
 from shared.contracts.permission import PermissionRequest
 from shared.contracts.planner import PlannerOutput
 from shared.contracts.task import Task
@@ -57,7 +57,9 @@ class ProgressState(BaseModel):
     running_tasks: int = Field(default=0, ge=0)
     failed_tasks: int = Field(default=0, ge=0)
     pending_tasks: int = Field(default=0, ge=0)
+    blocked_tasks: int = Field(default=0, ge=0)
     overall_percentage: float = Field(default=0.0, ge=0.0, le=100.0)
+    execution_duration_seconds: float = Field(default=0.0, ge=0.0)
     estimated_remaining_time_seconds: Optional[int] = None
 
 
@@ -76,6 +78,7 @@ class SharedWorkflowState(BaseModel):
     failed_tasks: List[UUID] = Field(default_factory=list)
     progress: ProgressState = Field(default_factory=ProgressState)
     permissions: List[PermissionRequest] = Field(default_factory=list)
+    validations: Dict[UUID, SupervisorValidation] = Field(default_factory=dict)
     artifacts: List[Artifact] = Field(default_factory=list)
     logs: List[Dict[str, Any]] = Field(default_factory=list)
     healing_history: List[HealingResult] = Field(default_factory=list)
