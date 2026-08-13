@@ -14,9 +14,11 @@ from shared.contracts.event import EventSource, EventType, RuntimeEvent
 from shared.contracts.execution import (
     ExecutionMetrics,
     ExecutionResult,
+    FailureType,
     HealingResult,
     SupervisorValidation,
     TaskError,
+    TaskFailureReport,
 )
 from shared.contracts.execution_log import (
     ExecutionPhase,
@@ -100,6 +102,8 @@ __all__ = [
     "ExecutionResult",
     "SupervisorValidation",
     "HealingResult",
+    "FailureType",
+    "TaskFailureReport",
     # PDF
     "PDFElementType",
     "HeadingElement",
