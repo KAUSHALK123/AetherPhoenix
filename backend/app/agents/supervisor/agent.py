@@ -11,6 +11,7 @@ from shared.contracts.task import Task, TaskStatus
 from shared.contracts.workflow import SharedWorkflowState
 
 from app.core.events.bus import EventBus
+from app.engine.monitor import WorkflowProgressMonitor
 from app.runtime.interfaces import AgentRegistration, BaseAgent
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ class SupervisorAgent(BaseAgent):
 
     def __init__(self, event_bus: EventBus | None = None):
         self.event_bus = event_bus
+        self.monitor = WorkflowProgressMonitor()
 
     @property
     def registration(self) -> AgentRegistration:
@@ -135,6 +137,8 @@ class SupervisorAgent(BaseAgent):
                 if task.task_id not in state.failed_tasks:
                     state.failed_tasks.append(task.task_id)
 
+            self.monitor.update_progress_state(state)
+
             logger.info(
                 f"SupervisorAgent decision for {task.task_id}: {decision.value}"
             )
@@ -160,3 +164,9 @@ class SupervisorAgent(BaseAgent):
             raise
 
         return validation
+
+    def get_workflow_progress(self, state: SharedWorkflowState) -> Any:
+        """
+        Retrieves the current workflow progress calculation.
+        """
+        return self.monitor.calculate_progress(state)
