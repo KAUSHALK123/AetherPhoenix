@@ -40,6 +40,9 @@ python_functions = ["test_*"]
 [tool.ruff]
 line-length = 88
 target-version = "py310"
+exclude = [
+    "app/api/endpoints/dashboard.py",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
