@@ -3,8 +3,8 @@
 from uuid import uuid4
 
 import pytest
-from shared.contracts.execution_log import ExecutionMode
 from shared.contracts.permission import PermissionStatus, PermissionType, RiskLevel
+from shared.contracts.workflow import ExecutionMode
 
 from app.core.events.bus import EventBus
 from app.core.events.models import EventType
