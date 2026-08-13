@@ -257,9 +257,9 @@ class SupervisorAgent(BaseAgent):
                 source_component="SupervisorAgent",
                 payload={
                     "retry_count": task.retry_count,
-                    "max_retries": max_retries
-                    if max_retries is not None
-                    else self.max_retries,
+                    "max_retries": (
+                        max_retries if max_retries is not None else self.max_retries
+                    ),
                     "error_code": error.error_code if error else None,
                 },
             )
