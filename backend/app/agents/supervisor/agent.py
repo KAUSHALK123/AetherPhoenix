@@ -89,7 +89,7 @@ class SupervisorAgent(BaseAgent):
         checks["execution_success"] = result.success
         if not result.success:
             is_valid = False
-            error_msg = result.error.error_message if result.error else 'Unknown'
+            error_msg = result.error.error_message if result.error else "Unknown"
             issues.append(f"Worker reported failure: {error_msg}")
 
         # 2. Check outputs against success criteria (heuristic for now)
