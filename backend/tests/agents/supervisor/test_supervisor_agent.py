@@ -67,7 +67,7 @@ async def test_supervisor_passed_execution(
     assert validation.is_valid is True
     assert validation.decision == SupervisorDecision.PASSED
     assert validation.checks.get("execution_success") is True
-    assert validation.checks.get("output_matches_criteria") is True
+    assert validation.checks.get("output_valid") is True
 
     # Check SWS updates
     assert base_task.task_id not in base_state.running_tasks
@@ -140,7 +140,7 @@ async def test_supervisor_success_criteria_mismatch(
     assert validation.is_valid is False
     assert validation.decision == SupervisorDecision.FAILED
     assert validation.checks.get("execution_success") is True
-    assert validation.checks.get("output_matches_criteria") is False
-    assert len(validation.issues) == 1
+    assert validation.checks.get("output_valid") is False
+    assert len(validation.issues) == 2
 
     assert base_task.status == TaskStatus.FAILED
