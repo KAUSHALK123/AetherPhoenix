@@ -139,21 +139,18 @@ class RiskAnalysisEngine:
             )
 
         # Check explicit task risk level
-        explicit_risk = task.risk_level.upper()
+        explicit_risk = task.risk_level.upper() if task.risk_level else ""
         if explicit_risk in [r.value for r in RiskLevel]:
             explicit_level = RiskLevel(explicit_risk)
-            if self._RISK_SCORES[explicit_level] > self._RISK_SCORES[risk_level]:
-                risk_level = explicit_level
-                if risk_level == RiskLevel.LOW:
-                    reasoning = "Standard operation with minimal system impact."
-                elif risk_level != RiskLevel.SAFE:
-                    reasoning = (
-                        f"Task risk evaluated as {explicit_risk} based on "
-                        "initial parameters."
-                    )
+            risk_level = explicit_level
+            if risk_level == RiskLevel.LOW:
+                reasoning = "Standard operation with minimal system impact."
+            elif risk_level == RiskLevel.SAFE:
+                reasoning = "Task only involves safe operations with no side-effects."
+            else:
                 reasoning = (
-                    f"Task risk elevated to {explicit_risk} "
-                    "based on explicit parameters."
+                    f"Task risk evaluated as {explicit_risk} based on "
+                    "initial parameters."
                 )
 
         # Check Category
