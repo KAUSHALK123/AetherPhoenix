@@ -3,10 +3,9 @@ import time
 from typing import Any, Dict
 
 from shared.contracts.execution import ExecutionMetrics, ExecutionResult, TaskError
+from shared.contracts.permission import PermissionType
 from shared.contracts.task import Task, TaskStatus
 from shared.contracts.tool import ToolState
-
-from shared.contracts.permission import PermissionType
 
 from app.core.exceptions import PermissionDeniedException
 from app.core.logging.execution_logger import WorkerExecutionLogger
@@ -62,7 +61,7 @@ class WorkerAgent(BaseAgent):
         delegates execution to the registered Tool Adapter, and logs all phases.
         """
         logger.info(f"WorkerAgent executing task: {task.task_id} ({task.task_name})")
-        
+
         exec_logger = WorkerExecutionLogger.from_task(
             task=task,
             workflow_id=task.workflow_id,
@@ -166,7 +165,9 @@ class WorkerAgent(BaseAgent):
                 exec_logger.log_task_failure(
                     duration_ms=total_duration_ms,
                     error_code=result.error.error_code if result.error else "FAILED",
-                    error_message=result.error.error_message if result.error else "Task failed",
+                    error_message=(
+                        result.error.error_message if result.error else "Task failed"
+                    ),
                 )
                 logs_captured.append(f"Task '{task.task_name}' failed")
 
@@ -198,7 +199,7 @@ class WorkerAgent(BaseAgent):
                 f"Execution failed for task {task.task_id}: {str(e)}", exc_info=True
             )
             duration_ms = (time.time() - start_time) * 1000.0
-            
+
             error_code = "EXECUTION_FAILED"
             exec_logger.log_task_failure(
                 duration_ms=duration_ms,
