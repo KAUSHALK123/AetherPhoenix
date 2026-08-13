@@ -59,7 +59,7 @@ async def test_supervisor_passed_execution(
         task_id=base_task.task_id,
         workflow_id=base_task.workflow_id,
         success=True,
-        output={"key": "value"},
+        output={"key": "value", "result": "Success result"},
     )
 
     validation = await supervisor.execute(base_task, result, base_state)
@@ -141,6 +141,6 @@ async def test_supervisor_success_criteria_mismatch(
     assert validation.decision == SupervisorDecision.FAILED
     assert validation.checks.get("execution_success") is True
     assert validation.checks.get("output_valid") is False
-    assert len(validation.issues) == 2
+    assert len(validation.issues) == 3
 
     assert base_task.status == TaskStatus.FAILED

@@ -402,10 +402,13 @@ async def test_supervisor_validation_and_state_sync(
     # Allow asyncio loop to process published events
     import asyncio
 
+    from shared.contracts.event import EventType
+
     await asyncio.sleep(0.1)
 
-    assert len(emitted_events) > 0
-    assert emitted_events[0].event_type == "TaskCompleted"
+    assert len(emitted_events) >= 2
+    assert emitted_events[0].event_type == EventType.SUPERVISION_STARTED
+    assert emitted_events[1].event_type == EventType.SUPERVISION_COMPLETED
 
     # Reset state and test validation failure
     task.status = TaskStatus.RUNNING
@@ -426,5 +429,6 @@ async def test_supervisor_validation_and_state_sync(
     assert task.task_id not in workflow_state.running_tasks
 
     await asyncio.sleep(0.1)
-    assert len(emitted_events) > 0
-    assert emitted_events[0].event_type == "TaskFailed"
+    assert len(emitted_events) >= 2
+    assert emitted_events[0].event_type == EventType.SUPERVISION_STARTED
+    assert emitted_events[1].event_type == EventType.SUPERVISION_COMPLETED
