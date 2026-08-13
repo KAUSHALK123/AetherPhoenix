@@ -12,6 +12,7 @@ from shared.contracts.workflow import SharedWorkflowState
 
 from app.core.events.bus import EventBus
 from app.engine.monitor import WorkflowProgressMonitor
+from app.engine.validator import OutputValidationService
 from app.runtime.interfaces import AgentRegistration, BaseAgent
 
 logger = logging.getLogger(__name__)
@@ -26,6 +27,7 @@ class SupervisorAgent(BaseAgent):
     def __init__(self, event_bus: EventBus | None = None):
         self.event_bus = event_bus
         self.monitor = WorkflowProgressMonitor()
+        self.validator = OutputValidationService()
 
     @property
     def registration(self) -> AgentRegistration:
@@ -83,25 +85,8 @@ class SupervisorAgent(BaseAgent):
             str(task.task_id),
         )
 
-        checks = {}
-        issues = []
-        is_valid = True
-
-        # 1. Check basic execution success
-        checks["execution_success"] = result.success
-        if not result.success:
-            is_valid = False
-            error_msg = result.error.error_message if result.error else "Unknown"
-            issues.append(f"Worker reported failure: {error_msg}")
-
-        # 2. Check outputs against success criteria (heuristic for now)
-        checks["output_matches_criteria"] = True
-        if result.success and task.success_criteria:
-            # Placeholder for actual LLM-based or strict validation
-            if not result.output and not result.artifacts:
-                checks["output_matches_criteria"] = False
-                is_valid = False
-                issues.append("Task succeeded but produced no output or artifacts.")
+        # Perform output and artifact validation via OutputValidationService
+        is_valid, checks, issues = self.validator.validate(task, result)
 
         # Determine decision
         if is_valid:
