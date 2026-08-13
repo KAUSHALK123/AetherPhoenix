@@ -92,3 +92,16 @@ class RuntimeKernel:
             context = self.active_contexts.pop(context_id)
             context.mark_complete()
             logger.info(f"Removed RuntimeContext {context_id}")
+
+
+_kernel_instance: Optional[RuntimeKernel] = None
+
+
+def get_kernel() -> RuntimeKernel:
+    """
+    Returns the global singleton RuntimeKernel instance.
+    """
+    global _kernel_instance
+    if _kernel_instance is None:
+        _kernel_instance = RuntimeKernel()
+    return _kernel_instance

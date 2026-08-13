@@ -14,7 +14,8 @@ from shared.contracts.workflow import SharedWorkflowState, WorkflowStatus
 
 from app.agents.supervisor.failure_detector import FailureDetectorService
 from app.core.events.bus import EventBus
-from app.core.events.models import Event as ModelEvent, EventType as ModelEventType
+from app.core.events.models import Event as ModelEvent
+from app.core.events.models import EventType as ModelEventType
 from app.engine.monitor import WorkflowProgressMonitor
 from app.engine.validator import OutputValidationService
 from app.engine.workflow import WorkflowEngine

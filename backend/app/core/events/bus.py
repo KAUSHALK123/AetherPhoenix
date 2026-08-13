@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from collections import defaultdict
-from typing import Awaitable, Callable, Dict, List
+from typing import Awaitable, Callable, Dict, List, Optional
 
 from app.core.events.models import Event, EventType
 
@@ -130,3 +130,16 @@ class Subscriber:
         Subscribes a callback to all events on the configured event bus.
         """
         self.event_bus.subscribe_all(callback)
+
+
+_event_bus_instance: Optional[EventBus] = None
+
+
+def get_event_bus() -> EventBus:
+    """
+    Returns the global singleton EventBus instance.
+    """
+    global _event_bus_instance
+    if _event_bus_instance is None:
+        _event_bus_instance = EventBus()
+    return _event_bus_instance
