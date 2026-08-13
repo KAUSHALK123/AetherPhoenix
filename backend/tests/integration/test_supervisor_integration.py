@@ -1,10 +1,10 @@
-import asyncio
 from typing import Any, Dict, List
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
 from shared.contracts.event import EventType
 from shared.contracts.execution import ExecutionResult, TaskError
+from shared.contracts.planner import PlannerOutput
 from shared.contracts.task import Task, TaskCategory, TaskStatus
 from shared.contracts.tool import Tool, ToolHealth, ToolState
 from shared.contracts.workflow import (
@@ -12,15 +12,14 @@ from shared.contracts.workflow import (
     WorkflowMetadata,
     WorkflowStatus,
 )
-from shared.contracts.planner import PlannerOutput, PlanMetadata
 
+from app.agents.supervisor.agent import SupervisorAgent
+from app.agents.worker.agent import WorkerAgent
 from app.core.events.bus import EventBus
 from app.core.permissions import PermissionManager
-from app.tools.registry import ToolRegistry
-from app.tools.adapter import BaseToolAdapter
-from app.agents.worker.agent import WorkerAgent
-from app.agents.supervisor.agent import SupervisorAgent
 from app.engine.orchestrator import PipelineOrchestrator
+from app.tools.adapter import BaseToolAdapter
+from app.tools.registry import ToolRegistry
 
 
 class ConfigurableMockAdapter(BaseToolAdapter):
@@ -61,9 +60,13 @@ def test_setup():
     event_bus = EventBus()
     tool_registry = ToolRegistry()
     permission_manager = PermissionManager(event_bus=event_bus)
-    worker = WorkerAgent(tool_registry=tool_registry, permission_manager=permission_manager)
+    worker = WorkerAgent(
+        tool_registry=tool_registry, permission_manager=permission_manager
+    )
     supervisor = SupervisorAgent(event_bus=event_bus)
-    orchestrator = PipelineOrchestrator(worker_agent=worker, supervisor_agent=supervisor, event_bus=event_bus)
+    orchestrator = PipelineOrchestrator(
+        worker_agent=worker, supervisor_agent=supervisor, event_bus=event_bus
+    )
 
     # Instantiate mock adapter and register with WorkerAgent
     adapter = ConfigurableMockAdapter()
@@ -71,9 +74,24 @@ def test_setup():
 
     # Register mock tools in ToolRegistry
     tools = [
-        Tool(name="web_search_tool", status=ToolState.READY, health=ToolHealth.HEALTHY, adapter="mock_adapter"),
-        Tool(name="ppt_tool", status=ToolState.READY, health=ToolHealth.HEALTHY, adapter="mock_adapter"),
-        Tool(name="pdf_generator", status=ToolState.READY, health=ToolHealth.HEALTHY, adapter="mock_adapter"),
+        Tool(
+            name="web_search_tool",
+            status=ToolState.READY,
+            health=ToolHealth.HEALTHY,
+            adapter="mock_adapter",
+        ),
+        Tool(
+            name="ppt_tool",
+            status=ToolState.READY,
+            health=ToolHealth.HEALTHY,
+            adapter="mock_adapter",
+        ),
+        Tool(
+            name="pdf_generator",
+            status=ToolState.READY,
+            health=ToolHealth.HEALTHY,
+            adapter="mock_adapter",
+        ),
     ]
     for t in tools:
         tool_registry.register(t)
@@ -101,8 +119,10 @@ async def test_end_to_end_electric_car_scenario(test_setup):
 
     # Capture all published events
     received_events = []
+
     async def capture_event(evt):
         received_events.append(evt)
+
     event_bus.subscribe_all(capture_event)
 
     workflow_id = uuid4()
@@ -162,7 +182,7 @@ async def test_end_to_end_electric_car_scenario(test_setup):
             task_research.task_id: [],
             task_ppt.task_id: [task_research.task_id],
             task_pdf.task_id: [task_ppt.task_id],
-        }
+        },
     )
 
     state.execution_queue.append(task_research.task_id)
@@ -242,7 +262,7 @@ async def test_workflow_failure_and_downstream_blocking(test_setup):
         dependency_graph={
             task_parent.task_id: [],
             task_child.task_id: [task_parent.task_id],
-        }
+        },
     )
 
     state.execution_queue.append(task_parent.task_id)
@@ -288,8 +308,10 @@ async def test_transient_failure_and_controlled_retry(test_setup):
     event_bus: EventBus = test_setup["event_bus"]
 
     received_events = []
+
     async def capture_event(evt):
         received_events.append(evt)
+
     event_bus.subscribe_all(capture_event)
 
     workflow_id = uuid4()
@@ -312,18 +334,19 @@ async def test_transient_failure_and_controlled_retry(test_setup):
     )
 
     state.tasks[task_retry.task_id] = task_retry
-    
+
     state.planner_output = PlannerOutput(
         workflow_spec="Retry Spec",
         tasks=[task_retry],
         dependency_graph={
             task_retry.task_id: [],
-        }
+        },
     )
 
     state.execution_queue.append(task_retry.task_id)
 
-    # Configure: first run returns transient recoverable error, second run returns success
+    # Configure: first run returns transient recoverable error,
+    # second run returns success
     adapter.behavior["retry-task"] = [
         ExecutionResult(
             task_id=task_retry.task_id,
@@ -360,7 +383,8 @@ async def test_parallel_task_execution(test_setup):
     """
     Verifies parallel task processing:
     1. Independent tasks execute concurrently.
-    2. A dependent downstream task is kept pending until both independent branches finish.
+    2. A dependent downstream task is kept pending until both
+       independent branches finish.
     """
     orchestrator: PipelineOrchestrator = test_setup["orchestrator"]
     adapter: ConfigurableMockAdapter = test_setup["adapter"]
@@ -418,7 +442,7 @@ async def test_parallel_task_execution(test_setup):
             task_a.task_id: [],
             task_b.task_id: [],
             task_c.task_id: [task_a.task_id, task_b.task_id],
-        }
+        },
     )
 
     state.execution_queue.append(task_a.task_id)
@@ -427,12 +451,14 @@ async def test_parallel_task_execution(test_setup):
 
     # Monitor execution order during the run
     started_tasks = []
-    
+
     # Wrap adapter execute to track call order
     orig_execute = adapter.execute
+
     async def track_execute(t: Task):
         started_tasks.append(t.task_name)
         return await orig_execute(t)
+
     adapter.execute = track_execute
 
     final_state = await orchestrator.run_workflow(state)

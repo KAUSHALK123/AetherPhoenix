@@ -149,7 +149,8 @@ def test_list_permissions_filtering(permission_manager):
 
 
 def test_request_permission():
-    from app.core.permissions.models import PermissionType, PermissionStatus
+    from app.core.permissions.models import PermissionStatus, PermissionType
+
     manager = PermissionManager(mode=ExecutionMode.SAFE)
     req = manager.request_permission(
         workflow_id="wf-1",
@@ -166,7 +167,8 @@ def test_request_permission():
 
 
 def test_safe_mode_requires_approval():
-    from app.core.permissions.models import PermissionType, PermissionStatus
+    from app.core.permissions.models import PermissionType
+
     manager = PermissionManager(mode=ExecutionMode.SAFE)
     req = manager.request_permission(
         workflow_id="wf-1",
@@ -184,7 +186,8 @@ def test_safe_mode_requires_approval():
 
 
 def test_assisted_mode_risky_permission():
-    from app.core.permissions.models import PermissionType, PermissionStatus
+    from app.core.permissions.models import PermissionType
+
     manager = PermissionManager(mode=ExecutionMode.ASSISTED)
     req = manager.request_permission(
         workflow_id="wf-1",
@@ -201,7 +204,8 @@ def test_assisted_mode_risky_permission():
 
 
 def test_assisted_mode_safe_permission():
-    from app.core.permissions.models import PermissionType, PermissionStatus
+    from app.core.permissions.models import PermissionStatus, PermissionType
+
     manager = PermissionManager(mode=ExecutionMode.ASSISTED)
     req = manager.request_permission(
         workflow_id="wf-1",
@@ -217,7 +221,8 @@ def test_assisted_mode_safe_permission():
 
 
 def test_autonomous_mode():
-    from app.core.permissions.models import PermissionType, PermissionStatus
+    from app.core.permissions.models import PermissionType
+
     manager = PermissionManager(mode=ExecutionMode.AUTONOMOUS)
     req = manager.request_permission(
         workflow_id="wf-1",
@@ -231,7 +236,8 @@ def test_autonomous_mode():
 
 
 def test_reject_permission():
-    from app.core.permissions.models import PermissionType, PermissionStatus
+    from app.core.permissions.models import PermissionStatus, PermissionType
+
     manager = PermissionManager(mode=ExecutionMode.SAFE)
     req = manager.request_permission(
         workflow_id="wf-1",
@@ -246,7 +252,8 @@ def test_reject_permission():
 
 
 def test_get_pending_requests():
-    from app.core.permissions.models import PermissionType, PermissionStatus
+    from app.core.permissions.models import PermissionType
+
     manager = PermissionManager(mode=ExecutionMode.SAFE)
     manager.request_permission("wf-1", "t-1", PermissionType.FILE_READ, "read")
     manager.request_permission("wf-2", "t-2", PermissionType.FILE_WRITE, "write")
