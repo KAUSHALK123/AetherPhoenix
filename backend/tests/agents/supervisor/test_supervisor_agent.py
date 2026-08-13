@@ -75,6 +75,15 @@ async def test_supervisor_passed_execution(
     assert base_task.status == TaskStatus.COMPLETED
     assert base_task.task_id in base_state.validations
 
+    # Check SWS progress updates
+    assert base_state.progress.total_tasks == 1
+    assert base_state.progress.completed_tasks == 1
+    assert base_state.progress.overall_percentage == 100.0
+
+    # Check Supervisor retrieval helper
+    retrieved_progress = supervisor.get_workflow_progress(base_state)
+    assert retrieved_progress.overall_percentage == 100.0
+
     # Check Events
     assert mock_event_bus.publish.call_count == 2
     started_event = mock_event_bus.publish.call_args_list[0][0][0]

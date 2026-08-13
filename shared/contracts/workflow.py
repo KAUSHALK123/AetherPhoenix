@@ -57,7 +57,9 @@ class ProgressState(BaseModel):
     running_tasks: int = Field(default=0, ge=0)
     failed_tasks: int = Field(default=0, ge=0)
     pending_tasks: int = Field(default=0, ge=0)
+    blocked_tasks: int = Field(default=0, ge=0)
     overall_percentage: float = Field(default=0.0, ge=0.0, le=100.0)
+    execution_duration_seconds: float = Field(default=0.0, ge=0.0)
     estimated_remaining_time_seconds: Optional[int] = None
 
 

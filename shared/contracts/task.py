@@ -24,6 +24,7 @@ class TaskStatus(str, Enum):
     HEALING = "HEALING"
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
+    BLOCKED = "BLOCKED"
 
 
 class TaskPriority(str, Enum):
