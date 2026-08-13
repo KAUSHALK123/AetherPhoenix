@@ -10,6 +10,7 @@ from shared.contracts.execution import (
 from shared.contracts.task import Task, TaskStatus
 from shared.contracts.workflow import SharedWorkflowState
 
+from app.agents.supervisor.failure_detector import FailureDetectorService
 from app.core.events.bus import EventBus
 from app.engine.monitor import WorkflowProgressMonitor
 from app.engine.validator import OutputValidationService
@@ -24,18 +25,26 @@ class SupervisorAgent(BaseAgent):
     updating workflow state, and determining final task outcomes.
     """
 
-    def __init__(self, event_bus: EventBus | None = None):
+    def __init__(
+        self,
+        event_bus: Optional[EventBus] = None,
+        failure_detector: Optional[FailureDetectorService] = None,
+    ) -> None:
         self.event_bus = event_bus
         self.monitor = WorkflowProgressMonitor()
         self.validator = OutputValidationService()
+        self.failure_detector = failure_detector or FailureDetectorService()
 
     @property
     def registration(self) -> AgentRegistration:
-        """Returns the registration metadata for this agent."""
+        """Returns registration metadata for the Supervisor Agent."""
         return AgentRegistration(
             name="SupervisorAgent",
             version="1.0.0",
-            description="Observes and validates Worker execution results.",
+            description=(
+                "Performs Quality Assurance, validating task execution "
+                "and detecting failures."
+            ),
         )
 
     async def initialize(self) -> None:
@@ -85,15 +94,43 @@ class SupervisorAgent(BaseAgent):
             str(task.task_id),
         )
 
-        # Perform output and artifact validation via OutputValidationService
+        # 1. Output and Artifact Validation
         is_valid, checks, issues = self.validator.validate(task, result)
+
+        # 2. Centralized Failure Detection Check
+        failure_report = self.failure_detector.check_failure(task, result, state)
+
+        # Merge FailureDetectorService checks
+        detector_checks = {
+            "worker_success": result.success,
+            "no_tool_error": not self.failure_detector._is_tool_error(result),
+            "expected_output_present": not self.failure_detector._is_output_missing(
+                task, result
+            ),
+            "artifacts_valid_fs": self.failure_detector._check_artifact_failures(
+                result.artifacts
+            )
+            is None,
+            "no_timeout": not self.failure_detector._is_timeout(task, result),
+            "dependencies_ok": self.failure_detector._check_dependency_failures(
+                task, state
+            )
+            is None,
+            "permissions_ok": not self.failure_detector._is_permission_denied(result),
+            "tool_available": not self.failure_detector._is_tool_unavailable(result),
+            "no_workflow_block": not self.failure_detector._is_workflow_blocked(state),
+        }
+        checks.update(detector_checks)
+
+        if failure_report:
+            is_valid = False
+            issues.append(failure_report.message)
 
         # Determine decision
         if is_valid:
             decision = SupervisorDecision.PASSED
         else:
             decision = SupervisorDecision.FAILED
-            # Here we could also determine NEEDS_REVIEW or BLOCKED for complex cases
 
         # Create validation report
         validation = SupervisorValidation(
