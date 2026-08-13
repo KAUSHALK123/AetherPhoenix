@@ -4,6 +4,8 @@ from typing import Optional
 from shared.contracts.task import TaskStatus
 from shared.contracts.workflow import ProgressState, SharedWorkflowState
 
+from app.engine.parallel_monitor import ParallelTaskMonitor
+
 
 class WorkflowProgressMonitor:
     """
@@ -11,11 +13,26 @@ class WorkflowProgressMonitor:
     by consuming the SharedWorkflowState.
     """
 
+    def __init__(self):
+        self.parallel_monitor = ParallelTaskMonitor()
+
     def calculate_progress(self, state: SharedWorkflowState) -> ProgressState:
         """
         Calculates and returns the ProgressState for the workflow.
         """
         tasks = state.tasks
+
+        # Downstream tasks status propagation based on dependencies
+        for task_id, task in list(tasks.items()):
+            if task.status not in (
+                TaskStatus.COMPLETED,
+                TaskStatus.FAILED,
+                TaskStatus.BLOCKED,
+            ):
+                status_check = self.parallel_monitor.check_prerequisites(task_id, state)
+                if status_check == "BLOCKED":
+                    task.status = TaskStatus.BLOCKED
+
         total_tasks = len(tasks)
 
         completed_tasks = 0

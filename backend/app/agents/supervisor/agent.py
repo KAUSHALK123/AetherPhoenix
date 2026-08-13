@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, Optional
 
 from shared.contracts.event import EventSource, EventType, RuntimeEvent
 from shared.contracts.execution import (
@@ -170,3 +170,22 @@ class SupervisorAgent(BaseAgent):
         Retrieves the current workflow progress calculation.
         """
         return self.monitor.calculate_progress(state)
+
+    def get_parallel_group_status(
+        self, task_id: Any, state: SharedWorkflowState
+    ) -> Optional[str]:
+        """
+        Returns the overall status of the parallel execution group containing task_id.
+        """
+        group = self.monitor.parallel_monitor.get_parallel_group(task_id, state)
+        if group:
+            return self.monitor.parallel_monitor.get_group_status(group, state)
+        return None
+
+    def is_task_ready(self, task_id: Any, state: SharedWorkflowState) -> bool:
+        """
+        Returns True if all prerequisite tasks are completed.
+        """
+        return (
+            self.monitor.parallel_monitor.check_prerequisites(task_id, state) == "READY"
+        )
