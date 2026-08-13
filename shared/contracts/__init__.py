@@ -7,6 +7,7 @@ from shared.contracts.execution import (
     ExecutionMetrics,
     ExecutionResult,
     HealingResult,
+    SupervisorDecision,
     SupervisorValidation,
     TaskError,
 )
@@ -83,6 +84,7 @@ __all__ = [
     "ExecutionMetrics",
     "TaskError",
     "ExecutionResult",
+    "SupervisorDecision",
     "SupervisorValidation",
     "HealingResult",
     # PDF
