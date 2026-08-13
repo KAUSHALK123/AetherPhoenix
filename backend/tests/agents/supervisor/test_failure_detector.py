@@ -401,6 +401,7 @@ async def test_supervisor_validation_and_state_sync(
 
     # Allow asyncio loop to process published events
     import asyncio
+
     from shared.contracts.event import EventType
 
     await asyncio.sleep(0.1)

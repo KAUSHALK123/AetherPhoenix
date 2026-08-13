@@ -183,8 +183,7 @@ class PipelineOrchestrator:
                                 or TaskError(
                                     error_code="VALIDATION_FAILED",
                                     error_message=(
-                                        "Supervisor output "
-                                        "validation failed."
+                                        "Supervisor output " "validation failed."
                                     ),
                                 ),
                                 max_retries=max_retries,

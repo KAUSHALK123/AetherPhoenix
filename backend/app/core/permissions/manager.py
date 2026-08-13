@@ -102,7 +102,7 @@ class PermissionManager:
         New: check_permission(self, action, permission_type)
         """
         from shared.contracts.permission import PermissionType as SharedPermissionType
-        
+
         is_legacy = False
         if len(args) >= 1:
             first_arg = args[0]
@@ -511,8 +511,7 @@ class PermissionManager:
 
             raise PermissionDeniedException(
                 message=(
-                    f"Permission '{perm_str}' denied "
-                    f"for workflow {workflow_id}."
+                    f"Permission '{perm_str}' denied " f"for workflow {workflow_id}."
                 ),
                 details={"permission_type": perm_str, "workflow_id": wf_id_str},
             )
