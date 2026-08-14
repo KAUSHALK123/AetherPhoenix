@@ -3,13 +3,18 @@ from uuid import uuid4
 
 import pytest
 from pydantic import ValidationError
-
-from shared.contracts.event import EventType as SharedEventType
-from shared.contracts.execution import FailureType, HealingResult, TaskError, TaskFailureReport
+from shared.contracts.execution import (
+    FailureType,
+    HealingResult,
+    TaskFailureReport,
+)
 from shared.contracts.feedback import PlannerFeedback
 from shared.contracts.planner import PlannerRequest
-from shared.contracts.task import Task, TaskCategory, TaskStatus
-from shared.contracts.workflow import SharedWorkflowState, WorkflowMetadata, WorkflowStatus
+from shared.contracts.task import Task, TaskCategory
+from shared.contracts.workflow import (
+    SharedWorkflowState,
+    WorkflowMetadata,
+)
 
 from app.agents.planner.agent import PlannerAgent
 from app.agents.planner.feedback import PlannerFeedbackLoop, sanitize_sensitive_data
@@ -34,13 +39,14 @@ def test_sensitive_data_filtering():
     assert "[REDACTED]" in sanitize_sensitive_data(text3)
 
     # Private key block filtering
-    text4 = "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQE...\n-----END RSA PRIVATE KEY-----"
+    text4 = "-----BEGIN RSA PRIVATE KEY-----\nMIIEow...\n-----END RSA PRIVATE KEY-----"
     assert "-----BEGIN RSA PRIVATE KEY-----" not in sanitize_sensitive_data(text4)
     assert "[REDACTED]" in sanitize_sensitive_data(text4)
 
 
 def test_empty_feedback_validation():
-    # If failure_summary, healing_summary and capability_failure are all None, it should raise ValidationError
+    # If failure_summary, healing_summary and capability_failure are all None,
+    # it should raise ValidationError
     with pytest.raises(ValidationError):
         PlannerFeedback(workflow_id=uuid4())
 
@@ -158,7 +164,9 @@ def test_failed_recovery_feedback_and_replanning_required():
     assert feedback.healing_summary is not None
     assert feedback.healing_summary.outcome == "UNRECOVERABLE"
     assert feedback.replanning_context is not None
-    assert "Healing failed to recover task" in feedback.replanning_context.trigger_reason
+    assert (
+        "Healing failed to recover task" in feedback.replanning_context.trigger_reason
+    )
     assert feedback.replanning_context.original_goal == "Create PDF from PPT"
 
 
@@ -260,7 +268,9 @@ def test_planner_integration_filtering():
 
     # Define a custom capability registry for testing
     from shared.contracts.capability import Capability
+
     from app.engine.registry import CapabilityRegistry
+
     cap_reg = CapabilityRegistry()
     cap_reg.register(
         Capability(
@@ -288,8 +298,11 @@ def test_planner_integration_filtering():
     res1 = agent.process_request(req1)
     assert res1.status == "ready"
     plan_data1 = json.loads(res1.reply)
-    # The capability registry defaults to first enabled cap (tool_a)
-    assert plan_data1["tasks"][1]["required_tool"] == "tool_a"
+    # Find task by name to avoid flakiness from topological sort ordering
+    task_eval1 = next(
+        t for t in plan_data1["tasks"] if t["task_name"] == "Evaluate Goal Context"
+    )
+    assert task_eval1["required_tool"] == "tool_a"
 
     # 2. Plan request with feedback indicating tool_a is permanently failed
     feedback = PlannerFeedback(
@@ -299,7 +312,7 @@ def test_planner_integration_filtering():
             "category": "OTHER",
             "is_permanent": True,
             "details": "Tool A failed permanently due to network restriction",
-        }
+        },
     )
     req2 = PlannerRequest(
         session_id="integration-session-2",
@@ -309,8 +322,10 @@ def test_planner_integration_filtering():
     res2 = agent.process_request(req2)
     assert res2.status == "ready"
     plan_data2 = json.loads(res2.reply)
-    # It should dynamically consider other capability (tool_b) since tool_a is unavailable
-    assert plan_data2["tasks"][1]["required_tool"] == "tool_b"
+    task_eval2 = next(
+        t for t in plan_data2["tasks"] if t["task_name"] == "Evaluate Goal Context"
+    )
+    assert task_eval2["required_tool"] == "tool_b"
 
 
 def test_circular_feedback_loop_prevention():
@@ -333,7 +348,7 @@ def test_circular_feedback_loop_prevention():
         replanning_context={
             "trigger_reason": "Healing failed to recover task",
             "original_goal": "Goal that causes timeout loops",
-        }
+        },
     )
 
     req = PlannerRequest(

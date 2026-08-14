@@ -1,7 +1,6 @@
 import logging
 import re
-from typing import Any, Dict, List, Optional
-from uuid import UUID
+from typing import Optional
 
 from shared.contracts.execution import FailureType, HealingResult, TaskFailureReport
 from shared.contracts.feedback import (
@@ -51,7 +50,8 @@ def sanitize_sensitive_data(text: str) -> str:
 class PlannerFeedbackLoop:
     """
     Coordinates gathering execution and healing summaries, validating and sanitizing
-    information, publishing events, and preparing structured feedback for the Planner Agent.
+    information, publishing events, and preparing structured feedback for the
+    Planner Agent.
     """
 
     def __init__(self, event_bus: Optional[EventBus] = None) -> None:
@@ -174,7 +174,8 @@ class PlannerFeedbackLoop:
         healing_result: Optional[HealingResult] = None,
     ) -> PlannerFeedback:
         """
-        Generates feedback, publishes events via the Event Bus, and returns the feedback.
+        Generates feedback, publishes events via the Event Bus, and
+        returns the feedback.
         """
         feedback = self.generate_feedback(state, failure_report, healing_result)
 

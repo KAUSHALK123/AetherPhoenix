@@ -65,7 +65,8 @@ class HealingAgent(BaseAgent):
 
         # Log invocation
         logger.info(
-            f"HealingAgent evaluating recovery for task {task.task_id} ('{task.task_name}')"
+            f"HealingAgent evaluating recovery for task {task.task_id} "
+            f"('{task.task_name}')"
         )
 
         error_msg = ""
@@ -78,7 +79,8 @@ class HealingAgent(BaseAgent):
         if self.force_success is not None:
             success = self.force_success
         else:
-            # Default heuristic: if error message indicates unrecoverable, we fail healing
+            # Default heuristic: if error message indicates unrecoverable,
+            # we fail healing
             if "unrecoverable" in error_msg or "permanent" in error_msg:
                 success = False
             else:

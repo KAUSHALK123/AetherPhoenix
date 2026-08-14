@@ -7,9 +7,9 @@ from shared.contracts.execution import ExecutionResult, TaskError
 from shared.contracts.task import TaskStatus
 from shared.contracts.workflow import SharedWorkflowState, WorkflowStatus
 
+from app.agents.healing.agent import HealingAgent
 from app.agents.supervisor.agent import SupervisorAgent
 from app.agents.worker.agent import WorkerAgent
-from app.agents.healing.agent import HealingAgent
 from app.core.events.bus import EventBus
 from app.core.logging import get_logger
 from app.engine.workflow import WorkflowEngine
@@ -186,7 +186,7 @@ class PipelineOrchestrator:
                                 or TaskError(
                                     error_code="VALIDATION_FAILED",
                                     error_message=(
-                                        "Supervisor output " "validation failed."
+                                        "Supervisor output validation failed."
                                     ),
                                 ),
                                 max_retries=max_retries,
@@ -209,19 +209,32 @@ class PipelineOrchestrator:
                                 )
                                 healing_res = None
                                 if self.healing:
-                                    logger.info(f"Invoking Healing Agent for task {t.task_id}")
-                                    healing_res = await self.healing.execute(t, result=res, state=state)
+                                    logger.info(
+                                        f"Invoking Healing Agent for task {t.task_id}"
+                                    )
+                                    healing_res = await self.healing.execute(
+                                        t, result=res, state=state
+                                    )
 
                                 # Generate Planner Feedback
-                                from app.agents.planner.feedback import PlannerFeedbackLoop
+                                from app.agents.planner.feedback import (
+                                    PlannerFeedbackLoop,
+                                )
+
                                 feedback_loop = PlannerFeedbackLoop(self.event_bus)
 
-                                failure_report = self.supervisor.failure_detector.check_failure(t, res, state)
+                                failure_report = (
+                                    self.supervisor.failure_detector.check_failure(
+                                        t, res, state
+                                    )
+                                )
 
-                                feedback = await feedback_loop.process_and_publish_feedback(
-                                    state=state,
-                                    failure_report=failure_report,
-                                    healing_result=healing_res,
+                                feedback = (
+                                    await feedback_loop.process_and_publish_feedback(
+                                        state=state,
+                                        failure_report=failure_report,
+                                        healing_result=healing_res,
+                                    )
                                 )
                                 state.feedback = feedback
 

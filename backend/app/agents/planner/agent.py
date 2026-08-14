@@ -1,5 +1,4 @@
 import logging
-from typing import List, Optional
 
 from shared.contracts.planner import (
     PlanMetadata,
@@ -139,7 +138,10 @@ class PlannerAgent:
                 return PlannerResponse(
                     session_id=session_id,
                     status="error",
-                    reply="Circular planning loop detected. Execution fails repeatedly without recovery.",
+                    reply=(
+                        "Circular planning loop detected. "
+                        "Execution fails repeatedly without recovery."
+                    ),
                     action="terminate",
                 )
             self.replanning_cycles[session_id] = cycles + 1
@@ -147,17 +149,25 @@ class PlannerAgent:
         # Extract unavailable tools from feedback
         unavailable_tools = []
         if request.feedback:
-            if request.feedback.capability_failure and request.feedback.capability_failure.is_permanent:
+            if (
+                request.feedback.capability_failure
+                and request.feedback.capability_failure.is_permanent
+            ):
                 unavailable_tools.append(request.feedback.capability_failure.tool_name)
             if request.feedback.failure_summary:
-                if request.feedback.healing_summary and request.feedback.healing_summary.outcome == "UNRECOVERABLE":
+                if (
+                    request.feedback.healing_summary
+                    and request.feedback.healing_summary.outcome == "UNRECOVERABLE"
+                ):
                     unavailable_tools.append(request.feedback.failure_summary.tool_used)
 
         # Restore session context if this is a clarification answer
         if request.session_id in self.active_sessions:
             original_goal = self.active_sessions[request.session_id]
             # Combine original goal with clarification answer
-            combined_message = f"{original_goal} (Clarification provided: {request.message})"  # noqa: E501
+            combined_message = (
+                f"{original_goal} (Clarification provided: {request.message})"  # noqa: E501
+            )
             request.message = combined_message
         else:
             combined_message = request.message

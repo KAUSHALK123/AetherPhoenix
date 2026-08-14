@@ -28,7 +28,8 @@ class CapabilityDiscoveryEngine:
         unsupported = []
 
         for task in tasks:
-            # Skip if tool is already assigned explicitly and not empty, unless it is unavailable
+            # Skip if tool is already assigned explicitly and not empty,
+            # unless it is unavailable
             if task.required_tool and task.required_tool.strip() != "":
                 if unavailable_tools and task.required_tool in unavailable_tools:
                     task.required_tool = ""
@@ -50,7 +51,9 @@ class CapabilityDiscoveryEngine:
                 enabled_caps = [
                     c
                     for c in enabled_caps
-                    if not any(t in unavailable_tools for t in (c.required_tools or [c.name]))
+                    if not any(
+                        t in unavailable_tools for t in (c.required_tools or [c.name])
+                    )
                 ]
 
             if not enabled_caps:
