@@ -9,6 +9,7 @@ from shared.contracts.workflow import SharedWorkflowState, WorkflowStatus
 
 from app.agents.supervisor.agent import SupervisorAgent
 from app.agents.worker.agent import WorkerAgent
+from app.agents.healing.agent import HealingAgent
 from app.core.events.bus import EventBus
 from app.core.logging import get_logger
 from app.engine.workflow import WorkflowEngine
@@ -28,10 +29,12 @@ class PipelineOrchestrator:
         worker_agent: WorkerAgent,
         supervisor_agent: SupervisorAgent,
         event_bus: EventBus,
+        healing_agent: Optional[HealingAgent] = None,
     ) -> None:
         self.worker = worker_agent
         self.supervisor = supervisor_agent
         self.event_bus = event_bus
+        self.healing = healing_agent
 
     async def _emit_orchestrator_event(
         self,
@@ -204,6 +207,23 @@ class PipelineOrchestrator:
                                     f"Task {t.task_id} failed validation "
                                     "and is not retryable."
                                 )
+                                healing_res = None
+                                if self.healing:
+                                    logger.info(f"Invoking Healing Agent for task {t.task_id}")
+                                    healing_res = await self.healing.execute(t, result=res, state=state)
+
+                                # Generate Planner Feedback
+                                from app.agents.planner.feedback import PlannerFeedbackLoop
+                                feedback_loop = PlannerFeedbackLoop(self.event_bus)
+
+                                failure_report = self.supervisor.failure_detector.check_failure(t, res, state)
+
+                                feedback = await feedback_loop.process_and_publish_feedback(
+                                    state=state,
+                                    failure_report=failure_report,
+                                    healing_result=healing_res,
+                                )
+                                state.feedback = feedback
 
                         return validation
 

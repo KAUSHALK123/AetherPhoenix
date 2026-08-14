@@ -7,6 +7,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from shared.contracts.task import Task, TaskType
+from shared.contracts.feedback import PlannerFeedback
 
 
 class IntentCategory(str, Enum):
@@ -128,6 +129,10 @@ class PlannerRequest(BaseModel):
     context: Optional[Dict[str, Any]] = Field(
         default_factory=dict,
         description="Optional context such as file paths or metadata.",
+    )
+    feedback: Optional[PlannerFeedback] = Field(
+        None,
+        description="Optional structured execution/healing feedback from the previous runs.",
     )
 
 

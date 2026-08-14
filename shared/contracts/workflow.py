@@ -11,6 +11,7 @@ from shared.contracts.execution import HealingResult, SupervisorValidation
 from shared.contracts.permission import PermissionRequest
 from shared.contracts.planner import PlannerOutput
 from shared.contracts.task import Task
+from shared.contracts.feedback import PlannerFeedback
 
 
 class WorkflowStatus(str, Enum):
@@ -84,3 +85,7 @@ class SharedWorkflowState(BaseModel):
     healing_history: List[HealingResult] = Field(default_factory=list)
     metrics: Dict[str, Any] = Field(default_factory=dict)
     events: List[RuntimeEvent] = Field(default_factory=list)
+    feedback: Optional[PlannerFeedback] = Field(
+        None,
+        description="Execution/healing structured feedback generated during workflow failures."
+    )

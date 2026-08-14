@@ -47,6 +47,9 @@ class EventType(str, Enum):
     TOOL_LOADED = "TOOL_LOADED"
     TOOL_FAILED = "TOOL_FAILED"
 
+    FEEDBACK_GENERATED = "FEEDBACK_GENERATED"
+    REPLANNING_TRIGGERED = "REPLANNING_TRIGGERED"
+
 
 class EventSource(str, Enum):
     """Component sources that emit or consume events."""

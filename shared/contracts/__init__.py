@@ -57,6 +57,13 @@ from shared.contracts.planner import (
     TaskDecompositionPlan,
     UserRequirement,
 )
+from shared.contracts.feedback import (
+    CapabilityFailureInfo,
+    FailureSummary,
+    HealingSummary,
+    PlannerFeedback,
+    ReplanningContext,
+)
 from shared.contracts.risk import (
     Conflict,
     RiskAnalysisResult,
@@ -137,6 +144,12 @@ __all__ = [
     "PlanVersion",
     "PlanMetadata",
     "PlannerOutput",
+    # Feedback
+    "PlannerFeedback",
+    "FailureSummary",
+    "HealingSummary",
+    "CapabilityFailureInfo",
+    "ReplanningContext",
     # Task
     "TaskStatus",
     "TaskPriority",
