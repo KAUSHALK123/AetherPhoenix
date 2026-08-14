@@ -52,9 +52,7 @@ class WorkerReexecutionManager:
             ),
             "attempt_number": previous_attempt_number,
             "status": (
-                task.status.value
-                if hasattr(task.status, "value")
-                else str(task.status)
+                task.status.value if hasattr(task.status, "value") else str(task.status)
             ),
             "required_tool": task.required_tool,
             "execution_logs": list(task.execution_logs),
