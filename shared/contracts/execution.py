@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -13,9 +13,9 @@ class ExecutionMetrics(BaseModel):
     """Runtime performance and resource metrics for a task execution."""
 
     execution_time_ms: float = Field(default=0.0, ge=0.0)
-    memory_usage_mb: Optional[float] = Field(default=None, ge=0.0)
-    cpu_usage_percent: Optional[float] = Field(default=None, ge=0.0)
-    exit_code: Optional[int] = None
+    memory_usage_mb: float | None = Field(default=None, ge=0.0)
+    cpu_usage_percent: float | None = Field(default=None, ge=0.0)
+    exit_code: int | None = None
 
 
 class TaskError(BaseModel):
@@ -23,7 +23,7 @@ class TaskError(BaseModel):
 
     error_code: str
     error_message: str
-    stack_trace: Optional[str] = None
+    stack_trace: str | None = None
     is_recoverable: bool = True
 
 
@@ -34,11 +34,11 @@ class ExecutionResult(BaseModel):
     task_id: UUID
     workflow_id: UUID
     success: bool
-    output: Dict[str, Any] = Field(default_factory=dict)
-    artifacts: List[Artifact] = Field(default_factory=list)
+    output: dict[str, Any] = Field(default_factory=dict)
+    artifacts: list[Artifact] = Field(default_factory=list)
     metrics: ExecutionMetrics = Field(default_factory=ExecutionMetrics)
-    logs: List[str] = Field(default_factory=list)
-    error: Optional[TaskError] = None
+    logs: list[str] = Field(default_factory=list)
+    error: TaskError | None = None
     finished_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -59,8 +59,8 @@ class SupervisorValidation(BaseModel):
     workflow_id: UUID
     is_valid: bool
     decision: SupervisorDecision = SupervisorDecision.NEEDS_REVIEW
-    checks: Dict[str, bool] = Field(default_factory=dict)
-    issues: List[str] = Field(default_factory=list)
+    checks: dict[str, bool] = Field(default_factory=dict)
+    issues: list[str] = Field(default_factory=list)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -112,12 +112,12 @@ class HealingResult(BaseModel):
     workflow_id: UUID
     root_cause: str
     recovery_strategy: str
-    replacement_tasks: List[Task] = Field(default_factory=list)
+    replacement_tasks: list[Task] = Field(default_factory=list)
     attempt_number: int = Field(default=1, ge=1)
     success: bool
-    healing_state: Optional[HealingState] = None
-    root_cause_category: Optional[RootCauseCategory] = None
-    escalation_reason: Optional[str] = None
+    healing_state: HealingState | None = None
+    root_cause_category: RootCauseCategory | None = None
+    escalation_reason: str | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -146,7 +146,7 @@ class TaskFailureReport(BaseModel):
     message: str
     detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     retryability: bool
-    execution_context: Dict[str, Any] = Field(default_factory=dict)
+    execution_context: dict[str, Any] = Field(default_factory=dict)
 
 
 class HealingRequest(BaseModel):
@@ -155,10 +155,10 @@ class HealingRequest(BaseModel):
     request_id: UUID = Field(default_factory=uuid4)
     workflow_id: UUID
     task_id: UUID
-    failure_report: Optional[TaskFailureReport] = None
-    execution_result: Optional[ExecutionResult] = None
-    validation: Optional[SupervisorValidation] = None
-    error_message: Optional[str] = None
+    failure_report: TaskFailureReport | None = None
+    execution_result: ExecutionResult | None = None
+    validation: SupervisorValidation | None = None
+    error_message: str | None = None
     attempt_number: int = Field(default=1, ge=1)
-    execution_context: Dict[str, Any] = Field(default_factory=dict)
+    execution_context: dict[str, Any] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

@@ -16,6 +16,7 @@ from shared.contracts.execution import (
 )
 from shared.contracts.task import Task, TaskStatus
 from shared.contracts.workflow import SharedWorkflowState
+
 from app.core.events.bus import EventBus
 from app.core.events.models import Event as ModelEvent
 from app.core.events.models import EventType as ModelEventType
@@ -56,7 +57,7 @@ class HealingAgent(BaseAgent):
         )
 
     async def initialize(self) -> None:
-        """Lifecycle hook: Called when the agent is registered with the runtime kernel."""
+        """Lifecycle hook: Called when agent is registered with kernel."""
         logger.info("HealingAgent initialized.")
         if self.event_bus:
             self.event_bus.subscribe(
@@ -228,8 +229,7 @@ class HealingAgent(BaseAgent):
         request: HealingRequest,
         attempt_number: int,
     ) -> tuple[RecoveryStrategyType, bool, Optional[str]]:
-        """
-        Formulates a recovery strategy based on root cause classification and attempt count.
+        """Formulates recovery strategy based on root cause and attempt count.
 
         Returns:
             tuple[RecoveryStrategyType, bool, Optional[str]]:
@@ -247,7 +247,10 @@ class HealingAgent(BaseAgent):
 
         if request.execution_result and request.execution_result.error:
             if not request.execution_result.error.is_recoverable:
-                reason = f"Error explicitly flagged non-recoverable: {request.execution_result.error.error_message}"
+                reason = (
+                    "Error explicitly flagged non-recoverable: "
+                    f"{request.execution_result.error.error_message}"
+                )
                 return RecoveryStrategyType.ESCALATE, False, reason
 
         if root_cause in (
@@ -255,7 +258,10 @@ class HealingAgent(BaseAgent):
             RootCauseCategory.USER_REJECTED,
             RootCauseCategory.WORKFLOW_ERROR,
         ):
-            reason = f"Root cause '{root_cause.value}' requires escalation or user intervention"
+            reason = (
+                f"Root cause '{root_cause.value}' requires escalation "
+                "or user intervention"
+            )
             return RecoveryStrategyType.ESCALATE, False, reason
 
         if root_cause in (
@@ -320,7 +326,8 @@ class HealingAgent(BaseAgent):
             raise
 
         logger.info(
-            f"HealingAgent beginning recovery analysis for workflow {norm_req.workflow_id}, task {norm_req.task_id}"
+            "HealingAgent beginning recovery analysis for workflow "
+            f"{norm_req.workflow_id}, task {norm_req.task_id}"
         )
 
         await self._emit_event(
@@ -436,8 +443,9 @@ class HealingAgent(BaseAgent):
 
         if is_success:
             logger.info(
-                f"HealingAgent successfully created recovery plan for task {norm_req.task_id}: "
-                f"strategy={strategy.value}, root_cause={root_cause.value}"
+                "HealingAgent successfully created recovery plan for task "
+                f"{norm_req.task_id}: strategy={strategy.value}, "
+                f"root_cause={root_cause.value}"
             )
             await self._emit_event(
                 EventType.HEALING_COMPLETED,

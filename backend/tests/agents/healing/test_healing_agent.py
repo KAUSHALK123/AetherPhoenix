@@ -1,10 +1,8 @@
 from uuid import uuid4
 
 import pytest
-
 from shared.contracts.event import EventType
 from shared.contracts.execution import (
-    ExecutionMetrics,
     ExecutionResult,
     FailureType,
     HealingRequest,
@@ -17,13 +15,14 @@ from shared.contracts.execution import (
     TaskError,
     TaskFailureReport,
 )
-from shared.contracts.task import Task, TaskCategory, TaskPriority, TaskStatus
+from shared.contracts.task import Task, TaskCategory, TaskStatus
 from shared.contracts.workflow import (
     ExecutionMode,
     SharedWorkflowState,
     WorkflowMetadata,
     WorkflowStatus,
 )
+
 from app.agents.healing.agent import HealingAgent
 from app.core.events.bus import EventBus
 from app.core.exceptions import ValidationException
