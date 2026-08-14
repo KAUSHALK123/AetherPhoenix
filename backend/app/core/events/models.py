@@ -39,6 +39,8 @@ class EventType(str, Enum):
     HEALING_STARTED = "HealingStarted"
     HEALING_COMPLETED = "HealingCompleted"
     HEALING_FAILED = "HealingFailed"
+    HEALING_ESCALATED = "HealingEscalated"
+    ESCALATION_REQUESTED = "EscalationRequested"
 
     # Artifact
     ARTIFACT_CREATED = "ArtifactCreated"
