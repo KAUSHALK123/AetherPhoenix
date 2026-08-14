@@ -92,12 +92,14 @@ class PlannerFeedbackLoop:
             healing_summary = HealingSummary(
                 recovery_id=healing_result.recovery_id,
                 attempts=healing_result.attempt_number,
-                strategies_attempted=[healing_result.recovery_strategy]
-                if healing_result.recovery_strategy
-                else [],
-                successful_strategy=healing_result.recovery_strategy
-                if healing_result.success
-                else None,
+                strategies_attempted=(
+                    [healing_result.recovery_strategy]
+                    if healing_result.recovery_strategy
+                    else []
+                ),
+                successful_strategy=(
+                    healing_result.recovery_strategy if healing_result.success else None
+                ),
                 outcome=outcome,
                 timestamp=healing_result.timestamp,
             )

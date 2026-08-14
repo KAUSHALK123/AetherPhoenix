@@ -65,11 +65,7 @@ class CodeBlockElement(BaseModel):
 
 
 PDFElement = (
-    HeadingElement
-    | ParagraphElement
-    | ListElement
-    | TableElement
-    | CodeBlockElement
+    HeadingElement | ParagraphElement | ListElement | TableElement | CodeBlockElement
 )
 
 

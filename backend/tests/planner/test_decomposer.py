@@ -123,9 +123,9 @@ def test_topological_sort_ordered_plan(decomposer):
     seen_ids = set()
     for task in ordered:
         for dep_id in task.dependencies:
-            assert dep_id in seen_ids, (
-                f"Dependency {dep_id} must precede task {task.task_id}"
-            )
+            assert (
+                dep_id in seen_ids
+            ), f"Dependency {dep_id} must precede task {task.task_id}"
         seen_ids.add(task.task_id)
 
 

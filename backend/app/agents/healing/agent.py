@@ -91,9 +91,11 @@ class HealingAgent(BaseAgent):
             task_id=task.task_id,
             workflow_id=task.workflow_id,
             root_cause=root_cause,
-            recovery_strategy="Retry with alternate parameters"
-            if success
-            else "No recovery strategy possible",
+            recovery_strategy=(
+                "Retry with alternate parameters"
+                if success
+                else "No recovery strategy possible"
+            ),
             replacement_tasks=[],
             attempt_number=task.retry_count + 1,
             success=success,
