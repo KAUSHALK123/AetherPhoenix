@@ -18,7 +18,6 @@ from app.core.events.models import Event as ModelEvent
 from app.core.events.models import EventType as ModelEventType
 from app.engine.monitor import WorkflowProgressMonitor
 from app.engine.validator import OutputValidationService
-from app.engine.workflow import WorkflowEngine
 from app.runtime.interfaces import AgentRegistration, BaseAgent
 
 logger = logging.getLogger(__name__)
@@ -56,12 +55,21 @@ class SupervisorAgent(BaseAgent):
         event_bus: Optional[EventBus] = None,
         failure_detector: Optional[FailureDetectorService] = None,
         max_retries: int = 3,
+        healing_loop: Optional[Any] = None,
     ) -> None:
         self.event_bus = event_bus
         self.max_retries = max_retries
         self.monitor = WorkflowProgressMonitor()
         self.validator = OutputValidationService()
         self.failure_detector = failure_detector or FailureDetectorService()
+        if healing_loop is not None:
+            self.healing_loop = healing_loop
+        else:
+            from app.agents.healing.self_healing_loop import SelfHealingLoop
+
+            self.healing_loop = SelfHealingLoop(
+                event_bus=event_bus, max_retries=max_retries
+            )
 
     @property
     def registration(self) -> AgentRegistration:
@@ -270,11 +278,11 @@ class SupervisorAgent(BaseAgent):
     ) -> bool:
         """
         Analyzes a failed task, determines retry eligibility,
-        and requests a retry if eligible.
+        and delegates recovery to the Self-Healing Loop.
         Updates the task and workflow state, and publishes the corresponding events.
 
         Returns:
-            bool: True if retry was successfully triggered, False otherwise.
+            bool: True if recovery/retry was successfully triggered, False otherwise.
         """
         logger.info(
             f"SupervisorAgent executing failure analysis for task {task.task_id}"
@@ -285,41 +293,37 @@ class SupervisorAgent(BaseAgent):
             logger.info(f"Task {task.task_id} is not eligible for retry.")
             return False
 
-        # Request retry through the Workflow Engine
-        engine = WorkflowEngine(state)
-
-        # Increment retry count metadata
-        task.retry_count += 1
-        logger.info(
-            f"Triggering retry attempt {task.retry_count} for task {task.task_id}."
+        # Delegate recovery execution to Self-Healing Loop
+        healing_result = await self.healing_loop.process_failure(
+            task=task,
+            failure_input=error
+            or TaskError(
+                error_code="VALIDATION_FAILED",
+                error_message="Supervisor output validation failed.",
+            ),
+            state=state,
         )
 
-        # Remove the task from the failed list in state (since it's being retried)
-        if task.task_id in state.failed_tasks:
-            state.failed_tasks.remove(task.task_id)
+        if healing_result.success:
+            # Publish a TaskRetried event
+            if self.event_bus:
+                retry_event = ModelEvent(
+                    workflow_id=str(task.workflow_id),
+                    task_id=str(task.task_id),
+                    event_type="TaskRetried",
+                    source_component="SupervisorAgent",
+                    payload={
+                        "retry_count": task.retry_count,
+                        "max_retries": (
+                            max_retries if max_retries is not None else self.max_retries
+                        ),
+                        "error_code": error.error_code if error else None,
+                    },
+                )
+                await self.event_bus.publish(retry_event)
+            return True
 
-        # Enqueue the task (this will set the task status to WAITING
-        # and add it to the execution queue)
-        engine.enqueue(task)
-
-        # Publish a TaskRetried event
-        if self.event_bus:
-            retry_event = ModelEvent(
-                workflow_id=str(task.workflow_id),
-                task_id=str(task.task_id),
-                event_type="TaskRetried",
-                source_component="SupervisorAgent",
-                payload={
-                    "retry_count": task.retry_count,
-                    "max_retries": (
-                        max_retries if max_retries is not None else self.max_retries
-                    ),
-                    "error_code": error.error_code if error else None,
-                },
-            )
-            await self.event_bus.publish(retry_event)
-
-        return True
+        return False
 
     def is_eligible_for_retry(
         self,

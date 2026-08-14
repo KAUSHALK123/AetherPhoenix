@@ -298,9 +298,9 @@ async def test_supervisor_execute_triggers_retry(supervisor, workflow_state, eve
     # Verify status is transitioned to WAITING
     assert task.status == TaskStatus.WAITING
     # Verify event published
-    assert len(published_events) == 1
-    assert published_events[0].event_type == "TaskRetried"
-    assert published_events[0].payload["retry_count"] == 1
+    retry_events = [e for e in published_events if getattr(e, "event_type", None) in ("TaskRetried", "TASK_RETRIED") or getattr(e, "event_type", None) == "TaskRetried"]
+    assert len(retry_events) == 1
+    assert retry_events[0].payload["retry_count"] == 1
 
 
 @pytest.mark.anyio
