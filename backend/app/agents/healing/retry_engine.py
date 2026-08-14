@@ -319,11 +319,7 @@ class RetryEngine:
         task.execution_logs.append(log_entry)
 
         # Record HealingResult in Shared Workflow State history
-        strategy = (
-            request.recovery_plan.strategy
-            if request.recovery_plan
-            else "RETRY"
-        )
+        strategy = request.recovery_plan.strategy if request.recovery_plan else "RETRY"
         root_cause = (
             request.recovery_plan.reason
             if request.recovery_plan and request.recovery_plan.reason

@@ -61,9 +61,9 @@ class EventObservabilityService:
             kernel = get_kernel()
             for ctx in kernel.active_contexts.values():
                 if str(ctx.shared_state.metadata.workflow_id) == str(event.workflow_id):
-                    self.historical_workflows[str(event.workflow_id)] = (
-                        self._serialize_state(ctx.shared_state)
-                    )
+                    self.historical_workflows[
+                        str(event.workflow_id)
+                    ] = self._serialize_state(ctx.shared_state)
                     break
 
     def _serialize_state(self, state: SharedWorkflowState) -> dict:
