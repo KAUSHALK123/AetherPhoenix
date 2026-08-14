@@ -64,9 +64,7 @@ def test_missing_output_directory(analyzer: RootCauseAnalyzer):
         failure_type=FailureType.TOOL_ERROR,
         message=msg,
         retryability=False,
-        execution_context={
-            "output_path": "C:/nonexistent_dir_12345/presentation.pptx"
-        },
+        execution_context={"output_path": "C:/nonexistent_dir_12345/presentation.pptx"},
     )
 
     result = analyzer.analyze(report=report, task=task)

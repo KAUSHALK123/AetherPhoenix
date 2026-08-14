@@ -175,16 +175,20 @@ class RootCauseAnalyzer:
         )
 
         # 5. Synthesize primary root cause and confidence score
-        likely_cause, category, confidence, explanation, alternatives = (
-            self._synthesize_diagnosis(
-                dep_cause=dep_cause,
-                fs_cause=fs_cause,
-                tool_cause=tool_cause,
-                pattern_cause=pattern_cause,
-                f_type=f_type,
-                combined_message=combined_message,
-                evidence=evidence,
-            )
+        (
+            likely_cause,
+            category,
+            confidence,
+            explanation,
+            alternatives,
+        ) = self._synthesize_diagnosis(
+            dep_cause=dep_cause,
+            fs_cause=fs_cause,
+            tool_cause=tool_cause,
+            pattern_cause=pattern_cause,
+            f_type=f_type,
+            combined_message=combined_message,
+            evidence=evidence,
         )
 
         is_confident = confidence >= self.confidence_threshold
@@ -304,8 +308,10 @@ class RootCauseAnalyzer:
                     extracted_paths.append(v)
 
         # Extract from task expected_output
-        has_path = task and task.expected_output and (
-            "\\" in task.expected_output or "/" in task.expected_output
+        has_path = (
+            task
+            and task.expected_output
+            and ("\\" in task.expected_output or "/" in task.expected_output)
         )
         if has_path:
             extracted_paths.append(task.expected_output)
