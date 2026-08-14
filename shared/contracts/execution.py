@@ -104,4 +104,3 @@ class TaskFailureReport(BaseModel):
     detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     retryability: bool
     execution_context: Dict[str, Any] = Field(default_factory=dict)
-

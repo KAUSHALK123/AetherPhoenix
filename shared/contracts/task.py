@@ -5,6 +5,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
 
+
 class TaskType(str, Enum):
     """Distinguishes between container/phase tasks and executable leaf tasks."""
 

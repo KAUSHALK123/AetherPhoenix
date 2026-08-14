@@ -78,19 +78,15 @@ class EscalationHandler:
 
         user action text.
         """
-        requires_intervention = (
-            reason
-            in (
-                EscalationReason.PERMISSION_DENIED,
-                EscalationReason.HIGH_RISK_OPERATION,
-                EscalationReason.MAX_HEALING_ATTEMPTS_EXCEEDED,
-                EscalationReason.MAX_RETRIES_EXCEEDED,
-                EscalationReason.USER_INTERVENTION_REQUIRED,
-                EscalationReason.UNKNOWN_CRITICAL_FAILURE,
-                EscalationReason.HARDWARE_FAILURE,
-            )
-            or severity in (EscalationSeverity.HIGH, EscalationSeverity.CRITICAL)
-        )
+        requires_intervention = reason in (
+            EscalationReason.PERMISSION_DENIED,
+            EscalationReason.HIGH_RISK_OPERATION,
+            EscalationReason.MAX_HEALING_ATTEMPTS_EXCEEDED,
+            EscalationReason.MAX_RETRIES_EXCEEDED,
+            EscalationReason.USER_INTERVENTION_REQUIRED,
+            EscalationReason.UNKNOWN_CRITICAL_FAILURE,
+            EscalationReason.HARDWARE_FAILURE,
+        ) or severity in (EscalationSeverity.HIGH, EscalationSeverity.CRITICAL)
 
         if not requires_intervention:
             return False, None

@@ -33,7 +33,10 @@ class EscalationSeverity(str, Enum):
 
 
 class EscalationRequest(BaseModel):
-    """Payload requested when handing off an unrecoverable failure to the Escalation Handler."""
+    """Payload requested when handing off an unrecoverable failure to the Escalation
+
+    Handler.
+    """
 
     request_id: UUID = Field(default_factory=uuid4)
     workflow_id: UUID
