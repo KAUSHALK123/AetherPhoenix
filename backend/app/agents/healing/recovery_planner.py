@@ -122,9 +122,7 @@ class RecoveryPlanner:
             replacement_tasks.append(reset_task)
 
         elif strategy == RecoveryStrategy.ALTERNATIVE_TOOL:
-            description = (
-                f"Attempting task '{task.task_name}' with alternative tool."
-            )
+            description = f"Attempting task '{task.task_name}' with alternative tool."
             alt_tool = self._get_alternative_tool(task.required_tool)
             if alt_tool:
                 alt_task = Task(

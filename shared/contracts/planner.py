@@ -160,11 +160,17 @@ class TaskDecompositionPlan(BaseModel):
     tasks: List[Task] = Field(default_factory=list, description="Decomposed tasks.")
     dependency_graph: Dict[str, List[str]] = Field(
         default_factory=dict,
-        description="Dependency mapping of task_id string -> list of prerequisite task_id strings.",
+        description=(
+            "Dependency mapping of task_id string -> list of prerequisite task_id"
+            " strings."
+        ),
     )
     task_hierarchy: Dict[str, List[str]] = Field(
         default_factory=dict,
-        description="Task hierarchy mapping parent_task_id string -> list of child_task_id strings.",
+        description=(
+            "Task hierarchy mapping parent_task_id string -> list of child_task_id"
+            " strings."
+        ),
     )
     execution_order: List[UUID] = Field(
         default_factory=list,
@@ -257,7 +263,7 @@ class PlannerOutput(BaseModel):
 
     @model_validator(mode="after")
     def validate_tasks_match_graph(self) -> "PlannerOutput":
-        """Ensures all tasks referenced in the dependency graph exist in the tasks list."""
+        """Ensures all tasks referenced in graph exist in tasks list."""
         task_ids = {task.task_id for task in self.tasks}
 
         for task_id, dependencies in self.dependency_graph.items():
@@ -268,7 +274,8 @@ class PlannerOutput(BaseModel):
             for dep in dependencies:
                 if dep not in task_ids:
                     raise ValueError(
-                        f"Dependency {dep} for task {task_id} is missing from tasks list"
+                        f"Dependency {dep} for task {task_id} is missing from"
+                        " tasks list"
                     )
 
         return self

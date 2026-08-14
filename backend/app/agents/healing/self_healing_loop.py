@@ -127,9 +127,7 @@ class SelfHealingLoop(BaseAgent):
             state = kwargs["state"]
 
         if not state:
-            raise ValueError(
-                "SharedWorkflowState is required for SelfHealingLoop."
-            )
+            raise ValueError("SharedWorkflowState is required for SelfHealingLoop.")
 
         return await self.process_failure(
             task, failure_input or "Unknown Failure", state
@@ -168,9 +166,7 @@ class SelfHealingLoop(BaseAgent):
             },
         )
 
-        parsed_error: ParsedError = self.error_parser.parse(
-            failure_input, task=task
-        )
+        parsed_error: ParsedError = self.error_parser.parse(failure_input, task=task)
         logger.info(
             f"Step 1/4 - Error Parser normalized failure: "
             f"code={parsed_error.normalized_code}, "
@@ -216,8 +212,7 @@ class SelfHealingLoop(BaseAgent):
 
         if not can_retry:
             logger.warning(
-                f"RetryEngine blocked recovery attempt for task {task_id}: "
-                f"{reason}"
+                f"RetryEngine blocked recovery attempt for task {task_id}: " f"{reason}"
             )
             self.current_state = (
                 HealingState.EXHAUSTED

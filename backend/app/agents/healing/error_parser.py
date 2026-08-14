@@ -98,9 +98,7 @@ class ErrorParser:
                 or error_input.get("error_message")
                 or str(error_input)
             )
-            error_code = (
-                error_input.get("error_code") or error_input.get("code") or ""
-            )
+            error_code = error_input.get("error_code") or error_input.get("code") or ""
             stack_trace = error_input.get("stack_trace")
 
         else:

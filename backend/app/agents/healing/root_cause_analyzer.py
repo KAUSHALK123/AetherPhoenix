@@ -77,9 +77,9 @@ class RootCauseAnalyzer:
             confidence_score = 0.95
 
         # 2. TOOL Root Cause
-        elif (
-            err_cat == ErrorCategory.TOOL
-            or code in ("TOOL_UNAVAILABLE", "TOOL_NOT_FOUND")
+        elif err_cat == ErrorCategory.TOOL or code in (
+            "TOOL_UNAVAILABLE",
+            "TOOL_NOT_FOUND",
         ):
             category = RootCauseCategory.TOOL
             summary = f"Required tool '{task.required_tool}' is unavailable."
@@ -92,9 +92,9 @@ class RootCauseAnalyzer:
             confidence_score = 0.95
 
         # 3. NETWORK Root Cause
-        elif (
-            err_cat == ErrorCategory.NETWORK
-            or code in ("NETWORK_TIMEOUT", "NETWORK_ERROR")
+        elif err_cat == ErrorCategory.NETWORK or code in (
+            "NETWORK_TIMEOUT",
+            "NETWORK_ERROR",
         ):
             category = RootCauseCategory.NETWORK
             summary = "Transient network timeout or connectivity interruption."
@@ -123,8 +123,7 @@ class RootCauseAnalyzer:
             category = RootCauseCategory.INFRASTRUCTURE
             summary = "Filesystem path access or file IO error."
             explanation = (
-                "Task experienced filesystem IO error: "
-                f"{parsed_error.raw_message}"
+                "Task experienced filesystem IO error: " f"{parsed_error.raw_message}"
             )
             is_recoverable = parsed_error.is_transient
             recommended_strategy = "RETRY" if is_recoverable else "ESCALATE_USER"

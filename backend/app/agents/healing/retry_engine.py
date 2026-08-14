@@ -45,9 +45,7 @@ class RetryEngine:
 
         # 1. Enforce per-task retry limit
         if task.retry_count >= limit_retries:
-            msg = (
-                f"Task {task.task_id} reached max retry limit of {limit_retries}."
-            )
+            msg = f"Task {task.task_id} reached max retry limit of {limit_retries}."
             logger.info(msg)
             return False, msg
 
@@ -116,9 +114,7 @@ class RetryEngine:
             RecoveryStrategy.CANCEL_WORKFLOW,
             RecoveryStrategy.REQUEST_PERMISSION_AGAIN,
         ):
-            logger.info(
-                f"Recovery plan for task {task.task_id} is non-executable."
-            )
+            logger.info(f"Recovery plan for task {task.task_id} is non-executable.")
             return HealingResult(
                 task_id=task.task_id,
                 workflow_id=task.workflow_id,
