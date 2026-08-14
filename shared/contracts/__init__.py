@@ -57,6 +57,12 @@ from shared.contracts.planner import (
     TaskDecompositionPlan,
     UserRequirement,
 )
+from shared.contracts.recovery_plan import (
+    ErrorParserOutput,
+    RecoveryAction,
+    RecoveryPlan,
+    RootCauseAnalysis,
+)
 from shared.contracts.risk import (
     Conflict,
     RiskAnalysisResult,
@@ -159,4 +165,9 @@ __all__ = [
     "RiskAssessment",
     "Conflict",
     "RiskAnalysisResult",
+    # Recovery Plan
+    "ErrorParserOutput",
+    "RootCauseAnalysis",
+    "RecoveryAction",
+    "RecoveryPlan",
 ]
