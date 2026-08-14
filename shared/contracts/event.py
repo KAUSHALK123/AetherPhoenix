@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -41,6 +41,10 @@ class EventType(str, Enum):
     HEALING_COMPLETED = "HEALING_COMPLETED"
     HEALING_FAILED = "HEALING_FAILED"
 
+    WORKER_REEXECUTION_STARTED = "WORKER_REEXECUTION_STARTED"
+    WORKER_REEXECUTION_COMPLETED = "WORKER_REEXECUTION_COMPLETED"
+    WORKER_REEXECUTION_FAILED = "WORKER_REEXECUTION_FAILED"
+
     ARTIFACT_CREATED = "ARTIFACT_CREATED"
     ARTIFACT_DELETED = "ARTIFACT_DELETED"
 
@@ -68,9 +72,9 @@ class RuntimeEvent(BaseModel):
 
     event_id: UUID = Field(default_factory=uuid4)
     workflow_id: UUID
-    task_id: Optional[UUID] = None
+    task_id: UUID | None = None
     event_type: EventType
     source_component: EventSource
-    target_component: Optional[EventSource] = None
-    payload: Dict[str, Any] = Field(default_factory=dict)
+    target_component: EventSource | None = None
+    payload: dict[str, Any] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

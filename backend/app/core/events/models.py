@@ -40,6 +40,11 @@ class EventType(str, Enum):
     HEALING_COMPLETED = "HealingCompleted"
     HEALING_FAILED = "HealingFailed"
 
+    # Worker Re-execution
+    WORKER_REEXECUTION_STARTED = "WorkerReexecutionStarted"
+    WORKER_REEXECUTION_COMPLETED = "WorkerReexecutionCompleted"
+    WORKER_REEXECUTION_FAILED = "WorkerReexecutionFailed"
+
     # Artifact
     ARTIFACT_CREATED = "ArtifactCreated"
     ARTIFACT_DELETED = "ArtifactDeleted"
