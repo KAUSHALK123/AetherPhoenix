@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -8,10 +8,10 @@ from pydantic import BaseModel, Field
 from shared.contracts.artifact import Artifact
 from shared.contracts.event import RuntimeEvent
 from shared.contracts.execution import HealingResult, SupervisorValidation
+from shared.contracts.feedback import PlannerFeedback
 from shared.contracts.permission import PermissionRequest
 from shared.contracts.planner import PlannerOutput
 from shared.contracts.task import Task
-from shared.contracts.feedback import PlannerFeedback
 
 
 class WorkflowStatus(str, Enum):
@@ -39,15 +39,15 @@ class WorkflowMetadata(BaseModel):
     """Top-level workflow identification and lifecycle metadata."""
 
     workflow_id: UUID = Field(default_factory=uuid4)
-    conversation_id: Optional[UUID] = None
-    user_id: Optional[str] = None
+    conversation_id: UUID | None = None
+    user_id: str | None = None
     goal: str
     execution_mode: ExecutionMode = ExecutionMode.ASSISTED
     status: WorkflowStatus = WorkflowStatus.CREATED
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    estimated_duration_seconds: Optional[int] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    estimated_duration_seconds: int | None = None
 
 
 class ProgressState(BaseModel):
@@ -61,7 +61,7 @@ class ProgressState(BaseModel):
     blocked_tasks: int = Field(default=0, ge=0)
     overall_percentage: float = Field(default=0.0, ge=0.0, le=100.0)
     execution_duration_seconds: float = Field(default=0.0, ge=0.0)
-    estimated_remaining_time_seconds: Optional[int] = None
+    estimated_remaining_time_seconds: int | None = None
 
 
 class SharedWorkflowState(BaseModel):
@@ -71,21 +71,21 @@ class SharedWorkflowState(BaseModel):
     """
 
     metadata: WorkflowMetadata
-    planner_output: Optional[PlannerOutput] = None
-    tasks: Dict[UUID, Task] = Field(default_factory=dict)
-    execution_queue: List[UUID] = Field(default_factory=list)
-    running_tasks: List[UUID] = Field(default_factory=list)
-    completed_tasks: List[UUID] = Field(default_factory=list)
-    failed_tasks: List[UUID] = Field(default_factory=list)
+    planner_output: PlannerOutput | None = None
+    tasks: dict[UUID, Task] = Field(default_factory=dict)
+    execution_queue: list[UUID] = Field(default_factory=list)
+    running_tasks: list[UUID] = Field(default_factory=list)
+    completed_tasks: list[UUID] = Field(default_factory=list)
+    failed_tasks: list[UUID] = Field(default_factory=list)
     progress: ProgressState = Field(default_factory=ProgressState)
-    permissions: List[PermissionRequest] = Field(default_factory=list)
-    validations: Dict[UUID, SupervisorValidation] = Field(default_factory=dict)
-    artifacts: List[Artifact] = Field(default_factory=list)
-    logs: List[Dict[str, Any]] = Field(default_factory=list)
-    healing_history: List[HealingResult] = Field(default_factory=list)
-    metrics: Dict[str, Any] = Field(default_factory=dict)
-    events: List[RuntimeEvent] = Field(default_factory=list)
-    feedback: Optional[PlannerFeedback] = Field(
+    permissions: list[PermissionRequest] = Field(default_factory=list)
+    validations: dict[UUID, SupervisorValidation] = Field(default_factory=dict)
+    artifacts: list[Artifact] = Field(default_factory=list)
+    logs: list[dict[str, Any]] = Field(default_factory=list)
+    healing_history: list[HealingResult] = Field(default_factory=list)
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    events: list[RuntimeEvent] = Field(default_factory=list)
+    feedback: PlannerFeedback | None = Field(
         None,
-        description="Execution/healing structured feedback generated during workflow failures."
+        description="Execution/healing structured feedback generated during workflow failures.",
     )

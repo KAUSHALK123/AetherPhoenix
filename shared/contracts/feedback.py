@@ -1,5 +1,4 @@
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, model_validator
@@ -23,8 +22,8 @@ class HealingSummary(BaseModel):
 
     recovery_id: UUID = Field(default_factory=uuid4)
     attempts: int = Field(default=0, ge=0)
-    strategies_attempted: List[str] = Field(default_factory=list)
-    successful_strategy: Optional[str] = None
+    strategies_attempted: list[str] = Field(default_factory=list)
+    successful_strategy: str | None = None
     outcome: str  # "SUCCESS", "FAILED", "UNRECOVERABLE"
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -43,9 +42,9 @@ class ReplanningContext(BaseModel):
 
     trigger_reason: str
     original_goal: str
-    suggested_alternative_tools: List[str] = Field(default_factory=list)
-    suggested_alternative_capabilities: List[str] = Field(default_factory=list)
-    blocked_tasks: List[UUID] = Field(default_factory=list)
+    suggested_alternative_tools: list[str] = Field(default_factory=list)
+    suggested_alternative_capabilities: list[str] = Field(default_factory=list)
+    blocked_tasks: list[UUID] = Field(default_factory=list)
 
 
 class PlannerFeedback(BaseModel):
@@ -56,10 +55,10 @@ class PlannerFeedback(BaseModel):
 
     feedback_id: UUID = Field(default_factory=uuid4)
     workflow_id: UUID
-    failure_summary: Optional[FailureSummary] = None
-    healing_summary: Optional[HealingSummary] = None
-    capability_failure: Optional[CapabilityFailureInfo] = None
-    replanning_context: Optional[ReplanningContext] = None
+    failure_summary: FailureSummary | None = None
+    healing_summary: HealingSummary | None = None
+    capability_failure: CapabilityFailureInfo | None = None
+    replanning_context: ReplanningContext | None = None
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @model_validator(mode="after")

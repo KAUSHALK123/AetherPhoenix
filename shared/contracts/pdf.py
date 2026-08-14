@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -38,7 +38,7 @@ class ListElement(BaseModel):
     """List element (bullet or numbered) for PDF documents."""
 
     element_type: PDFElementType = Field(default=PDFElementType.BULLET_LIST)
-    items: List[str] = Field(default_factory=list, description="List items text")
+    items: list[str] = Field(default_factory=list, description="List items text")
     is_numbered: bool = Field(
         default=False, description="True for numbered list, False for bullets"
     )
@@ -48,10 +48,10 @@ class TableElement(BaseModel):
     """Table element for PDF documents."""
 
     element_type: PDFElementType = Field(default=PDFElementType.TABLE)
-    headers: List[str] = Field(
+    headers: list[str] = Field(
         default_factory=list, description="Table column header titles"
     )
-    rows: List[List[str]] = Field(default_factory=list, description="Table data rows")
+    rows: list[list[str]] = Field(default_factory=list, description="Table data rows")
 
 
 class CodeBlockElement(BaseModel):
@@ -59,18 +59,18 @@ class CodeBlockElement(BaseModel):
 
     element_type: PDFElementType = Field(default=PDFElementType.CODE_BLOCK)
     code: str = Field(..., description="Source code text")
-    language: Optional[str] = Field(
+    language: str | None = Field(
         default=None, description="Optional programming language name"
     )
 
 
-PDFElement = Union[
-    HeadingElement,
-    ParagraphElement,
-    ListElement,
-    TableElement,
-    CodeBlockElement,
-]
+PDFElement = (
+    HeadingElement
+    | ParagraphElement
+    | ListElement
+    | TableElement
+    | CodeBlockElement
+)
 
 
 class PDFDocumentInput(BaseModel):
@@ -79,19 +79,15 @@ class PDFDocumentInput(BaseModel):
     """
 
     title: str = Field(..., description="Title of the PDF document")
-    subtitle: Optional[str] = Field(
-        default=None, description="Optional document subtitle"
-    )
-    author: Optional[str] = Field(default=None, description="Optional author name")
-    workflow_id: Optional[UUID] = Field(
-        default=None, description="Associated workflow ID"
-    )
-    task_id: Optional[UUID] = Field(default=None, description="Associated task ID")
-    elements: List[PDFElement] = Field(
+    subtitle: str | None = Field(default=None, description="Optional document subtitle")
+    author: str | None = Field(default=None, description="Optional author name")
+    workflow_id: UUID | None = Field(default=None, description="Associated workflow ID")
+    task_id: UUID | None = Field(default=None, description="Associated task ID")
+    elements: list[PDFElement] = Field(
         default_factory=list, description="Ordered structured content elements"
     )
     output_path: str = Field(..., description="Target file path for generated PDF")
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict, description="Additional document metadata"
     )
 
@@ -111,6 +107,6 @@ class PDFGenerationResult(BaseModel):
         description="Timestamp when PDF was generated",
     )
     status: str = Field(default="SUCCESS", description="Execution status")
-    metadata: Dict[str, Any] = Field(
+    metadata: dict[str, Any] = Field(
         default_factory=dict, description="Execution and document metadata"
     )

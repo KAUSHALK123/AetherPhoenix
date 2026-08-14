@@ -1,4 +1,3 @@
-from typing import List
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -20,6 +19,6 @@ class Capability(BaseModel):
     enabled: bool = Field(default=True)
     category: TaskCategory = Field(..., description="Broad classification category")
     risk_level: str = Field(default="LOW", description="LOW, MEDIUM, HIGH, CRITICAL")
-    required_permissions: List[str] = Field(default_factory=list)
-    required_tools: List[str] = Field(default_factory=list)
-    supported_platforms: List[str] = Field(default_factory=lambda: ["ALL"])
+    required_permissions: list[str] = Field(default_factory=list)
+    required_tools: list[str] = Field(default_factory=list)
+    supported_platforms: list[str] = Field(default_factory=lambda: ["ALL"])
