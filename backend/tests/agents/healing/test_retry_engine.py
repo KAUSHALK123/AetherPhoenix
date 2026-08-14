@@ -1,7 +1,6 @@
-from datetime import datetime, timezone
 from uuid import uuid4
-import pytest
 
+import pytest
 from shared.contracts.event import EventType
 from shared.contracts.execution import TaskError
 from shared.contracts.permission import (
@@ -10,7 +9,7 @@ from shared.contracts.permission import (
     PermissionType,
     RiskLevel,
 )
-from shared.contracts.retry import RecoveryPlan, RetryRequest, RetryStatus
+from shared.contracts.retry import RecoveryPlan, RetryStatus
 from shared.contracts.task import (
     RollbackInfo,
     Task,
@@ -35,7 +34,9 @@ def event_bus():
 
 @pytest.fixture
 def retry_engine(event_bus):
-    return RetryEngine(event_bus=event_bus, default_max_retries=3, base_backoff_seconds=1.0)
+    return RetryEngine(
+        event_bus=event_bus, default_max_retries=3, base_backoff_seconds=1.0
+    )
 
 
 @pytest.fixture
@@ -106,7 +107,9 @@ async def test_maximum_retry_reached(retry_engine, sample_state, sample_task):
 
 
 @pytest.mark.asyncio
-async def test_non_retryable_failure_error_code(retry_engine, sample_state, sample_task):
+async def test_non_retryable_failure_error_code(
+    retry_engine, sample_state, sample_task
+):
     error = TaskError(
         error_code="PERMISSION_DENIED",
         error_message="User denied permission to run script",
@@ -165,7 +168,9 @@ async def test_retryable_failure(retry_engine, sample_state, sample_task):
 
 
 @pytest.mark.asyncio
-async def test_permission_denied_due_to_rejected_request(retry_engine, sample_state, sample_task):
+async def test_permission_denied_due_to_rejected_request(
+    retry_engine, sample_state, sample_task
+):
     sample_state.permissions.append(
         PermissionRequest(
             workflow_id=sample_state.metadata.workflow_id,
@@ -216,7 +221,9 @@ async def test_invalid_workflow_state(retry_engine, sample_state, sample_task):
 
 
 @pytest.mark.asyncio
-async def test_multiple_retry_attempts_and_backoff(retry_engine, sample_state, sample_task):
+async def test_multiple_retry_attempts_and_backoff(
+    retry_engine, sample_state, sample_task
+):
     # Attempt 1
     res1 = await retry_engine.request_retry(
         task_id=sample_task.task_id,
@@ -264,7 +271,9 @@ async def test_multiple_retry_attempts_and_backoff(retry_engine, sample_state, s
 
 
 @pytest.mark.asyncio
-async def test_destructive_operation_safety_policy(retry_engine, sample_state, sample_task):
+async def test_destructive_operation_safety_policy(
+    retry_engine, sample_state, sample_task
+):
     sample_task.risk_level = "HIGH"
     sample_task.rollback_info = RollbackInfo(rollback_point="checkpoint_1")
 
@@ -318,7 +327,9 @@ async def test_recovery_plan_integration(retry_engine, sample_state, sample_task
         strategy="RESTART_TOOL",
         backoff_seconds=5.0,
         replacement_tasks=[repl_task],
-        updated_task_params={"description": "Scrape target website data with clean session"},
+        updated_task_params={
+            "description": "Scrape target website data with clean session"
+        },
         reason="Tool session frozen",
     )
 

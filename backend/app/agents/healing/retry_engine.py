@@ -1,5 +1,5 @@
-from datetime import datetime, timezone
 import logging
+from datetime import datetime, timezone
 from typing import Optional, Tuple
 from uuid import UUID
 
@@ -104,7 +104,11 @@ class RetryEngine:
             return False, RetryStatus.REJECTED_MAX_RETRIES, msg
 
         # 2. Check task state (must be FAILED or HEALING)
-        if task.status not in (TaskStatus.FAILED, TaskStatus.HEALING, TaskStatus.WAITING):
+        if task.status not in (
+            TaskStatus.FAILED,
+            TaskStatus.HEALING,
+            TaskStatus.WAITING,
+        ):
             msg = (
                 f"Task {task.task_id} is in status {task.status.value} "
                 f"and is not eligible for retry."
@@ -158,7 +162,11 @@ class RetryEngine:
                     and req.status == PermissionStatus.GRANTED
                 ]
                 if not granted_reqs:
-                    msg = f"Required permission '{perm_str}' is not granted for workflow."
+                    msg = (
+                        f"Required permission '{perm_str}' is not granted for workflow."
+                    )
+                    logger.info(msg)
+                    return False, RetryStatus.REJECTED_PERMISSION_DENIED, msg
                     logger.info(msg)
                     return False, RetryStatus.REJECTED_PERMISSION_DENIED, msg
             except ValueError:
@@ -303,7 +311,8 @@ class RetryEngine:
 
         # Append execution log entry
         log_entry = (
-            f"[{datetime.now(timezone.utc).isoformat()}] Retry attempt {task.retry_count} "
+            f"[{datetime.now(timezone.utc).isoformat()}] "
+            f"Retry attempt {task.retry_count} "
             f"triggered via Workflow Engine (Delay: {delay_sec:.2f}s, "
             f"Reason: {request.reason or 'Recovery attempt'})."
         )
@@ -337,8 +346,8 @@ class RetryEngine:
                 "level": "INFO",
                 "component": "RetryEngine",
                 "message": (
-                    f"Retry attempt {task.retry_count} enqueued for task {task.task_id} "
-                    f"with {delay_sec:.2f}s delay."
+                    f"Retry attempt {task.retry_count} enqueued for task "
+                    f"{task.task_id} with {delay_sec:.2f}s delay."
                 ),
             }
         )

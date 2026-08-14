@@ -299,7 +299,11 @@ async def test_supervisor_execute_triggers_retry(supervisor, workflow_state, eve
     assert task.status == TaskStatus.WAITING
     # Verify event published
     assert len(published_events) >= 1
-    assert published_events[0].event_type in ("TaskRetried", "TASK_RETRIED", EventType.TASK_RETRIED)
+    assert published_events[0].event_type in (
+        "TaskRetried",
+        "TASK_RETRIED",
+        EventType.TASK_RETRIED,
+    )
     assert published_events[0].payload["retry_count"] == 1
 
 

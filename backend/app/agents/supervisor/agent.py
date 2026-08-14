@@ -8,9 +8,8 @@ from shared.contracts.execution import (
     SupervisorValidation,
     TaskError,
 )
-from shared.contracts.permission import PermissionStatus, PermissionType
 from shared.contracts.task import Task, TaskStatus
-from shared.contracts.workflow import SharedWorkflowState, WorkflowStatus
+from shared.contracts.workflow import SharedWorkflowState
 
 from app.agents.healing.retry_engine import RetryEngine
 from app.agents.supervisor.failure_detector import FailureDetectorService
@@ -19,7 +18,6 @@ from app.core.events.models import Event as ModelEvent
 from app.core.events.models import EventType as ModelEventType
 from app.engine.monitor import WorkflowProgressMonitor
 from app.engine.validator import OutputValidationService
-from app.engine.workflow import WorkflowEngine
 from app.runtime.interfaces import AgentRegistration, BaseAgent
 
 logger = logging.getLogger(__name__)
