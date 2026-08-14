@@ -15,8 +15,10 @@ from shared.contracts.recovery_plan import (
 class HealingAgent:
     """
     Healing Agent Core.
-    Orchestrates ErrorParser, RootCauseAnalyzer, and RecoveryPlanner to handle task failures.
-    Crucially: The Healing Agent generates and validates structured recovery plans, but DOES NOT execute recovery actions directly.
+    Orchestrates ErrorParser, RootCauseAnalyzer, and RecoveryPlanner to handle
+    task failures.
+    Crucially: The Healing Agent generates and validates structured recovery
+    plans, but DOES NOT execute recovery actions directly.
     """
 
     def __init__(self):
@@ -52,7 +54,8 @@ class HealingAgent:
         task_context: Optional[Dict[str, Any]] = None,
     ) -> Tuple[HealingResult, RecoveryPlan]:
         """
-        Processes a failure report into a HealingResult and RecoveryPlan without executing recovery actions.
+        Processes a failure report into a HealingResult and RecoveryPlan without
+        executing recovery actions.
         """
         plan = self.plan_recovery(failure_report, task_context)
 

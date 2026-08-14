@@ -28,8 +28,10 @@ def _determine_highest_risk(risk_levels: List[RiskLevel]) -> RiskLevel:
 class RecoveryPlanner:
     """
     Recovery Planner module for Healing Agent.
-    Generates structured recovery strategies based on failure data and root cause diagnosis.
-    Note: The Recovery Planner ONLY plans and validates strategies. It DOES NOT execute them.
+    Generates structured recovery strategies based on failure data and root
+    cause diagnosis.
+    Note: The Recovery Planner ONLY plans and validates strategies.
+    It DOES NOT execute them.
     """
 
     def plan(
@@ -39,7 +41,8 @@ class RecoveryPlanner:
         task_context: Optional[Dict[str, Any]] = None,
     ) -> RecoveryPlan:
         """
-        Generates an ordered, validated RecoveryPlan based on parsed error and root cause analysis.
+        Generates an ordered, validated RecoveryPlan based on parsed error
+        and root cause analysis.
         """
         context = dict(parsed_error.parsed_details)
         if root_cause.context:
@@ -88,7 +91,9 @@ class RecoveryPlanner:
             actions = [
                 RecoveryAction(
                     action_type="VERIFY_DIRECTORY",
-                    description=f"Verify existence and access permissions for path: {target_path}",
+                    description=(
+                        f"Verify existence and access permissions: {target_path}"
+                    ),
                     target_tool="file_system",
                     required_capabilities=["file_system_read"],
                     required_permissions=[PermissionType.FILE_SYSTEM],
@@ -100,7 +105,9 @@ class RecoveryPlanner:
                 ),
                 RecoveryAction(
                     action_type="CREATE_DIRECTORY",
-                    description=f"Create missing directory structure at path: {target_path}",
+                    description=(
+                        f"Create missing directory structure at path: {target_path}"
+                    ),
                     target_tool="file_system",
                     required_capabilities=["file_system_write"],
                     required_permissions=[PermissionType.FILE_SYSTEM_WRITE],
@@ -129,7 +136,9 @@ class RecoveryPlanner:
                 ),
                 RecoveryAction(
                     action_type="VALIDATE_ARTIFACT",
-                    description="Validate generated output artifact structure and presence",
+                    description=(
+                        "Validate generated output artifact structure and presence"
+                    ),
                     target_tool=target_tool,
                     required_capabilities=["artifact_validation"],
                     required_permissions=[],
@@ -175,7 +184,9 @@ class RecoveryPlanner:
             actions = [
                 RecoveryAction(
                     action_type="REQUEST_PERMISSION",
-                    description=f"Submit request for permission: {requested_perm.value}",
+                    description=(
+                        f"Submit request for permission: {requested_perm.value}"
+                    ),
                     target_tool="permission_manager",
                     required_capabilities=["permission_request"],
                     required_permissions=[requested_perm],
@@ -185,7 +196,9 @@ class RecoveryPlanner:
                     failure_criteria=["Permission request rejected"],
                     action_parameters={
                         "permission_type": requested_perm.value,
-                        "reason": "Recovery planner requested permission for failed task",
+                        "reason": (
+                            "Recovery planner requested permission for failed task"
+                        ),
                     },
                 ),
                 RecoveryAction(
@@ -211,7 +224,9 @@ class RecoveryPlanner:
             actions = [
                 RecoveryAction(
                     action_type="ADJUST_TIMEOUT_PARAMS",
-                    description="Increase task timeout threshold and clear transient resources",
+                    description=(
+                        "Increase task timeout threshold and clear transient resources"
+                    ),
                     target_tool=target_tool,
                     required_capabilities=["configuration"],
                     required_permissions=[],
@@ -223,7 +238,9 @@ class RecoveryPlanner:
                 ),
                 RecoveryAction(
                     action_type="RETRY_TASK",
-                    description=f"Re-run task with extended timeout using tool {target_tool}",
+                    description=(
+                        f"Re-run task with extended timeout using tool {target_tool}"
+                    ),
                     target_tool=target_tool,
                     required_capabilities=["task_execution"],
                     required_permissions=[],
@@ -242,7 +259,9 @@ class RecoveryPlanner:
             actions = [
                 RecoveryAction(
                     action_type="CLEAN_INVALID_ARTIFACT",
-                    description=f"Clean up corrupted or invalid artifact file at: {artifact_path}",
+                    description=(
+                        f"Clean up corrupted/invalid artifact file at: {artifact_path}"
+                    ),
                     target_tool="file_system",
                     required_capabilities=["file_system_write"],
                     required_permissions=[PermissionType.FILE_SYSTEM_WRITE],
@@ -266,7 +285,9 @@ class RecoveryPlanner:
                 ),
                 RecoveryAction(
                     action_type="VALIDATE_ARTIFACT",
-                    description="Validate structural integrity of newly generated artifact",
+                    description=(
+                        "Validate structural integrity of newly generated artifact"
+                    ),
                     target_tool="validator",
                     required_capabilities=["artifact_validation"],
                     required_permissions=[],
@@ -285,7 +306,9 @@ class RecoveryPlanner:
             actions = [
                 RecoveryAction(
                     action_type="RECOVER_DEPENDENCY",
-                    description=f"Attempt recovery of prerequisite dependency task: {dep_task_id}",
+                    description=(
+                        f"Attempt recovery of prerequisite task: {dep_task_id}"
+                    ),
                     target_tool="orchestrator",
                     required_capabilities=["task_orchestration"],
                     required_permissions=[],
@@ -316,7 +339,9 @@ class RecoveryPlanner:
             actions = [
                 RecoveryAction(
                     action_type="VERIFY_TOOL_HEALTH",
-                    description=f"Check tool availability and state for tool: {target_tool}",
+                    description=(
+                        f"Check tool availability and state for tool: {target_tool}"
+                    ),
                     target_tool="tool_registry",
                     required_capabilities=["tool_status_check"],
                     required_permissions=[],
@@ -328,7 +353,9 @@ class RecoveryPlanner:
                 ),
                 RecoveryAction(
                     action_type="RETRY_TASK",
-                    description=f"Re-run task using tool: {target_tool} with backoff delay",
+                    description=(
+                        f"Re-run task using tool: {target_tool} with backoff delay"
+                    ),
                     target_tool=target_tool,
                     required_capabilities=["task_execution"],
                     required_permissions=[],

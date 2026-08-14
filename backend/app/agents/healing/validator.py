@@ -56,7 +56,8 @@ def validate_recovery_plan(plan: RecoveryPlan) -> Tuple[bool, List[str]]:
                     for pattern in UNRESTRICTED_COMMAND_PATTERNS:
                         if re.search(pattern, param_val, re.IGNORECASE):
                             errors.append(
-                                f"{action_ref} parameter '{param_key}' contains unrestricted/dangerous command pattern: '{param_val}'."
+                                f"{action_ref} parameter '{param_key}' contains "
+                                f"dangerous command pattern: '{param_val}'."
                             )
 
             # Validate risk level type

@@ -236,7 +236,9 @@ def test_high_risk_recovery(base_ids):
 
 
 def test_invalid_recovery_plan_validation(base_ids):
-    """Verify plan validator rejects invalid recovery plans (missing criteria or dangerous commands)."""
+    """
+    Verify plan validator rejects invalid recovery plans.
+    """
     # Test plan with invalid retries
     invalid_plan = RecoveryPlan(
         failure_id=base_ids["failure_id"],
@@ -284,11 +286,13 @@ def test_invalid_recovery_plan_validation(base_ids):
     is_valid, errors = validate_recovery_plan(dangerous_plan)
     assert is_valid is False
     assert dangerous_plan.validation_status == "INVALID"
-    assert any("unrestricted/dangerous command pattern" in err for err in errors)
+    assert any("dangerous command pattern" in err for err in errors)
 
 
 def test_healing_integration_non_executing(base_ids):
-    """Verify Healing Core consumes root cause output and produces validated plan without executing actions."""
+    """
+    Verify Healing Core consumes root cause output and produces validated plan.
+    """
     failure_report = TaskFailureReport(
         failure_id=base_ids["failure_id"],
         task_id=base_ids["task_id"],

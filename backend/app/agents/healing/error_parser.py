@@ -36,7 +36,8 @@ class ErrorParser:
 
         # Extract path if missing directory/file
         missing_dir_match = re.search(
-            r"(?:directory|path|folder)\s+['\"]?([^'\"\s]+)['\"]?\s+(?:does not exist|missing|not found)",
+            r"(?:directory|path|folder)\s+['\"]?([^'\"\s]+)['\"]?\s+"
+            r"(?:does not exist|missing|not found)",
             message,
             re.IGNORECASE,
         ) or re.search(
