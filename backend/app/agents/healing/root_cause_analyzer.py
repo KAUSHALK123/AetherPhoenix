@@ -292,22 +292,18 @@ class RootCauseAnalyzer:
 
         # Extract file paths from task parameters or error message
         extracted_paths: List[str] = []
-
-        # Extract paths from message (e.g. quotes or standard path strings)
         path_regex = (
             r"(?:[a-zA-Z]:[\\/][^\s\"'<>]|/[^\s\"'<>]+|\b[\w\.-]+[\\/][\w\.-]+)"
         )
         path_matches = re.findall(path_regex, message)
         extracted_paths.extend(path_matches)
 
-        # Extract from task input dict
         task_input = getattr(task, "task_input", {}) if task else {}
         if isinstance(task_input, dict):
             for v in task_input.values():
                 if isinstance(v, str) and ("\\" in v or "/" in v or "." in v):
                     extracted_paths.append(v)
 
-        # Extract from task expected_output
         has_path = (
             task
             and task.expected_output
@@ -320,7 +316,6 @@ class RootCauseAnalyzer:
 
         for raw_path in extracted_paths:
             path_obj = Path(raw_path)
-            # Try inspecting parent directory for file targets
             parent_dir = path_obj.parent if path_obj.suffix else path_obj
             if parent_dir and str(parent_dir) not in (".", ""):
                 if not parent_dir.exists():
@@ -404,7 +399,6 @@ class RootCauseAnalyzer:
         """Scans combined message and execution logs for error signatures."""
         log_block = message + "\n" + "\n".join(logs)
 
-        # Check Permission
         if f_type == FailureType.PERMISSION_DENIED or any(
             p.search(log_block) for p in self.PERMISSION_PATTERNS
         ):
@@ -416,7 +410,6 @@ class RootCauseAnalyzer:
                 "Missing authorization or user permission denial.",
             )
 
-        # Check Timeout
         if f_type == FailureType.TIMEOUT or any(
             p.search(log_block) for p in self.TIMEOUT_PATTERNS
         ):
@@ -428,7 +421,6 @@ class RootCauseAnalyzer:
                 "Task execution duration exceeded configured timeout limit.",
             )
 
-        # Check Network
         if any(p.search(log_block) for p in self.NETWORK_ERROR_PATTERNS):
             evidence.matched_patterns.append("NETWORK_UNAVAILABLE")
             return (
@@ -450,9 +442,7 @@ class RootCauseAnalyzer:
         combined_message: str,
         evidence: DiagnosticEvidence,
     ) -> Tuple[str, RootCauseCategory, float, str, List[AlternativeCause]]:
-        """
-        Ranks candidate root causes and computes final confidence score.
-        """
+        """Ranks candidate root causes and computes final confidence score."""
         candidates: List[Tuple[str, RootCauseCategory, float, str]] = []
 
         if dep_cause:
@@ -464,7 +454,6 @@ class RootCauseAnalyzer:
         if pattern_cause:
             candidates.append(pattern_cause)
 
-        # Sort candidates by confidence descending
         candidates.sort(key=lambda x: x[2], reverse=True)
 
         if candidates:
@@ -480,7 +469,6 @@ class RootCauseAnalyzer:
             ]
             return primary[0], primary[1], primary[2], primary[3], alternatives
 
-        # If no specific candidate matched, handle low-confidence / unknown case safely
         alternatives = [
             AlternativeCause(
                 cause_code="NETWORK_FAILURE",
@@ -503,8 +491,8 @@ class RootCauseAnalyzer:
         ]
 
         evidence.context_signals["insufficient_evidence"] = True
-
         err_detail = combined_message or f_type.value
+
         return (
             "UNKNOWN_ROOT_CAUSE",
             RootCauseCategory.UNKNOWN,
@@ -515,3 +503,6 @@ class RootCauseAnalyzer:
             ),
             alternatives,
         )
+
+
+__all__ = ["RootCauseAnalyzer"]
