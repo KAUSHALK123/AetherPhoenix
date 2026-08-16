@@ -2,26 +2,22 @@
 AetherPhoenix — Healing Core Agent
 ===================================
 Main Healing Agent implementation responsible for analyzing workflow & task
-execution failures, consuming normalized error representations from ErrorParser,
-determining root causes, formulating recovery strategies, and emitting healing
-lifecycle events.
+execution failures, determining root causes, formulating recovery strategies,
+and emitting healing lifecycle events.
 """
 
 from __future__ import annotations
 
 import logging
+from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from shared.contracts.event import EventSource, EventType, RuntimeEvent
+from pydantic import BaseModel, Field
 from shared.contracts.execution import (
     ExecutionResult,
     FailureType,
-    HealingRequest,
     HealingResult,
-    HealingState,
-    RecoveryStrategyType,
-    RootCauseCategory,
     SupervisorValidation,
     TaskFailureReport,
 )
@@ -31,11 +27,63 @@ from shared.contracts.workflow import SharedWorkflowState
 from app.agents.healing.error_parser import ErrorParser
 from app.core.events.bus import EventBus
 from app.core.events.models import Event as ModelEvent
-from app.core.events.models import EventType as ModelEventType
+from app.core.events.models import EventType
 from app.core.exceptions import ValidationException
 from app.runtime.interfaces import AgentRegistration, BaseAgent
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Local enums & models (not yet promoted to shared contracts)
+# ---------------------------------------------------------------------------
+
+
+class HealingState(str, Enum):
+    IDLE = "IDLE"
+    ANALYZING = "ANALYZING"
+    PLANNING = "PLANNING"
+    GENERATING_TASKS = "GENERATING_TASKS"
+    COMPLETED = "COMPLETED"
+    ESCALATED = "ESCALATED"
+    FAILED = "FAILED"
+
+
+class RootCauseCategory(str, Enum):
+    PERMISSION_DENIED = "PERMISSION_DENIED"
+    USER_REJECTED = "USER_REJECTED"
+    TIMEOUT = "TIMEOUT"
+    NETWORK_ERROR = "NETWORK_ERROR"
+    TOOL_FAILURE = "TOOL_FAILURE"
+    EXTERNAL_API = "EXTERNAL_API"
+    WORKFLOW_ERROR = "WORKFLOW_ERROR"
+    RUNTIME_ERROR = "RUNTIME_ERROR"
+
+
+class RecoveryStrategyType(str, Enum):
+    RETRY = "RETRY"
+    RESTART_TOOL = "RESTART_TOOL"
+    ALTERNATIVE_TOOL = "ALTERNATIVE_TOOL"
+    WAIT = "WAIT"
+    ESCALATE = "ESCALATE"
+
+
+class HealingRequest(BaseModel):
+    """Payload for requesting recovery analysis from Healing Agent."""
+
+    task_id: UUID
+    workflow_id: UUID
+    error_message: Optional[str] = None
+    attempt_number: int = Field(default=1, ge=1)
+    execution_context: Dict[str, Any] = Field(default_factory=dict)
+    failure_report: Optional[TaskFailureReport] = None
+    execution_result: Optional[ExecutionResult] = None
+    validation: Optional[SupervisorValidation] = None
+
+
+# ---------------------------------------------------------------------------
+# Healing Agent
+# ---------------------------------------------------------------------------
 
 
 class HealingAgent(BaseAgent):
@@ -78,17 +126,13 @@ class HealingAgent(BaseAgent):
         """Lifecycle hook: Called when agent is registered with kernel."""
         logger.info("HealingAgent initialized.")
         if self.event_bus:
-            self.event_bus.subscribe(
-                ModelEventType.TASK_FAILED, self.handle_failure_event
-            )
+            self.event_bus.subscribe(EventType.TASK_FAILED, self.handle_failure_event)
 
     async def shutdown(self) -> None:
         """Lifecycle hook: Called when the runtime kernel shuts down."""
         logger.info("HealingAgent shut down.")
         if self.event_bus:
-            self.event_bus.unsubscribe(
-                ModelEventType.TASK_FAILED, self.handle_failure_event
-            )
+            self.event_bus.unsubscribe(EventType.TASK_FAILED, self.handle_failure_event)
 
     async def handle_failure_event(self, event: ModelEvent) -> None:
         """Async event listener for failure events on EventBus."""
@@ -103,14 +147,14 @@ class HealingAgent(BaseAgent):
     ) -> None:
         """Publishes a healing lifecycle event on the EventBus."""
         if self.event_bus:
-            runtime_event = RuntimeEvent(
-                workflow_id=workflow_id,
-                task_id=task_id,
+            event = ModelEvent(
                 event_type=event_type,
-                source_component=EventSource.HEALING,
+                source_component="HealingAgent",
+                workflow_id=str(workflow_id),
+                task_id=str(task_id) if task_id else None,
                 payload=payload,
             )
-            await self.event_bus.publish(runtime_event)
+            await self.event_bus.publish(event)
 
     def _normalize_request(self, request: Any) -> HealingRequest:
         """Standardizes input payloads into a uniform HealingRequest."""
@@ -183,7 +227,7 @@ class HealingAgent(BaseAgent):
     def _analyze_root_cause(
         self,
         request: HealingRequest,
-        task: Optional[Task] = None,
+        task: Optional[Task] = None,  # noqa: ARG002
     ) -> RootCauseCategory:
         """Determines the root cause category of an execution failure."""
         err_msg = (request.error_message or "").lower()
@@ -197,12 +241,9 @@ class HealingAgent(BaseAgent):
                 return RootCauseCategory.PERMISSION_DENIED
             if ft == FailureType.TIMEOUT:
                 return RootCauseCategory.TIMEOUT
-            if ft == FailureType.TOOL_UNAVAILABLE or ft == FailureType.TOOL_ERROR:
+            if ft in (FailureType.TOOL_UNAVAILABLE, FailureType.TOOL_ERROR):
                 return RootCauseCategory.TOOL_FAILURE
-            if (
-                ft == FailureType.WORKFLOW_BLOCKED
-                or ft == FailureType.DEPENDENCY_FAILED
-            ):
+            if ft in (FailureType.WORKFLOW_BLOCKED, FailureType.DEPENDENCY_FAILED):
                 return RootCauseCategory.WORKFLOW_ERROR
 
         if (
@@ -211,13 +252,10 @@ class HealingAgent(BaseAgent):
             or "permission" in err_code
         ):
             return RootCauseCategory.PERMISSION_DENIED
-
         if "user rejected" in err_msg or "user denied" in err_msg:
             return RootCauseCategory.USER_REJECTED
-
         if "timeout" in err_msg or "timed out" in err_msg or "timeout" in err_code:
             return RootCauseCategory.TIMEOUT
-
         if (
             "network" in err_msg
             or "connection" in err_msg
@@ -225,10 +263,8 @@ class HealingAgent(BaseAgent):
             or "network" in err_code
         ):
             return RootCauseCategory.NETWORK_ERROR
-
         if "tool" in err_msg or "command not found" in err_msg or "tool" in err_code:
             return RootCauseCategory.TOOL_FAILURE
-
         if (
             "api" in err_msg
             or "rate limit" in err_msg
@@ -236,7 +272,6 @@ class HealingAgent(BaseAgent):
             or "api" in err_code
         ):
             return RootCauseCategory.EXTERNAL_API
-
         if "workflow" in err_msg or "dependency" in err_msg or "workflow" in err_code:
             return RootCauseCategory.WORKFLOW_ERROR
 
@@ -251,8 +286,7 @@ class HealingAgent(BaseAgent):
         """Formulates recovery strategy based on root cause and attempt count.
 
         Returns:
-            tuple[RecoveryStrategyType, bool, Optional[str]]:
-                (strategy_type, is_success, escalation_reason)
+            tuple: (strategy_type, is_recoverable, escalation_reason)
         """
         if attempt_number > self.max_healing_attempts:
             reason = f"Exceeded maximum healing attempts ({self.max_healing_attempts})"
@@ -379,9 +413,6 @@ class HealingAgent(BaseAgent):
                     recovery_strategy=RecoveryStrategyType.ESCALATE.value,
                     attempt_number=attempt_number,
                     success=False,
-                    healing_state=HealingState.ESCALATED,
-                    root_cause_category=RootCauseCategory.WORKFLOW_ERROR,
-                    escalation_reason=escalation_reason,
                 )
                 state.healing_history.append(result)
                 await self._emit_event(
@@ -404,9 +435,6 @@ class HealingAgent(BaseAgent):
                     recovery_strategy=RecoveryStrategyType.ESCALATE.value,
                     attempt_number=attempt_number,
                     success=False,
-                    healing_state=HealingState.ESCALATED,
-                    root_cause_category=RootCauseCategory.WORKFLOW_ERROR,
-                    escalation_reason=escalation_reason,
                 )
                 state.healing_history.append(result)
                 await self._emit_event(
@@ -433,8 +461,9 @@ class HealingAgent(BaseAgent):
             strategy, target_task, attempt_number
         )
 
-        final_state = HealingState.COMPLETED if is_success else HealingState.ESCALATED
-        self.current_state = final_state
+        self.current_state = (
+            HealingState.COMPLETED if is_success else HealingState.ESCALATED
+        )
 
         result = HealingResult(
             task_id=norm_req.task_id,
@@ -444,9 +473,6 @@ class HealingAgent(BaseAgent):
             replacement_tasks=replacement_tasks,
             attempt_number=attempt_number,
             success=is_success,
-            healing_state=final_state,
-            root_cause_category=root_cause,
-            escalation_reason=escalation_reason,
         )
 
         # 5. Update State & Emit Completion/Failure Event
@@ -500,4 +526,7 @@ class HealingAgent(BaseAgent):
 __all__ = [
     "HealingAgent",
     "HealingRequest",
+    "HealingState",
+    "RootCauseCategory",
+    "RecoveryStrategyType",
 ]

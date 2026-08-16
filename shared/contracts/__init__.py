@@ -19,7 +19,6 @@ from shared.contracts.execution import (
     HealingResult,
     HealingState,
     RecoveryStrategyType,
-    RootCauseCategory,
     SupervisorDecision,
     SupervisorValidation,
     TaskError,
@@ -29,6 +28,12 @@ from shared.contracts.execution_log import (
     ExecutionPhase,
     ExecutionStatus,
     WorkerExecutionLog,
+)
+from shared.contracts.healing import (
+    AlternativeCause,
+    DiagnosticEvidence,
+    RootCauseCategory,
+    RootCauseResult,
 )
 from shared.contracts.pdf import (
     CodeBlockElement,
@@ -91,6 +96,7 @@ from shared.contracts.workflow import (
 )
 
 __all__ = [
+    "AlternativeCause",
     # Artifact
     "Artifact",
     "ArtifactType",
@@ -100,6 +106,7 @@ __all__ = [
     "CodeBlockElement",
     "Conflict",
     "DependencyType",
+    "DiagnosticEvidence",
     "DocumentElement",
     "DocumentElementType",
     # Document
@@ -155,7 +162,9 @@ __all__ = [
     "RiskLevel",
     "RollbackInfo",
     "RootCauseAnalysis",
+    # Healing
     "RootCauseCategory",
+    "RootCauseResult",
     "RuntimeEvent",
     "SharedWorkflowState",
     "StructuredDocumentInput",
