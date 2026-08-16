@@ -77,6 +77,12 @@ from shared.contracts.risk import (
     RiskAnalysisResult,
     RiskAssessment,
 )
+from shared.contracts.retry import (
+    RecoveryPlan,
+    RetryRequest,
+    RetryResult,
+    RetryStatus,
+)
 from shared.contracts.task import (
     DependencyType,
     RollbackInfo,
@@ -174,6 +180,14 @@ __all__ = [
     "Task",
     "TaskCategory",
     "TaskDecompositionPlan",
+    "PlanVersion",
+    "PlanMetadata",
+    "PlannerOutput",
+    # Retry
+    "RecoveryPlan",
+    "RetryRequest",
+    "RetryResult",
+    "RetryStatus",
     "TaskDependency",
     "TaskError",
     "TaskFailureReport",
