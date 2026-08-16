@@ -250,17 +250,31 @@ class HealingAgent(BaseAgent):
             if ft in (FailureType.WORKFLOW_BLOCKED, FailureType.DEPENDENCY_FAILED):
                 return RootCauseCategory.WORKFLOW_ERROR
 
-        if "permission" in err_msg or "access denied" in err_msg or "permission" in err_code:
+        if (
+            "permission" in err_msg
+            or "access denied" in err_msg
+            or "permission" in err_code
+        ):
             return RootCauseCategory.PERMISSION_DENIED
         if "user rejected" in err_msg or "user denied" in err_msg:
             return RootCauseCategory.USER_REJECTED
         if "timeout" in err_msg or "timed out" in err_msg or "timeout" in err_code:
             return RootCauseCategory.TIMEOUT
-        if "network" in err_msg or "connection" in err_msg or "dns" in err_msg or "network" in err_code:
+        if (
+            "network" in err_msg
+            or "connection" in err_msg
+            or "dns" in err_msg
+            or "network" in err_code
+        ):
             return RootCauseCategory.NETWORK_ERROR
         if "tool" in err_msg or "command not found" in err_msg or "tool" in err_code:
             return RootCauseCategory.TOOL_FAILURE
-        if "api" in err_msg or "rate limit" in err_msg or "429" in err_msg or "api" in err_code:
+        if (
+            "api" in err_msg
+            or "rate limit" in err_msg
+            or "429" in err_msg
+            or "api" in err_code
+        ):
             return RootCauseCategory.EXTERNAL_API
         if "workflow" in err_msg or "dependency" in err_msg or "workflow" in err_code:
             return RootCauseCategory.WORKFLOW_ERROR

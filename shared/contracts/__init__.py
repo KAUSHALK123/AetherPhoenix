@@ -19,7 +19,6 @@ from shared.contracts.execution import (
     HealingResult,
     HealingState,
     RecoveryStrategyType,
-    RootCauseCategory,
     SupervisorDecision,
     SupervisorValidation,
     TaskError,
@@ -122,7 +121,6 @@ __all__ = [
     "GoalExtractionResult",
     "GoalPriority",
     "HeadingElement",
-    "HealingResult",
     "HealingRequest",
     "HealingResult",
     "HealingState",
@@ -154,7 +152,6 @@ __all__ = [
     # Healing
     "RootCauseCategory",
     "RootCauseResult",
-    "RootCauseCategory",
     "RuntimeEvent",
     "SharedWorkflowState",
     "StructuredDocumentInput",
