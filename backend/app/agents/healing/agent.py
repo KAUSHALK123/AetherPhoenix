@@ -1,3 +1,14 @@
+"""
+AetherPhoenix — Healing Core Agent
+===================================
+Main Healing Agent implementation responsible for analyzing workflow & task
+execution failures, consuming normalized error representations from ErrorParser,
+determining root causes, formulating recovery strategies, and emitting healing
+lifecycle events.
+"""
+
+from __future__ import annotations
+
 import logging
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -17,6 +28,8 @@ from shared.contracts.execution import (
 from shared.contracts.task import Task, TaskStatus
 from shared.contracts.workflow import SharedWorkflowState
 
+from app.agents.healing.error_parser import ErrorParser
+from app.agents.healing.models import NormalizedError
 from app.core.events.bus import EventBus
 from app.core.events.models import Event as ModelEvent
 from app.core.events.models import EventType as ModelEventType
@@ -31,6 +44,10 @@ class HealingAgent(BaseAgent):
     Healing Agent Core responsible for coordinating autonomous recovery
     when task execution failures occur.
 
+    Integrates with ErrorParser to convert raw failures into normalized error
+    models across Worker, Tool, Supervisor, Permission, Filesystem, Network,
+    Browser, PowerShell, and System layers.
+
     Acts as the central coordinator for failure analysis, root cause
     classification, recovery strategy selection, task generation, and state updates.
     """
@@ -38,9 +55,11 @@ class HealingAgent(BaseAgent):
     def __init__(
         self,
         event_bus: Optional[EventBus] = None,
+        error_parser: Optional[ErrorParser] = None,
         max_healing_attempts: int = 3,
     ) -> None:
         self.event_bus = event_bus
+        self.error_parser = error_parser or ErrorParser()
         self.max_healing_attempts = max_healing_attempts
         self.current_state: HealingState = HealingState.IDLE
 
@@ -398,7 +417,6 @@ class HealingAgent(BaseAgent):
                 )
                 return result
 
-            # Update task status to HEALING during processing
             target_task.status = TaskStatus.HEALING
             attempt_number = target_task.retry_count + 1
 
@@ -477,3 +495,8 @@ class HealingAgent(BaseAgent):
             )
 
         return result
+
+
+__all__ = [
+    "HealingAgent",
+]
