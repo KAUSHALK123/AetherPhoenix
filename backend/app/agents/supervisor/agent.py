@@ -8,10 +8,10 @@ from shared.contracts.execution import (
     SupervisorValidation,
     TaskError,
 )
-from shared.contracts.permission import PermissionStatus, PermissionType
 from shared.contracts.task import Task, TaskStatus
-from shared.contracts.workflow import SharedWorkflowState, WorkflowStatus
+from shared.contracts.workflow import SharedWorkflowState
 
+from app.agents.healing.retry_engine import RetryEngine
 from app.agents.supervisor.failure_detector import FailureDetectorService
 from app.core.events.bus import EventBus
 from app.core.events.models import Event as ModelEvent
@@ -56,20 +56,16 @@ class SupervisorAgent(BaseAgent):
         failure_detector: Optional[FailureDetectorService] = None,
         max_retries: int = 3,
         healing_loop: Optional[Any] = None,
+        retry_engine: Optional[RetryEngine] = None,
     ) -> None:
         self.event_bus = event_bus
         self.max_retries = max_retries
         self.monitor = WorkflowProgressMonitor()
         self.validator = OutputValidationService()
         self.failure_detector = failure_detector or FailureDetectorService()
-        if healing_loop is not None:
-            self.healing_loop = healing_loop
-        else:
-            from app.agents.healing.self_healing_loop import SelfHealingLoop
-
-            self.healing_loop = SelfHealingLoop(
-                event_bus=event_bus, max_retries=max_retries
-            )
+        self.retry_engine = retry_engine or RetryEngine(
+            event_bus=self.event_bus, default_max_retries=self.max_retries
+        )
 
     @property
     def registration(self) -> AgentRegistration:
@@ -280,6 +276,7 @@ class SupervisorAgent(BaseAgent):
         Analyzes a failed task, determines retry eligibility,
         and delegates recovery to the Self-Healing Loop.
         Updates the task and workflow state, and publishes the corresponding events.
+        and requests a retry if eligible through the RetryEngine.
 
         Returns:
             bool: True if recovery/retry was successfully triggered, False otherwise.
@@ -324,6 +321,16 @@ class SupervisorAgent(BaseAgent):
             return True
 
         return False
+        retry_result = await self.retry_engine.request_retry(
+            task_id=task.task_id,
+            workflow_id=task.workflow_id,
+            state=state,
+            error=error,
+            max_retries=max_retries,
+            reason=error.error_message if error else None,
+        )
+
+        return retry_result.success
 
     def is_eligible_for_retry(
         self,
@@ -333,127 +340,15 @@ class SupervisorAgent(BaseAgent):
         max_retries: Optional[int] = None,
     ) -> bool:
         """
-        Determines whether a failed task is eligible for a retry based on:
-        - Max retry count.
-        - Retryable vs non-retryable failures.
-        - Task state.
-        - Workflow state.
-        - Permission state.
-        - Dependency state.
-        - Existing retry_count metadata.
+        Determines whether a failed task is eligible for a retry through RetryEngine.
         """
-        # Determine max retries to enforce
-        limit = max_retries if max_retries is not None else self.max_retries
-
-        # 1. Enforce max retry count
-        if task.retry_count >= limit:
-            logger.info(f"Task {task.task_id} reached max retry limit of {limit}.")
-            return False
-
-        # 2. Check task state (must be FAILED)
-        if task.status != TaskStatus.FAILED:
-            logger.info(
-                f"Task {task.task_id} is not in FAILED state (current: {task.status})."
-            )
-            return False
-
-        # 3. Check workflow state (must be RUNNING)
-        if state.metadata.status != WorkflowStatus.RUNNING:
-            logger.info(
-                f"Workflow {state.metadata.workflow_id} is not RUNNING "
-                f"(current: {state.metadata.status})."
-            )
-            return False
-
-        # 4. Check dependencies (all parent dependencies must be COMPLETED)
-        for dep_id in task.dependencies:
-            dep_task = state.tasks.get(dep_id)
-            if not dep_task:
-                logger.info(f"Dependency task {dep_id} not found in state.")
-                return False
-            if dep_task.status != TaskStatus.COMPLETED:
-                logger.info(
-                    f"Dependency task {dep_id} is not COMPLETED "
-                    f"(current: {dep_task.status})."
-                )
-                return False
-
-        # 5. Check permission state
-        # If any permission requests specifically for this task are pending
-        # or rejected, do not retry
-        task_perms = [req for req in state.permissions if req.task_id == task.task_id]
-        for req in task_perms:
-            if req.status in (PermissionStatus.REJECTED, PermissionStatus.PENDING):
-                logger.info(
-                    f"Task {task.task_id} has permission request in "
-                    f"status: {req.status}."
-                )
-                return False
-
-        # Also, check if all required permissions listed on the task are GRANTED
-        for perm_str in task.permissions:
-            try:
-                perm_type = PermissionType(perm_str.upper())
-                granted_reqs = [
-                    req
-                    for req in state.permissions
-                    if req.workflow_id == state.metadata.workflow_id
-                    and req.permission_type == perm_type
-                    and req.status == PermissionStatus.GRANTED
-                ]
-                if not granted_reqs:
-                    logger.info(
-                        f"Required permission '{perm_str}' is not granted for workflow."
-                    )
-                    return False
-            except ValueError:
-                logger.warning(
-                    f"Task {task.task_id} has invalid permission string: {perm_str}"
-                )
-                return False
-
-        # 6. Check failure details (recoverable vs non-recoverable,
-        # and destructive operations)
-        if error:
-            # If explicitly marked as not recoverable, do not retry
-            if not error.is_recoverable:
-                logger.info(
-                    f"Task {task.task_id} failed with non-recoverable error flag."
-                )
-                return False
-
-            # If error code is explicitly non-retryable, do not retry
-            err_code = error.error_code.upper() if error.error_code else ""
-            if err_code in NON_RETRYABLE_ERROR_CODES:
-                logger.info(
-                    f"Task {task.task_id} failed with non-retryable "
-                    f"error code: {err_code}."
-                )
-                return False
-
-            # If the task is a destructive operation (risk level high/critical
-            # or rollback info exists), do not blindly retry unless it is a
-            # known transient failure.
-            is_destructive = False
-            if getattr(task, "risk_level", "LOW") in ("HIGH", "CRITICAL"):
-                is_destructive = True
-            if task.rollback_info is not None:
-                is_destructive = True
-
-            if is_destructive:
-                # Must be a transient error code to allow retry
-                err_msg = error.error_message.upper() if error.error_message else ""
-                is_transient = any(
-                    code in err_code for code in TRANSIENT_ERROR_CODES
-                ) or any(code in err_msg for code in TRANSIENT_ERROR_CODES)
-                if not is_transient:
-                    logger.info(
-                        f"Destructive task {task.task_id} cannot be retried "
-                        f"for non-transient error: {error.error_message}."
-                    )
-                    return False
-
-        return True
+        is_eligible, _, _ = self.retry_engine.validate_retry_eligibility(
+            task=task,
+            state=state,
+            error=error,
+            max_retries=max_retries,
+        )
+        return is_eligible
 
     async def handle_task_failure_event(self, event: ModelEvent) -> None:
         """
