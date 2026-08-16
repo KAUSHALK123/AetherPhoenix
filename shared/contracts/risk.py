@@ -1,11 +1,9 @@
-from enum import Enum
 from typing import Dict, List
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from shared.contracts.permission import RiskLevel
-
 
 
 class RiskAssessment(BaseModel):
