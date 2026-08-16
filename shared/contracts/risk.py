@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field
 from shared.contracts.permission import RiskLevel
 
 
-
 class RiskAssessment(BaseModel):
     task_id: UUID
     risk_level: RiskLevel
