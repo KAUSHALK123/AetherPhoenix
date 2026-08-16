@@ -126,17 +126,13 @@ class HealingAgent(BaseAgent):
         """Lifecycle hook: Called when agent is registered with kernel."""
         logger.info("HealingAgent initialized.")
         if self.event_bus:
-            self.event_bus.subscribe(
-                EventType.TASK_FAILED, self.handle_failure_event
-            )
+            self.event_bus.subscribe(EventType.TASK_FAILED, self.handle_failure_event)
 
     async def shutdown(self) -> None:
         """Lifecycle hook: Called when the runtime kernel shuts down."""
         logger.info("HealingAgent shut down.")
         if self.event_bus:
-            self.event_bus.unsubscribe(
-                EventType.TASK_FAILED, self.handle_failure_event
-            )
+            self.event_bus.unsubscribe(EventType.TASK_FAILED, self.handle_failure_event)
 
     async def handle_failure_event(self, event: ModelEvent) -> None:
         """Async event listener for failure events on EventBus."""
