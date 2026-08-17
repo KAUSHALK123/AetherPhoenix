@@ -259,7 +259,7 @@ class SQLAlchemyMemoryStorage(BaseMemoryStorage):
             model.role = str(updates["role"])
         if "metadata" in updates and isinstance(updates["metadata"], dict):
             current_meta = (
-                json.loads(model.metadata_json) if model.metadata_json else {}
+                json.loads(str(model.metadata_json)) if model.metadata_json else {}
             )
             current_meta.update(sanitize_memory_metadata(updates["metadata"]))
             model.metadata_json = json.dumps(current_meta)
