@@ -5,12 +5,17 @@ from .exceptions import (
     ApplicationNotFoundError,
     ApplicationTerminationError,
     ApplicationUnavailableError,
+    DesktopActionError,
     DesktopError,
     DesktopSecurityError,
     DesktopSessionError,
     DesktopSessionExpiredError,
     DesktopSessionNotFoundError,
+    DesktopSessionUnavailableError,
     DesktopTimeoutError,
+    InvalidCoordinatesError,
+    MouseActionError,
+    MouseTimeoutError,
     WindowFocusError,
     WindowNotFoundError,
 )
@@ -26,7 +31,7 @@ from .models import (
     WindowBounds,
     WindowInfo,
 )
-from .mouse import MouseActionError, MouseController
+from .mouse import MouseController
 from .session import DesktopSession, DesktopSessionManager
 
 __all__ = [
@@ -43,9 +48,11 @@ __all__ = [
     "KeyboardActionError",
     "MouseActionError",
     "DesktopError",
+    "DesktopActionError",
     "DesktopSessionError",
     "DesktopSessionNotFoundError",
     "DesktopSessionExpiredError",
+    "DesktopSessionUnavailableError",
     "ApplicationNotFoundError",
     "ApplicationLaunchError",
     "ApplicationTerminationError",
@@ -62,4 +69,6 @@ __all__ = [
     "DesktopSessionInfo",
     "DesktopState",
     "DesktopActionResult",
+    "InvalidCoordinatesError",
+    "MouseTimeoutError",
 ]

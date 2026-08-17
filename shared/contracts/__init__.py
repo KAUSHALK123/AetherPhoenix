@@ -2,6 +2,14 @@
 
 from shared.contracts.artifact import Artifact, ArtifactType
 from shared.contracts.capability import Capability
+from shared.contracts.desktop import (
+    MouseActionRequest,
+    MouseActionResult,
+    MouseActionType,
+    MouseButton,
+    MousePosition,
+    ScreenResolution,
+)
 from shared.contracts.document import (
     DocumentElement,
     DocumentElementType,
@@ -76,6 +84,11 @@ from shared.contracts.recovery_plan import (
     RecoveryPlan,
     RootCauseAnalysis,
 )
+from shared.contracts.retry import (
+    RetryRequest,
+    RetryResult,
+    RetryStatus,
+)
 from shared.contracts.risk import (
     Conflict,
     RiskAnalysisResult,
@@ -89,11 +102,6 @@ from shared.contracts.task import (
     TaskDependency,
     TaskPriority,
     TaskStatus,
-)
-from shared.contracts.retry import (
-    RetryRequest,
-    RetryResult,
-    RetryStatus,
 )
 from shared.contracts.tool import Tool, ToolHealth, ToolState
 from shared.contracts.workflow import (
@@ -144,6 +152,11 @@ __all__ = [
     "HealingSummary",
     "IntentCategory",
     "ListElement",
+    "MouseActionRequest",
+    "MouseActionResult",
+    "MouseActionType",
+    "MouseButton",
+    "MousePosition",
     "PDFDocumentInput",
     "PDFElement",
     # PDF
@@ -166,6 +179,9 @@ __all__ = [
     "RecoveryAction",
     "RecoveryPlan",
     "ReplanningContext",
+    "RetryRequest",
+    "RetryResult",
+    "RetryStatus",
     "RiskAnalysisResult",
     # Risk
     "RiskAssessment",
@@ -174,9 +190,7 @@ __all__ = [
     "ErrorParserOutput",
     "RollbackInfo",
     "RuntimeEvent",
-    "RetryRequest",
-    "RetryResult",
-    "RetryStatus",
+    "ScreenResolution",
     "SharedWorkflowState",
     "StructuredDocumentInput",
     "SupervisorDecision",

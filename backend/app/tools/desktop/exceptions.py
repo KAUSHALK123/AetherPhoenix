@@ -1,3 +1,6 @@
+"""Desktop and Mouse Automation Exceptions."""
+
+
 class DesktopError(Exception):
     """Base exception for all desktop automation errors."""
 
@@ -5,6 +8,15 @@ class DesktopError(Exception):
         super().__init__(message)
         self.message = message
         self.details = details or {}
+
+
+class DesktopActionError(DesktopError):
+    """
+    Base exception for all desktop action errors
+    (kept for backward compatibility).
+    """
+
+    pass
 
 
 class DesktopSessionError(DesktopError):
@@ -21,6 +33,30 @@ class DesktopSessionNotFoundError(DesktopSessionError):
 
 class DesktopSessionExpiredError(DesktopSessionError):
     """Raised when an operation targets an expired desktop session."""
+
+    pass
+
+
+class DesktopSessionUnavailableError(DesktopActionError):
+    """Raised when desktop session or display is not available or accessible."""
+
+    pass
+
+
+class MouseActionError(DesktopError):
+    """Base exception for mouse-specific interaction errors."""
+
+    pass
+
+
+class InvalidCoordinatesError(MouseActionError):
+    """Raised when target coordinates are invalid or outside display boundaries."""
+
+    pass
+
+
+class MouseTimeoutError(MouseActionError):
+    """Raised when a mouse operation exceeds its allocated execution timeout."""
 
     pass
 

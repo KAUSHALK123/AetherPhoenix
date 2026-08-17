@@ -3,12 +3,14 @@ try:
         DesktopController,
         DesktopTool,
         DesktopToolAdapter,
+        MouseController,
         register_desktop_tool,
     )
 except ImportError:
     DesktopController = None
     DesktopTool = None
     DesktopToolAdapter = None
+    MouseController = None
     register_desktop_tool = None
 
 try:
@@ -63,6 +65,7 @@ __all__ = [
     "DesktopController",
     "DesktopTool",
     "DesktopToolAdapter",
+    "MouseController",
     "register_desktop_tool",
     "DocumentGenerator",
     "DocumentToolAdapter",

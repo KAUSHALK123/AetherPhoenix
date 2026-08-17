@@ -291,7 +291,9 @@ async def test_mouse_and_keyboard_actions(
 
     # Mouse Click
     res_click = await controller.click(100, 200, button="left")
-    mock_click.assert_called_once_with(x=100, y=200, button="left")
+    mock_click.assert_called_once_with(
+        x=100, y=200, button="left", clicks=1, interval=0.0, duration=0.0
+    )
     assert res_click["action"] == "mouse_click"
 
     # Mouse Move
