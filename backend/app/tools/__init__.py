@@ -1,4 +1,21 @@
 try:
+    from app.tools.desktop import (
+        DesktopController,
+        DesktopTool,
+        DesktopToolAdapter,
+        KeyboardController,
+        MouseController,
+        register_desktop_tool,
+    )
+except ImportError:
+    DesktopController = None
+    DesktopTool = None
+    DesktopToolAdapter = None
+    KeyboardController = None
+    MouseController = None
+    register_desktop_tool = None
+
+try:
     from app.tools.document import (
         DocumentGenerator,
         DocumentToolAdapter,
@@ -60,6 +77,12 @@ except ImportError:
 
 __all__ = [
     "ToolRegistry",
+    "DesktopController",
+    "DesktopTool",
+    "DesktopToolAdapter",
+    "KeyboardController",
+    "MouseController",
+    "register_desktop_tool",
     "DocumentGenerator",
     "DocumentToolAdapter",
     "register_document_tool",

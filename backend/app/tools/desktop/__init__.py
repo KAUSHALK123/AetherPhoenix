@@ -1,4 +1,86 @@
-from .interface import DesktopTool
+from .application import ApplicationActionError, ApplicationController
+from .controller import DesktopController
+from .exceptions import (
+    ApplicationLaunchError,
+    ApplicationNotFoundError,
+    ApplicationTerminationError,
+    ApplicationUnavailableError,
+    DesktopActionError,
+    DesktopError,
+    DesktopSecurityError,
+    DesktopSessionError,
+    DesktopSessionExpiredError,
+    DesktopSessionNotFoundError,
+    DesktopSessionUnavailableError,
+    DesktopTimeoutError,
+    InvalidCoordinatesError,
+    MouseActionError,
+    MouseTimeoutError,
+    WindowFocusError,
+    WindowNotFoundError,
+)
+from .interface import DesktopTool, DesktopToolAdapter, register_desktop_tool
+from .keyboard import (
+    DesktopUnavailableError,
+    InvalidKeyboardActionError,
+    KeyboardActionError,
+    KeyboardController,
+    KeyboardTimeoutError,
+)
+from .models import (
+    ApplicationInfo,
+    DesktopActionResult,
+    DesktopSessionConfig,
+    DesktopSessionInfo,
+    DesktopState,
+    ScreenResolution,
+    WindowBounds,
+    WindowInfo,
+)
+from .mouse import MouseController
 from .screenshot import DesktopScreenshotController, DesktopScreenshotError
+from .session import DesktopSession, DesktopSessionManager
 
-__all__ = ["DesktopTool", "DesktopScreenshotController", "DesktopScreenshotError"]
+__all__ = [
+    "DesktopController",
+    "DesktopSession",
+    "DesktopSessionManager",
+    "DesktopTool",
+    "DesktopToolAdapter",
+    "register_desktop_tool",
+    "ApplicationController",
+    "KeyboardController",
+    "MouseController",
+    "ApplicationActionError",
+    "KeyboardActionError",
+    "MouseActionError",
+    "DesktopError",
+    "DesktopActionError",
+    "DesktopSessionError",
+    "DesktopSessionNotFoundError",
+    "DesktopSessionExpiredError",
+    "DesktopSessionUnavailableError",
+    "ApplicationNotFoundError",
+    "ApplicationLaunchError",
+    "ApplicationTerminationError",
+    "ApplicationUnavailableError",
+    "WindowNotFoundError",
+    "WindowFocusError",
+    "DesktopTimeoutError",
+    "DesktopSecurityError",
+    "WindowBounds",
+    "WindowInfo",
+    "ApplicationInfo",
+    "ScreenResolution",
+    "DesktopSessionConfig",
+    "DesktopSessionInfo",
+    "DesktopState",
+    "DesktopActionResult",
+    "InvalidKeyboardActionError",
+    "DesktopUnavailableError",
+    "KeyboardTimeoutError",
+    "InvalidCoordinatesError",
+    "MouseTimeoutError",
+    "DesktopScreenshotController",
+    "DesktopScreenshotError",
+]
