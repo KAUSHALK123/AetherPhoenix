@@ -70,6 +70,12 @@ from shared.contracts.planner import (
     TaskDecompositionPlan,
     UserRequirement,
 )
+from shared.contracts.recovery_plan import (
+    ErrorParserOutput,
+    RecoveryAction,
+    RecoveryPlan,
+    RootCauseAnalysis,
+)
 from shared.contracts.risk import (
     Conflict,
     RiskAnalysisResult,
@@ -83,6 +89,11 @@ from shared.contracts.task import (
     TaskDependency,
     TaskPriority,
     TaskStatus,
+)
+from shared.contracts.retry import (
+    RetryRequest,
+    RetryResult,
+    RetryStatus,
 )
 from shared.contracts.tool import Tool, ToolHealth, ToolState
 from shared.contracts.workflow import (
@@ -152,13 +163,20 @@ __all__ = [
     "PlannerRequest",
     "PlannerResponse",
     "ProgressState",
+    "RecoveryAction",
+    "RecoveryPlan",
     "ReplanningContext",
     "RiskAnalysisResult",
     # Risk
     "RiskAssessment",
     "RiskLevel",
+    "RootCauseAnalysis",
+    "ErrorParserOutput",
     "RollbackInfo",
     "RuntimeEvent",
+    "RetryRequest",
+    "RetryResult",
+    "RetryStatus",
     "SharedWorkflowState",
     "StructuredDocumentInput",
     "SupervisorDecision",

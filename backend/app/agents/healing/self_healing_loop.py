@@ -242,7 +242,7 @@ class SelfHealingLoop(BaseAgent):
             )
             return result
 
-        result = self.retry_engine.execute_recovery(
+        result = await self.retry_engine.execute_recovery(
             plan=plan,
             task=task,
             state=state,
