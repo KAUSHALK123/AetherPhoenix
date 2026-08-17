@@ -1,13 +1,32 @@
 from uuid import uuid4
 
 import pytest
-from shared.contracts.execution import HealingResult
-from shared.contracts.task import Task, TaskCategory, TaskStatus
-from shared.contracts.workflow import SharedWorkflowState, WorkflowMetadata
+from shared.contracts.event import EventType
+from shared.contracts.execution import HealingResult, TaskError
+from shared.contracts.permission import (
+    PermissionRequest,
+    PermissionStatus,
+    PermissionType,
+    RiskLevel,
+)
+from shared.contracts.retry import RecoveryPlan, RetryStatus
+from shared.contracts.task import (
+    RollbackInfo,
+    Task,
+    TaskCategory,
+    TaskPriority,
+    TaskStatus,
+)
+from shared.contracts.workflow import (
+    SharedWorkflowState,
+    WorkflowMetadata,
+    WorkflowStatus,
+)
 
-from app.agents.healing.recovery_planner import RecoveryPlan, RecoveryStrategy
+from app.agents.healing.recovery_planner import RecoveryStrategy
 from app.agents.healing.retry_engine import RetryEngine
 from app.agents.healing.root_cause_analyzer import RootCauseAnalysis, RootCauseCategory
+from app.core.events.bus import EventBus
 
 
 @pytest.fixture
@@ -139,30 +158,6 @@ def test_retry_engine_execute_recovery_re_enqueue(dummy_state):
     assert task.status == TaskStatus.WAITING
     assert task.task_id in dummy_state.execution_queue
     assert task.task_id not in dummy_state.failed_tasks
-from shared.contracts.event import EventType
-from shared.contracts.execution import TaskError
-from shared.contracts.permission import (
-    PermissionRequest,
-    PermissionStatus,
-    PermissionType,
-    RiskLevel,
-)
-from shared.contracts.retry import RecoveryPlan, RetryStatus
-from shared.contracts.task import (
-    RollbackInfo,
-    Task,
-    TaskCategory,
-    TaskPriority,
-    TaskStatus,
-)
-from shared.contracts.workflow import (
-    SharedWorkflowState,
-    WorkflowMetadata,
-    WorkflowStatus,
-)
-
-from app.agents.healing.retry_engine import RetryEngine
-from app.core.events.bus import EventBus
 
 
 @pytest.fixture

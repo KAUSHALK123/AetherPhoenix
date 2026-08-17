@@ -1,13 +1,33 @@
+import subprocess
+import uuid
 from uuid import uuid4
 
+import pytest
 from shared.contracts.execution import (
     ExecutionResult,
     FailureType,
     TaskError,
     TaskFailureReport,
 )
+from shared.contracts.task import Task, TaskCategory, TaskStatus
+from shared.contracts.workflow import (
+    SharedWorkflowState,
+    WorkflowMetadata,
+    WorkflowStatus,
+)
 
+from app.agents.healing.agent import HealingAgent, HealingRequest
 from app.agents.healing.error_parser import ErrorCategory, ErrorParser, ParsedError
+from app.agents.healing.models import (
+    ErrorSeverity,
+    ErrorSource,
+)
+from app.core.events.bus import EventBus
+from app.core.exceptions import (
+    PermissionDeniedException,
+    ToolExecutionException,
+    ToolNotFoundException,
+)
 
 
 def test_error_parser_permission_failure():
@@ -77,41 +97,7 @@ def test_error_parser_network_error():
     assert parsed.category == ErrorCategory.NETWORK
     assert parsed.normalized_code == "NETWORK_ERROR"
     assert parsed.is_transient is True
-"""
-AetherPhoenix — Unit & Integration Tests for Healing Agent Error Parser
-Verifies raw error parsing, normalization, classification, retryability,
-context extraction, original error preservation, unknown error handling,
-and Healing Core integration.
-"""
 
-import subprocess
-import uuid
-
-import pytest
-from shared.contracts.execution import (
-    FailureType,
-    TaskFailureReport,
-)
-from shared.contracts.task import Task, TaskCategory, TaskStatus
-from shared.contracts.workflow import (
-    SharedWorkflowState,
-    WorkflowMetadata,
-    WorkflowStatus,
-)
-
-from app.agents.healing.agent import HealingAgent, HealingRequest
-from app.agents.healing.error_parser import ErrorParser
-from app.agents.healing.models import (
-    ErrorCategory,
-    ErrorSeverity,
-    ErrorSource,
-)
-from app.core.events.bus import EventBus
-from app.core.exceptions import (
-    PermissionDeniedException,
-    ToolExecutionException,
-    ToolNotFoundException,
-)
 
 
 @pytest.fixture

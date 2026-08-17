@@ -1,9 +1,18 @@
 from uuid import uuid4
 
 import pytest
+from shared.contracts.artifact import Artifact, ArtifactType
+from shared.contracts.execution import (
+    ExecutionResult,
+    FailureType,
+    TaskError,
+    TaskFailureReport,
+)
+from shared.contracts.healing import RootCauseResult
 from shared.contracts.task import Task, TaskCategory, TaskStatus
 from shared.contracts.workflow import SharedWorkflowState, WorkflowMetadata
 
+from app.agents.healing.agent import HealingAgent
 from app.agents.healing.error_parser import ErrorCategory, ParsedError
 from app.agents.healing.root_cause_analyzer import (
     RootCauseAnalysis,
@@ -92,24 +101,6 @@ def test_root_cause_destructive_safety_override(dummy_state):
     rc: RootCauseAnalysis = analyzer.analyze(parsed, task, dummy_state)
     assert rc.is_recoverable is False
     assert rc.recommended_strategy == "ESCALATE_USER"
-"""Unit and integration tests for Root Cause Analyzer and Healing Agent."""
-
-from uuid import uuid4
-
-import pytest
-from shared.contracts.artifact import Artifact, ArtifactType
-from shared.contracts.execution import (
-    ExecutionResult,
-    FailureType,
-    TaskError,
-    TaskFailureReport,
-)
-from shared.contracts.healing import RootCauseCategory, RootCauseResult
-from shared.contracts.task import Task, TaskCategory, TaskStatus
-from shared.contracts.workflow import SharedWorkflowState, WorkflowMetadata
-
-from app.agents.healing.agent import HealingAgent
-from app.agents.healing.root_cause_analyzer import RootCauseAnalyzer
 
 
 @pytest.fixture

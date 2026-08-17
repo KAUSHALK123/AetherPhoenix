@@ -1,15 +1,28 @@
 from uuid import uuid4
 
 import pytest
+from shared.contracts.execution import FailureType, TaskFailureReport
+from shared.contracts.permission import PermissionType, RiskLevel
+from shared.contracts.recovery_plan import (
+    ErrorParserOutput,
+    RecoveryAction,
+    RecoveryPlan,
+    RootCauseAnalysis,
+)
 from shared.contracts.task import Task, TaskCategory, TaskStatus
 from shared.contracts.workflow import SharedWorkflowState, WorkflowMetadata
 
+from app.agents.healing.agent import HealingAgent
+from app.agents.healing.error_parser import ErrorParser
 from app.agents.healing.recovery_planner import (
-    RecoveryPlan,
     RecoveryPlanner,
     RecoveryStrategy,
 )
-from app.agents.healing.root_cause_analyzer import RootCauseAnalysis, RootCauseCategory
+from app.agents.healing.root_cause_analyzer import (
+    RootCauseAnalyzer,
+    RootCauseCategory,
+)
+from app.agents.healing.validator import validate_recovery_plan
 
 
 @pytest.fixture
@@ -81,19 +94,6 @@ def test_recovery_planner_non_recoverable_escalate(dummy_state):
     assert plan.strategy == RecoveryStrategy.REQUEST_PERMISSION_AGAIN
     assert plan.is_executable is False
     assert plan.requires_permission is True
-from backend.app.agents.healing.agent import HealingAgent
-from backend.app.agents.healing.error_parser import ErrorParser
-from backend.app.agents.healing.recovery_planner import RecoveryPlanner
-from backend.app.agents.healing.root_cause_analyzer import RootCauseAnalyzer
-from backend.app.agents.healing.validator import validate_recovery_plan
-from shared.contracts.execution import FailureType, TaskFailureReport
-from shared.contracts.permission import PermissionType, RiskLevel
-from shared.contracts.recovery_plan import (
-    ErrorParserOutput,
-    RecoveryAction,
-    RecoveryPlan,
-    RootCauseAnalysis,
-)
 
 
 @pytest.fixture
