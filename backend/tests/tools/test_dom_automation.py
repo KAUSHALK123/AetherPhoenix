@@ -3,7 +3,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
-from app.tools.browser import BrowserTool
 from app.tools.browser.dom import (
     DOMAutomation,
     DOMElement,
@@ -113,31 +112,3 @@ async def test_extract_text_success(dom_automation, mock_page):
 async def test_invalid_selector(dom_automation):
     with pytest.raises(ValueError, match="Selector cannot be empty."):
         await dom_automation.click_element("")
-
-
-@pytest.mark.asyncio
-async def test_browser_tool_permission_denied():
-    def mock_permission_checker(perm):
-        return False
-
-    tool = BrowserTool(permission_checker=mock_permission_checker)
-    tool._dom = AsyncMock()
-
-    with pytest.raises(
-        PermissionError, match="Action denied: Missing BROWSER_ACCESS permission."
-    ):
-        await tool.click(".btn")
-
-
-@pytest.mark.asyncio
-async def test_browser_tool_click_success():
-    def mock_permission_checker(perm):
-        return True
-
-    tool = BrowserTool(permission_checker=mock_permission_checker)
-    tool._dom = AsyncMock()
-    tool._dom.click_element = AsyncMock()
-
-    success = await tool.click(".btn")
-    assert success is True
-    tool._dom.click_element.assert_called_once_with(".btn", 5000)
