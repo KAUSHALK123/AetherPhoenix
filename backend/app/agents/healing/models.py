@@ -130,6 +130,18 @@ class NormalizedError(BaseModel):
         "populate_by_name": True,
     }
 
+    @property
+    def normalized_code(self) -> str:
+        return self.code
+
+    @property
+    def raw_message(self) -> str:
+        return self.message
+
+    @property
+    def is_transient(self) -> bool:
+        return self.is_retryable
+
 
 __all__ = [
     "ErrorSource",

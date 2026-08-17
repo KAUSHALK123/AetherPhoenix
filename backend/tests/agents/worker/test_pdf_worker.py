@@ -3,6 +3,9 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+
+pytest.importorskip("reportlab")
+
 from shared.contracts.artifact import ArtifactType
 from shared.contracts.permission import PermissionType, RiskLevel
 from shared.contracts.task import Task, TaskCategory

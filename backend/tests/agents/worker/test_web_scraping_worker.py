@@ -2,8 +2,10 @@ import json
 import uuid
 from unittest.mock import AsyncMock, patch
 
-import httpx
 import pytest
+
+pytest.importorskip("httpx")
+import httpx
 from shared.contracts.task import Task, TaskCategory
 
 from app.agents.worker.agent import WorkerAgent

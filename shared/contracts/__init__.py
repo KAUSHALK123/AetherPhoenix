@@ -78,8 +78,17 @@ from shared.contracts.planner import (
     TaskDecompositionPlan,
     UserRequirement,
 )
-from shared.contracts.recovery_plan import RecoveryPlan
-from shared.contracts.retry import RetryRequest, RetryResult, RetryStatus
+from shared.contracts.recovery_plan import (
+    ErrorParserOutput,
+    RecoveryAction,
+    RecoveryPlan,
+    RootCauseAnalysis,
+)
+from shared.contracts.retry import (
+    RetryRequest,
+    RetryResult,
+    RetryStatus,
+)
 from shared.contracts.risk import (
     Conflict,
     RiskAnalysisResult,
@@ -167,6 +176,7 @@ __all__ = [
     "PlannerRequest",
     "PlannerResponse",
     "ProgressState",
+    "RecoveryAction",
     "RecoveryPlan",
     "ReplanningContext",
     "RetryRequest",
@@ -176,6 +186,8 @@ __all__ = [
     # Risk
     "RiskAssessment",
     "RiskLevel",
+    "RootCauseAnalysis",
+    "ErrorParserOutput",
     "RollbackInfo",
     "RuntimeEvent",
     "ScreenResolution",

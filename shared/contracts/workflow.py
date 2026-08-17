@@ -86,6 +86,8 @@ class SharedWorkflowState(BaseModel):
     artifacts: list[Artifact] = Field(default_factory=list)
     logs: list[dict[str, Any]] = Field(default_factory=list)
     healing_history: list[HealingResult] = Field(default_factory=list)
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    events: list[RuntimeEvent] = Field(default_factory=list)
     escalations: list[EscalationResult] = Field(default_factory=list)
     metrics: dict[str, Any] = Field(default_factory=dict)
     events: list[RuntimeEvent] = Field(default_factory=list)

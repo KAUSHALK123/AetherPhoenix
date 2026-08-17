@@ -54,6 +54,9 @@ class ErrorParser:
         self,
         raw_error: Any,
         context: Optional[Dict[str, Any]] = None,
+        task: Optional[Any] = None,
+        *args: Any,
+        **kwargs: Any,
     ) -> NormalizedError:
         """
         Main entrypoint for parsing raw error inputs.
@@ -72,7 +75,10 @@ class ErrorParser:
             A fully normalized, classified, and structured error instance.
         """
         try:
-            return self._parse_safe(raw_error, context or {})
+            merged_context = {**(context or {})}
+            if task is not None:
+                merged_context["task"] = task
+            return self._parse_safe(raw_error, merged_context)
         except Exception as parse_exc:
             logger.error(
                 "ErrorParser encountered an unexpected exception while "

@@ -8,6 +8,19 @@ from shared.contracts.execution import FailureType
 from shared.contracts.permission import PermissionType, RiskLevel
 
 
+class CompatStrategy:
+    def __init__(self, val: str) -> None:
+        self.value = val
+
+    def __str__(self) -> str:
+        return self.value
+
+    def __eq__(self, other: Any) -> bool:
+        if hasattr(other, "value"):
+            return self.value == other.value
+        return self.value == str(other)
+
+
 class ErrorParserOutput(BaseModel):
     """Structured payload produced by Error Parser."""
 
@@ -117,3 +130,25 @@ class RecoveryPlan(BaseModel):
         description="Task context metadata associated with failure",
     )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @property
+    def strategy(self) -> CompatStrategy:
+        return CompatStrategy(self.strategy_name)
+
+    @property
+    def replacement_tasks(self) -> list[Any]:
+        if hasattr(self, "_replacement_tasks"):
+            return self._replacement_tasks
+        return []
+
+    @replacement_tasks.setter
+    def replacement_tasks(self, val: list[Any]) -> None:
+        self._replacement_tasks = val
+
+    @property
+    def is_executable(self) -> bool:
+        return self.is_viable
+
+    @property
+    def requires_permission(self) -> bool:
+        return len(self.required_permissions) > 0
