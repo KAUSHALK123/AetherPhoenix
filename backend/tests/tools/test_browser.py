@@ -129,6 +129,7 @@ async def test_browser_interact(mock_permission_checker):
         mock_playwright = AsyncMock()
         mock_browser = AsyncMock()
         mock_page = AsyncMock()
+
         mock_async_playwright.return_value.start = AsyncMock(
             return_value=mock_playwright
         )
