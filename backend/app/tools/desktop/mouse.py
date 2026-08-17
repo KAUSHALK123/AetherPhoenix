@@ -374,9 +374,7 @@ class MouseController:
         start_time = time.time()
 
         pos_str = (
-            f"({target_x}, {target_y})"
-            if target_x is not None
-            else "current position"
+            f"({target_x}, {target_y})" if target_x is not None else "current position"
         )
         logger.info(f"Mouse {btn_str} click at {pos_str} clicks={clicks}")
 
@@ -404,9 +402,11 @@ class MouseController:
                 f"in {duration_ms:.2f}ms"
             )
             return MouseActionResult(
-                action=MouseActionType.CLICK
-                if btn_str == "left"
-                else MouseActionType.RIGHT_CLICK,
+                action=(
+                    MouseActionType.CLICK
+                    if btn_str == "left"
+                    else MouseActionType.RIGHT_CLICK
+                ),
                 success=True,
                 position=final_pos,
                 execution_time_ms=duration_ms,
@@ -495,9 +495,7 @@ class MouseController:
         start_time = time.time()
 
         pos_str = (
-            f"({target_x}, {target_y})"
-            if target_x is not None
-            else "current position"
+            f"({target_x}, {target_y})" if target_x is not None else "current position"
         )
         logger.info(f"Mouse double click at {pos_str} interval={interval}s")
 
@@ -603,9 +601,7 @@ class MouseController:
         start_time = time.time()
 
         pos_str = (
-            f"({target_x}, {target_y})"
-            if target_x is not None
-            else "current position"
+            f"({target_x}, {target_y})" if target_x is not None else "current position"
         )
         logger.info(f"Mouse scrolling {clicks} clicks at {pos_str}")
 

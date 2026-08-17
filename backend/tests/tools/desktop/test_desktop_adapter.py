@@ -136,9 +136,7 @@ def test_register_desktop_tool_registry():
 
 @pytest.mark.asyncio
 @patch("app.tools.desktop.mouse.pyautogui.click")
-async def test_worker_agent_integration_with_desktop_tool(
-    mock_click, mock_mouse_ctrl
-):
+async def test_worker_agent_integration_with_desktop_tool(mock_click, mock_mouse_ctrl):
     registry = ToolRegistry()
     worker = WorkerAgent(tool_registry=registry)
     register_desktop_tool(registry, worker_agent=worker)
@@ -169,9 +167,7 @@ async def test_worker_agent_permission_denied_desktop(mock_mouse_ctrl):
     worker = WorkerAgent(tool_registry=registry, permission_manager=pm)
     register_desktop_tool(registry, worker_agent=worker)
 
-    desktop_tool = DesktopTool(
-        permission_manager=pm, mouse_controller=mock_mouse_ctrl
-    )
+    desktop_tool = DesktopTool(permission_manager=pm, mouse_controller=mock_mouse_ctrl)
     worker.register_adapter(
         "desktop_adapter", DesktopToolAdapter(desktop_tool=desktop_tool)
     )

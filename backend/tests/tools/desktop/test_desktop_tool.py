@@ -69,13 +69,9 @@ def test_desktop_tool_execute_mouse_right_click(mock_click, mock_mouse_controlle
 
 
 @patch("app.tools.desktop.mouse.pyautogui.doubleClick")
-def test_desktop_tool_execute_mouse_double_click(
-    mock_double, mock_mouse_controller
-):
+def test_desktop_tool_execute_mouse_double_click(mock_double, mock_mouse_controller):
     tool = DesktopTool(mouse_controller=mock_mouse_controller)
-    result = tool.execute(
-        "mouse_double_click", {"x": 130, "y": 230, "button": "left"}
-    )
+    result = tool.execute("mouse_double_click", {"x": 130, "y": 230, "button": "left"})
     assert result["status"] == "success"
     assert result["action"] == "mouse_double_click"
     mock_double.assert_called_once_with(
@@ -94,13 +90,9 @@ def test_desktop_tool_execute_mouse_scroll(mock_scroll, mock_mouse_controller):
 
 
 @patch("app.tools.desktop.mouse.pyautogui.moveTo")
-def test_desktop_tool_execute_mouse_action_structured(
-    mock_move, mock_mouse_controller
-):
+def test_desktop_tool_execute_mouse_action_structured(mock_move, mock_mouse_controller):
     tool = DesktopTool(mouse_controller=mock_mouse_controller)
-    req = MouseActionRequest(
-        action=MouseActionType.MOVE, x=300, y=400, duration=0.1
-    )
+    req = MouseActionRequest(action=MouseActionType.MOVE, x=300, y=400, duration=0.1)
     result = tool.execute("mouse_action", {"request": req})
     assert result.success is True
     assert result.action == MouseActionType.MOVE

@@ -86,9 +86,7 @@ def test_mouse_move_to_success(mock_move, controller):
 
 
 def test_mouse_move_negative_duration(controller):
-    with pytest.raises(
-        InvalidCoordinatesError, match="duration cannot be negative"
-    ):
+    with pytest.raises(InvalidCoordinatesError, match="duration cannot be negative"):
         controller.move_to(100, 200, duration=-1.0)
 
 
@@ -181,9 +179,7 @@ def test_mouse_scroll_with_coordinates(mock_scroll, controller):
 
 
 def test_mouse_scroll_invalid_clicks(controller):
-    with pytest.raises(
-        MouseActionError, match="Scroll clicks must be an integer"
-    ):
+    with pytest.raises(MouseActionError, match="Scroll clicks must be an integer"):
         controller.scroll("three")  # type: ignore
 
 
@@ -202,9 +198,7 @@ def test_validate_coordinates_none(controller):
 
 
 def test_validate_coordinates_boolean(controller):
-    with pytest.raises(
-        InvalidCoordinatesError, match="Coordinates must be integers"
-    ):
+    with pytest.raises(InvalidCoordinatesError, match="Coordinates must be integers"):
         controller.validate_coordinates(True, 100)
 
 
@@ -216,14 +210,10 @@ def test_validate_coordinates_float_non_integer(controller):
 
 
 def test_validate_coordinates_negative(controller):
-    with pytest.raises(
-        InvalidCoordinatesError, match="cannot be negative"
-    ):
+    with pytest.raises(InvalidCoordinatesError, match="cannot be negative"):
         controller.validate_coordinates(-10, 20)
 
-    with pytest.raises(
-        InvalidCoordinatesError, match="cannot be negative"
-    ):
+    with pytest.raises(InvalidCoordinatesError, match="cannot be negative"):
         controller.validate_coordinates(10, -20)
 
 
@@ -254,9 +244,7 @@ def test_mouse_timeout_handling(mock_screen, mock_pos):
     def hanging_move(*args, **kwargs):
         time.sleep(1.0)
 
-    with patch(
-        "app.tools.desktop.mouse.pyautogui.moveTo", side_effect=hanging_move
-    ):
+    with patch("app.tools.desktop.mouse.pyautogui.moveTo", side_effect=hanging_move):
         ctrl = MouseController(
             screen_size_provider=mock_screen,
             position_provider=mock_pos,
@@ -272,9 +260,7 @@ def test_mouse_failsafe_handling(controller):
         "app.tools.desktop.mouse.pyautogui.moveTo",
         side_effect=pyautogui.FailSafeException("FailSafe"),
     ):
-        with pytest.raises(
-            MouseActionError, match="PyAutoGUI fail-safe triggered"
-        ):
+        with pytest.raises(MouseActionError, match="PyAutoGUI fail-safe triggered"):
             controller.move_to(0, 0, duration=0.1)
 
 
@@ -335,9 +321,7 @@ def test_execute_action_model(
     assert res_click.success is True
 
     # RIGHT_CLICK
-    req_rclick = MouseActionRequest(
-        action=MouseActionType.RIGHT_CLICK, x=120, y=160
-    )
+    req_rclick = MouseActionRequest(action=MouseActionType.RIGHT_CLICK, x=120, y=160)
     res_rclick = controller.execute_action(req_rclick)
     assert res_rclick.success is True
 
