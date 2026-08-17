@@ -95,6 +95,13 @@ from shared.contracts.retry import (
     RetryResult,
     RetryStatus,
 )
+from shared.contracts.screenshot import (
+    CaptureRegion,
+    CaptureSource,
+    ImageFormat,
+    ScreenshotRequest,
+    ScreenshotResult,
+)
 from shared.contracts.tool import Tool, ToolHealth, ToolState
 from shared.contracts.workflow import (
     ExecutionMode,
@@ -177,6 +184,11 @@ __all__ = [
     "RetryRequest",
     "RetryResult",
     "RetryStatus",
+    "CaptureRegion",
+    "CaptureSource",
+    "ImageFormat",
+    "ScreenshotRequest",
+    "ScreenshotResult",
     "SharedWorkflowState",
     "StructuredDocumentInput",
     "SupervisorDecision",

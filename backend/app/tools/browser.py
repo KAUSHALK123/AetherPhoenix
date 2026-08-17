@@ -135,3 +135,51 @@ class BrowserTool:
         except Exception as e:
             logger.error(f"Interaction '{action}' on '{selector}' failed: {str(e)}")
             return False
+
+    async def capture_screenshot(
+        self,
+        output_path: Optional[str] = None,
+        full_page: bool = False,
+        clip: Optional[dict] = None,
+        image_type: str = "png",
+        quality: Optional[int] = None,
+    ) -> bytes:
+        """
+        Captures a screenshot of the current page or region.
+
+        Args:
+            output_path: Optional destination file path.
+            full_page: When True, takes a screenshot of full page.
+            clip: Optional dict specifying {'x': float, 'y': float, ...}.
+            image_type: 'png' or 'jpeg'.
+            quality: Quality between 0-100 (for jpeg only).
+
+        Returns:
+            bytes of the captured screenshot.
+        """
+        self._check_permission(PermissionType.BROWSER_ACCESS)
+
+        if not self._page:
+            raise RuntimeError(
+                "Browser session not started. Call start_session() first."
+            )
+
+        try:
+            logger.info(f"Capturing browser screenshot (full_page={full_page})")
+            kwargs = {
+                "full_page": full_page,
+                "type": "jpeg" if image_type.lower() in ("jpeg", "jpg") else "png",
+            }
+            if output_path:
+                kwargs["path"] = output_path
+            if clip:
+                kwargs["clip"] = clip
+            if quality and kwargs["type"] == "jpeg":
+                kwargs["quality"] = quality
+
+            screenshot_bytes = await self._page.screenshot(**kwargs)
+            logger.info("Successfully captured browser screenshot.")
+            return screenshot_bytes
+        except Exception as e:
+            logger.error(f"Failed to capture browser screenshot: {str(e)}")
+            raise

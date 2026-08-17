@@ -7,6 +7,7 @@ from app.core.logging.logger import get_logger
 from app.tools.desktop.application import ApplicationController
 from app.tools.desktop.keyboard import KeyboardController
 from app.tools.desktop.mouse import MouseController
+from app.tools.desktop.screenshot import DesktopScreenshotController
 
 logger = get_logger(__name__)
 
@@ -64,6 +65,30 @@ class DesktopTool(Tool):
             elif action == "app_connect":
                 ApplicationController.connect(title=params["title"])
                 return {"status": "success", "action": "app_connect"}
+            elif action == "screenshot_fullscreen":
+                img = DesktopScreenshotController.capture_fullscreen(
+                    output_path=params.get("output_path")
+                )
+                return {
+                    "status": "success",
+                    "action": "screenshot_fullscreen",
+                    "width": img.width,
+                    "height": img.height,
+                }
+            elif action == "screenshot_region":
+                img = DesktopScreenshotController.capture_region(
+                    x=params["x"],
+                    y=params["y"],
+                    width=params["width"],
+                    height=params["height"],
+                    output_path=params.get("output_path"),
+                )
+                return {
+                    "status": "success",
+                    "action": "screenshot_region",
+                    "width": img.width,
+                    "height": img.height,
+                }
             else:
                 logger.warning(f"Unsupported desktop action: {action}")
                 raise ValueError(f"Unsupported action: {action}")
