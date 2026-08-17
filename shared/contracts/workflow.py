@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field
 
 from shared.contracts.artifact import Artifact
+from shared.contracts.escalation import EscalationResult
 from shared.contracts.event import RuntimeEvent
 from shared.contracts.execution import HealingResult, SupervisorValidation
 from shared.contracts.permission import PermissionRequest
@@ -24,6 +25,8 @@ class WorkflowStatus(str, Enum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
+    ESCALATED = "ESCALATED"
+    BLOCKED = "BLOCKED"
 
 
 class ExecutionMode(str, Enum):
@@ -82,5 +85,6 @@ class SharedWorkflowState(BaseModel):
     artifacts: List[Artifact] = Field(default_factory=list)
     logs: List[Dict[str, Any]] = Field(default_factory=list)
     healing_history: List[HealingResult] = Field(default_factory=list)
+    escalations: List[EscalationResult] = Field(default_factory=list)
     metrics: Dict[str, Any] = Field(default_factory=dict)
     events: List[RuntimeEvent] = Field(default_factory=list)

@@ -10,6 +10,12 @@ from shared.contracts.document import (
     DocumentSection,
     StructuredDocumentInput,
 )
+from shared.contracts.escalation import (
+    EscalationReason,
+    EscalationRequest,
+    EscalationResult,
+    EscalationSeverity,
+)
 from shared.contracts.event import EventSource, EventType, RuntimeEvent
 from shared.contracts.execution import (
     ExecutionMetrics,
@@ -119,6 +125,10 @@ __all__ = [
     "DocumentFormat",
     "DocumentGenerationResult",
     "DocumentSection",
+    "EscalationReason",
+    "EscalationRequest",
+    "EscalationResult",
+    "EscalationSeverity",
     "EventSource",
     # Event
     "EventType",
