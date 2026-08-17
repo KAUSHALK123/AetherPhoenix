@@ -1,8 +1,10 @@
 import asyncio
 import time
 from typing import Any, Dict, Optional
+from uuid import UUID
 
 from pydantic import PrivateAttr
+from shared.contracts.desktop import MouseActionRequest
 from shared.contracts.execution import ExecutionMetrics, ExecutionResult, TaskError
 from shared.contracts.permission import PermissionType
 from shared.contracts.task import Task
@@ -30,11 +32,13 @@ class DesktopTool(Tool):
 
     _permission_manager: Optional[PermissionManager] = PrivateAttr(default=None)
     _controller: Optional[DesktopController] = PrivateAttr(default=None)
+    _mouse_controller: Optional[MouseController] = PrivateAttr(default=None)
 
     def __init__(
         self,
         permission_manager: Optional[PermissionManager] = None,
         controller: Optional[DesktopController] = None,
+        mouse_controller: Optional[MouseController] = None,
         **kwargs: Any,
     ):
         super().__init__(
@@ -42,13 +46,16 @@ class DesktopTool(Tool):
             version="1.0.0",
             status=ToolState.READY,
             health=ToolHealth.HEALTHY,
-            adapter="desktop",
+            adapter="desktop_adapter",
             dependencies=["pyautogui", "pywinauto"],
             required_permissions=[PermissionType.DESKTOP_AUTOMATION],
             **kwargs,
         )
         self._permission_manager = permission_manager
         self._controller = controller or DesktopController(
+            permission_manager=permission_manager
+        )
+        self._mouse_controller = mouse_controller or MouseController(
             permission_manager=permission_manager
         )
 
@@ -68,16 +75,35 @@ class DesktopTool(Tool):
             )
         return self._controller
 
-    def execute(self, action: str, params: Dict[str, Any]) -> Any:
+    @property
+    def mouse_controller(self) -> MouseController:
+        if self._mouse_controller is None:
+            self._mouse_controller = MouseController(
+                permission_manager=self._permission_manager
+            )
+        return self._mouse_controller
+
+    @mouse_controller.setter
+    def mouse_controller(self, value: Optional[MouseController]) -> None:
+        self._mouse_controller = value
+
+    def execute(
+        self,
+        action: str,
+        params: Optional[Dict[str, Any]] = None,
+        workflow_id: Optional[UUID] = None,
+        task_id: Optional[UUID] = None,
+    ) -> Any:
         """
         Executes a desktop action synchronously.
         Supports standard mouse/keyboard/app actions and controller actions.
         """
+        params = params or {}
         logger.info(f"DesktopTool executing action: {action}")
 
         # Enforce permission check if permission_manager is configured
         if self._permission_manager:
-            workflow_id = params.get("workflow_id")
+            workflow_id = workflow_id or params.get("workflow_id")
             if workflow_id:
                 has_perm = self._permission_manager.check_permission(
                     PermissionType.DESKTOP_AUTOMATION, workflow_id=workflow_id
@@ -93,26 +119,133 @@ class DesktopTool(Tool):
                     )
 
         try:
-            # Mouse actions
-            if action == "mouse_click":
-                MouseController.click(
-                    x=params["x"],
-                    y=params["y"],
-                    button=params.get("button", "left"),
+            # Mouse actions (using instance controller)
+            if action == "mouse_get_position":
+                pos = self.mouse_controller.get_position(
+                    workflow_id=workflow_id, task_id=task_id
                 )
-                return {"status": "success", "action": "mouse_click"}
+                return {
+                    "status": "success",
+                    "action": "mouse_get_position",
+                    "x": pos.x,
+                    "y": pos.y,
+                    "position": {"x": pos.x, "y": pos.y},
+                }
+
             elif action == "mouse_move":
-                MouseController.move_to(
+                res = self.mouse_controller.move_to(
                     x=params["x"],
                     y=params["y"],
                     duration=params.get("duration", 0.5),
+                    timeout=params.get("timeout"),
+                    workflow_id=workflow_id,
+                    task_id=task_id,
                 )
-                return {"status": "success", "action": "mouse_move"}
-            elif action == "mouse_scroll":
-                MouseController.scroll(clicks=params["clicks"])
-                return {"status": "success", "action": "mouse_scroll"}
+                return {
+                    "status": "success",
+                    "action": "mouse_move",
+                    "position": {
+                        "x": res.position.x if res.position else params["x"],
+                        "y": res.position.y if res.position else params["y"],
+                    },
+                    "execution_time_ms": res.execution_time_ms,
+                }
 
-            # Keyboard actions
+            elif action == "mouse_click":
+                button = params.get("button", "left")
+                res = self.mouse_controller.click(
+                    x=params.get("x"),
+                    y=params.get("y"),
+                    button=button,
+                    duration=params.get("duration", 0.0),
+                    clicks=params.get("clicks", 1),
+                    interval=params.get("interval", 0.0),
+                    timeout=params.get("timeout"),
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                )
+                return {
+                    "status": "success",
+                    "action": "mouse_click",
+                    "button": button,
+                    "position": {
+                        "x": res.position.x if res.position else params.get("x"),
+                        "y": res.position.y if res.position else params.get("y"),
+                    },
+                    "execution_time_ms": res.execution_time_ms,
+                }
+
+            elif action == "mouse_right_click":
+                res = self.mouse_controller.right_click(
+                    x=params.get("x"),
+                    y=params.get("y"),
+                    duration=params.get("duration", 0.0),
+                    timeout=params.get("timeout"),
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                )
+                return {
+                    "status": "success",
+                    "action": "mouse_right_click",
+                    "position": {
+                        "x": res.position.x if res.position else params.get("x"),
+                        "y": res.position.y if res.position else params.get("y"),
+                    },
+                    "execution_time_ms": res.execution_time_ms,
+                }
+
+            elif action == "mouse_double_click":
+                button = params.get("button", "left")
+                res = self.mouse_controller.double_click(
+                    x=params.get("x"),
+                    y=params.get("y"),
+                    button=button,
+                    interval=params.get("interval", 0.1),
+                    duration=params.get("duration", 0.0),
+                    timeout=params.get("timeout"),
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                )
+                return {
+                    "status": "success",
+                    "action": "mouse_double_click",
+                    "button": button,
+                    "position": {
+                        "x": res.position.x if res.position else params.get("x"),
+                        "y": res.position.y if res.position else params.get("y"),
+                    },
+                    "execution_time_ms": res.execution_time_ms,
+                }
+
+            elif action == "mouse_scroll":
+                clicks = params.get("clicks", 0)
+                res = self.mouse_controller.scroll(
+                    clicks=clicks,
+                    x=params.get("x"),
+                    y=params.get("y"),
+                    timeout=params.get("timeout"),
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                )
+                return {
+                    "status": "success",
+                    "action": "mouse_scroll",
+                    "clicks": clicks,
+                    "execution_time_ms": res.execution_time_ms,
+                }
+
+            elif action == "mouse_action":
+                # Direct structured request
+                if "request" in params and isinstance(
+                    params["request"], MouseActionRequest
+                ):
+                    req = params["request"]
+                else:
+                    req = MouseActionRequest.model_validate(params)
+                res = self.mouse_controller.execute_action(req)
+                return res
+
+            # Keyboard actions (using KeyboardController classmethods)
             elif action in ("keyboard_type", "type_text"):
                 result = KeyboardController.type_text(
                     text=params["text"],
@@ -160,9 +293,11 @@ class DesktopTool(Tool):
             elif action == "app_launch":
                 ApplicationController.launch(app_path=params["app_path"])
                 return {"status": "success", "action": "app_launch"}
+
             elif action == "app_connect":
                 ApplicationController.connect(title=params["title"])
                 return {"status": "success", "action": "app_connect"}
+
             elif action in (
                 "start_session",
                 "end_session",
@@ -200,8 +335,12 @@ class DesktopTool(Tool):
             else:
                 logger.warning(f"Unsupported desktop action: {action}")
                 raise ValueError(f"Unsupported action: {action}")
+
+        except PermissionDeniedException:
+            logger.warning(f"Permission denied for desktop action: {action}")
+            raise
         except Exception as e:
-            logger.error(f"DesktopTool execution failed: {e}")
+            logger.error(f"DesktopTool execution failed for {action}: {e}")
             raise
 
 
