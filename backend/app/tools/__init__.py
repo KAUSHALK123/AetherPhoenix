@@ -1,4 +1,19 @@
 try:
+    from app.tools.desktop import (
+        DesktopController,
+        DesktopTool,
+        DesktopToolAdapter,
+        KeyboardController,
+        register_desktop_tool,
+    )
+except ImportError:
+    DesktopController = None
+    DesktopTool = None
+    DesktopToolAdapter = None
+    KeyboardController = None
+    register_desktop_tool = None
+
+try:
     from app.tools.document import (
         DocumentGenerator,
         DocumentToolAdapter,
@@ -15,17 +30,6 @@ except ImportError:
     PDFGenerator = None
     PDFToolAdapter = None
     register_pdf_tool = None
-
-try:
-    from app.tools.desktop import (
-        DesktopTool,
-        KeyboardController,
-        register_desktop_tool,
-    )
-except ImportError:
-    DesktopTool = None
-    KeyboardController = None
-    register_desktop_tool = None
 
 from app.tools.registry import ToolRegistry
 
@@ -58,7 +62,9 @@ except ImportError:
 
 __all__ = [
     "ToolRegistry",
+    "DesktopController",
     "DesktopTool",
+    "DesktopToolAdapter",
     "KeyboardController",
     "register_desktop_tool",
     "DocumentGenerator",
