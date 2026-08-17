@@ -1,4 +1,10 @@
+"""Healing agent module package."""
+
+from shared.contracts.retry import RetryRequest, RetryResult, RetryStatus
+
+from app.agents.healing.agent import HealingAgent, HealingRequest
 from app.agents.healing.error_parser import ErrorCategory, ErrorParser, ParsedError
+from app.agents.healing.models import ErrorSeverity, ErrorSource, NormalizedError
 from app.agents.healing.recovery_planner import (
     RecoveryPlan,
     RecoveryPlanner,
@@ -11,9 +17,6 @@ from app.agents.healing.root_cause_analyzer import (
     RootCauseCategory,
 )
 from app.agents.healing.self_healing_loop import HealingState, SelfHealingLoop
-
-# Alias for Kernel Registration
-HealingAgent = SelfHealingLoop
 
 __all__ = [
     "ErrorCategory",
@@ -29,36 +32,11 @@ __all__ = [
     "HealingState",
     "SelfHealingLoop",
     "HealingAgent",
-"""Healing agent module package."""
-
-from shared.contracts.retry import (
-    RecoveryPlan,
-    RetryRequest,
-    RetryResult,
-    RetryStatus,
-)
-
-from app.agents.healing.agent import HealingAgent, HealingRequest
-from app.agents.healing.error_parser import ErrorParser
-from app.agents.healing.models import (
-    ErrorCategory,
-    ErrorSeverity,
-    ErrorSource,
-    NormalizedError,
-)
-from app.agents.healing.retry_engine import RetryEngine
-
-__all__ = [
-    "RetryEngine",
     "RetryRequest",
     "RetryResult",
     "RetryStatus",
-    "RecoveryPlan",
-    "ErrorParser",
     "ErrorSource",
-    "ErrorCategory",
     "ErrorSeverity",
     "NormalizedError",
-    "HealingAgent",
     "HealingRequest",
 ]
