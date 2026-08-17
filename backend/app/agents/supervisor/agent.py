@@ -67,6 +67,7 @@ class SupervisorAgent(BaseAgent):
             event_bus=self.event_bus, default_max_retries=self.max_retries
         )
         from app.agents.healing.self_healing_loop import SelfHealingLoop
+
         self.healing_loop = healing_loop or SelfHealingLoop(
             event_bus=self.event_bus,
             max_retries=self.max_retries,

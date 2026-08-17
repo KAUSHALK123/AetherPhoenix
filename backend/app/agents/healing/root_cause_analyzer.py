@@ -126,9 +126,9 @@ class RootCauseAnalyzer:
 
         if parsed_error is not None:
             if not error_message:
-                error_message = getattr(
-                    parsed_error, "raw_message", ""
-                ) or getattr(parsed_error, "message", "")
+                error_message = getattr(parsed_error, "raw_message", "") or getattr(
+                    parsed_error, "message", ""
+                )
             if not failure_type:
                 failure_type = getattr(
                     parsed_error, "original_failure_type", None

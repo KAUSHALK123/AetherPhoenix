@@ -21,7 +21,6 @@ class CompatStrategy:
         return self.value == str(other)
 
 
-
 class ErrorParserOutput(BaseModel):
     """Structured payload produced by Error Parser."""
 
@@ -153,5 +152,3 @@ class RecoveryPlan(BaseModel):
     @property
     def requires_permission(self) -> bool:
         return len(self.required_permissions) > 0
-
-

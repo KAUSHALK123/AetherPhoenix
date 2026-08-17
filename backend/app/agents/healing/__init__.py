@@ -1,6 +1,5 @@
 """Healing agent module package."""
 
-
 from shared.contracts.escalation import (
     EscalationReason,
     EscalationRequest,

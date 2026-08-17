@@ -39,9 +39,7 @@ class ExecutionResult(BaseModel):
     metrics: ExecutionMetrics = Field(default_factory=ExecutionMetrics)
     logs: list[str] = Field(default_factory=list)
     error: TaskError | None = None
-    finished_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    finished_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class SupervisorDecision(str, Enum):
@@ -63,9 +61,7 @@ class SupervisorValidation(BaseModel):
     decision: SupervisorDecision = SupervisorDecision.NEEDS_REVIEW
     checks: dict[str, bool] = Field(default_factory=dict)
     issues: list[str] = Field(default_factory=list)
-    timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class HealingState(str, Enum):
@@ -122,9 +118,7 @@ class HealingResult(BaseModel):
     healing_state: HealingState | None = None
     root_cause_category: RootCauseCategory | None = None
     escalation_reason: str | None = None
-    timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class FailureType(str, Enum):
@@ -150,9 +144,7 @@ class TaskFailureReport(BaseModel):
     workflow_id: UUID
     failure_type: FailureType
     message: str
-    detected_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     retryability: bool
     execution_context: dict[str, Any] = Field(default_factory=dict)
 
@@ -169,9 +161,7 @@ class WorkerReexecutionRequest(BaseModel):
     recovery_strategy: str | None = None
     modified_parameters: dict[str, Any] = Field(default_factory=dict)
     original_task_snapshot: dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class WorkerReexecutionResult(BaseModel):
@@ -198,6 +188,4 @@ class HealingRequest(BaseModel):
     error_message: str | None = None
     attempt_number: int = Field(default=1, ge=1)
     execution_context: dict[str, Any] = Field(default_factory=dict)
-    timestamp: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

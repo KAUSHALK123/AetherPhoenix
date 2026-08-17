@@ -80,9 +80,7 @@ class RetryEngine:
         self.base_backoff_seconds = base_backoff_seconds
         self.max_backoff_seconds = max_backoff_seconds
 
-        self.reexecution_manager = (
-            reexecution_manager or WorkerReexecutionManager()
-        )
+        self.reexecution_manager = reexecution_manager or WorkerReexecutionManager()
 
         # Used to prevent repeatedly attempting the exact same recovery.
         self._failure_signature_counts: Dict[Tuple[str, str, str], int] = {}
@@ -140,11 +138,8 @@ class RetryEngine:
             if hasattr(root_cause, "is_recoverable"):
                 is_recoverable = bool(root_cause.is_recoverable)
 
-
         limit_retries = (
-            max_retries
-            if max_retries is not None
-            else self.default_max_retries
+            max_retries if max_retries is not None else self.default_max_retries
         )
 
         limit_healing = (
@@ -155,18 +150,13 @@ class RetryEngine:
 
         # 1. Per-task retry limit.
         if task.retry_count >= limit_retries:
-            msg = (
-                f"Task {task.task_id} reached max retry limit "
-                f"of {limit_retries}."
-            )
+            msg = f"Task {task.task_id} reached max retry limit " f"of {limit_retries}."
             logger.info(msg)
             return False, msg
 
         # 2. Total healing attempts for this task.
         healing_attempts_for_task = sum(
-            1
-            for healing in state.healing_history
-            if healing.task_id == task.task_id
+            1 for healing in state.healing_history if healing.task_id == task.task_id
         )
 
         if healing_attempts_for_task >= limit_healing:
@@ -196,10 +186,7 @@ class RetryEngine:
 
         # 4. Root-cause recoverability.
         if not is_recoverable:
-            msg = (
-                f"Root cause '{root_cause_category}' "
-                "is non-recoverable."
-            )
+            msg = f"Root cause '{root_cause_category}' " "is non-recoverable."
             logger.info(msg)
             return False, msg
 
@@ -238,11 +225,7 @@ class RetryEngine:
                 (is_eligible, status, reason)
         """
 
-        limit = (
-            max_retries
-            if max_retries is not None
-            else self.default_max_retries
-        )
+        limit = max_retries if max_retries is not None else self.default_max_retries
 
         # 1. Maximum retry limit.
         if task.retry_count >= limit:
@@ -295,10 +278,7 @@ class RetryEngine:
             dep_task = state.tasks.get(dep_id)
 
             if not dep_task:
-                msg = (
-                    f"Dependency task {dep_id} not found "
-                    "in workflow state."
-                )
+                msg = f"Dependency task {dep_id} not found " "in workflow state."
                 logger.info(msg)
 
                 return (
@@ -321,11 +301,7 @@ class RetryEngine:
                 )
 
         # 5. Permission checks.
-        task_perms = [
-            req
-            for req in state.permissions
-            if req.task_id == task.task_id
-        ]
+        task_perms = [req for req in state.permissions if req.task_id == task.task_id]
 
         for req in task_perms:
             if req.status in (
@@ -352,8 +328,7 @@ class RetryEngine:
                     req
                     for req in state.permissions
                     if (
-                        req.workflow_id
-                        == state.metadata.workflow_id
+                        req.workflow_id == state.metadata.workflow_id
                         and req.permission_type == perm_type
                         and req.status == PermissionStatus.GRANTED
                     )
@@ -374,13 +349,10 @@ class RetryEngine:
 
             except ValueError:
                 logger.warning(
-                    f"Task {task.task_id} has invalid permission "
-                    f"string: {perm_str}"
+                    f"Task {task.task_id} has invalid permission " f"string: {perm_str}"
                 )
 
-                msg = (
-                    f"Invalid permission specification: {perm_str}"
-                )
+                msg = f"Invalid permission specification: {perm_str}"
 
                 return (
                     False,
@@ -390,10 +362,7 @@ class RetryEngine:
 
         # 6. Recovery-plan retryability.
         if recovery_plan and not recovery_plan.is_retryable:
-            msg = (
-                "Recovery plan explicitly marks failure "
-                "as non-retryable."
-            )
+            msg = "Recovery plan explicitly marks failure " "as non-retryable."
             logger.info(msg)
 
             return (
@@ -406,8 +375,7 @@ class RetryEngine:
         if error:
             if not error.is_recoverable:
                 msg = (
-                    f"Error {error.error_code} is explicitly "
-                    "marked non-recoverable."
+                    f"Error {error.error_code} is explicitly " "marked non-recoverable."
                 )
                 logger.info(msg)
 
@@ -417,17 +385,10 @@ class RetryEngine:
                     msg,
                 )
 
-            err_code = (
-                error.error_code.upper()
-                if error.error_code
-                else ""
-            )
+            err_code = error.error_code.upper() if error.error_code else ""
 
             if err_code in NON_RETRYABLE_ERROR_CODES:
-                msg = (
-                    f"Error code '{err_code}' is classified "
-                    "as non-retryable."
-                )
+                msg = f"Error code '{err_code}' is classified " "as non-retryable."
                 logger.info(msg)
 
                 return (
@@ -459,25 +420,13 @@ class RetryEngine:
                 has_approval = True
 
             elif error:
-                err_msg = (
-                    error.error_message.upper()
-                    if error.error_message
-                    else ""
-                )
+                err_msg = error.error_message.upper() if error.error_message else ""
 
-                err_code = (
-                    error.error_code.upper()
-                    if error.error_code
-                    else ""
-                )
+                err_code = error.error_code.upper() if error.error_code else ""
 
                 is_transient = any(
-                    code in err_code
-                    for code in TRANSIENT_ERROR_CODES
-                ) or any(
-                    code in err_msg
-                    for code in TRANSIENT_ERROR_CODES
-                )
+                    code in err_code for code in TRANSIENT_ERROR_CODES
+                ) or any(code in err_msg for code in TRANSIENT_ERROR_CODES)
 
                 if is_transient:
                     has_approval = True
@@ -527,10 +476,7 @@ class RetryEngine:
         task = state.tasks.get(request.task_id)
 
         if not task:
-            msg = (
-                f"Task {request.task_id} not found "
-                "in workflow state."
-            )
+            msg = f"Task {request.task_id} not found " "in workflow state."
             logger.error(msg)
 
             return RetryResult(
@@ -551,14 +497,12 @@ class RetryEngine:
 
         root_cause_summary = (
             request.recovery_plan.reason
-            if request.recovery_plan
-            and request.recovery_plan.reason
+            if request.recovery_plan and request.recovery_plan.reason
             else (
                 request.reason
                 or (
                     request.error.error_message
-                    if request.error
-                    and request.error.error_message
+                    if request.error and request.error.error_message
                     else "Task failure"
                 )
             )
@@ -570,11 +514,7 @@ class RetryEngine:
             state=state,
             root_cause_category=root_cause_category,
             root_cause_summary=root_cause_summary,
-            is_recoverable=(
-                request.error.is_recoverable
-                if request.error
-                else True
-            ),
+            is_recoverable=(request.error.is_recoverable if request.error else True),
             max_retries=request.max_retries,
         )
 
@@ -652,10 +592,7 @@ class RetryEngine:
         # Calculate backoff.
         backoff_override = None
 
-        if (
-            request.recovery_plan
-            and request.recovery_plan.backoff_seconds > 0
-        ):
+        if request.recovery_plan and request.recovery_plan.backoff_seconds > 0:
             backoff_override = request.recovery_plan.backoff_seconds
         elif request.delay_seconds:
             backoff_override = request.delay_seconds
@@ -685,13 +622,8 @@ class RetryEngine:
         task.retry_count += 1
 
         # Apply recovery-plan task parameter changes.
-        if (
-            request.recovery_plan
-            and request.recovery_plan.updated_task_params
-        ):
-            for key, value in (
-                request.recovery_plan.updated_task_params.items()
-            ):
+        if request.recovery_plan and request.recovery_plan.updated_task_params:
+            for key, value in request.recovery_plan.updated_task_params.items():
                 if hasattr(task, key):
                     setattr(task, key, value)
 
@@ -707,24 +639,16 @@ class RetryEngine:
         task.execution_logs.append(log_entry)
 
         # Determine healing strategy.
-        strategy = (
-            request.recovery_plan.strategy
-            if request.recovery_plan
-            else "RETRY"
-        )
+        strategy = request.recovery_plan.strategy if request.recovery_plan else "RETRY"
 
         root_cause = (
             request.recovery_plan.reason
-            if (
-                request.recovery_plan
-                and request.recovery_plan.reason
-            )
+            if (request.recovery_plan and request.recovery_plan.reason)
             else (
                 request.reason
                 or (
                     request.error.error_message
-                    if request.error
-                    and request.error.error_message
+                    if request.error and request.error.error_message
                     else "Task failure"
                 )
             )
@@ -737,9 +661,7 @@ class RetryEngine:
             root_cause=root_cause,
             recovery_strategy=strategy,
             replacement_tasks=(
-                request.recovery_plan.replacement_tasks
-                if request.recovery_plan
-                else []
+                request.recovery_plan.replacement_tasks if request.recovery_plan else []
             ),
             attempt_number=task.retry_count,
             success=True,
@@ -769,13 +691,8 @@ class RetryEngine:
         engine = WorkflowEngine(state)
 
         # Enqueue replacement tasks first.
-        if (
-            request.recovery_plan
-            and request.recovery_plan.replacement_tasks
-        ):
-            for replacement_task in (
-                request.recovery_plan.replacement_tasks
-            ):
+        if request.recovery_plan and request.recovery_plan.replacement_tasks:
+            for replacement_task in request.recovery_plan.replacement_tasks:
                 engine.enqueue(replacement_task)
 
         # Re-enqueue the original task.
@@ -870,10 +787,8 @@ class RetryEngine:
             else:
                 root_cause_category = str(root_cause)
 
-
         logger.info(
-            "RetryEngine executing recovery for task %s "
-            "(Attempt #%s)",
+            "RetryEngine executing recovery for task %s " "(Attempt #%s)",
             task.task_id,
             attempt_number,
         )
@@ -884,9 +799,7 @@ class RetryEngine:
                 getattr(plan, "strategy", None),
                 "value",
             )
-            else str(
-                getattr(plan, "strategy", "RETRY")
-            )
+            else str(getattr(plan, "strategy", "RETRY"))
         )
 
         is_executable = getattr(
@@ -895,13 +808,10 @@ class RetryEngine:
             True,
         )
 
-        if (
-            not is_executable
-            or strategy_val in (
-                "ESCALATE_USER",
-                "CANCEL_WORKFLOW",
-                "REQUEST_PERMISSION_AGAIN",
-            )
+        if not is_executable or strategy_val in (
+            "ESCALATE_USER",
+            "CANCEL_WORKFLOW",
+            "REQUEST_PERMISSION_AGAIN",
         ):
             logger.info(
                 "Recovery plan for task %s is non-executable.",
@@ -969,8 +879,7 @@ class RetryEngine:
 
             if replacement_tasks:
                 logger.info(
-                    "Submitting %s replacement tasks "
-                    "to WorkflowEngine.",
+                    "Submitting %s replacement tasks " "to WorkflowEngine.",
                     len(replacement_tasks),
                 )
 
@@ -992,8 +901,7 @@ class RetryEngine:
                 task.retry_count += 1
 
                 logger.info(
-                    "Re-enqueueing task %s "
-                    "(New retry count: %s)",
+                    "Re-enqueueing task %s " "(New retry count: %s)",
                     task.task_id,
                     task.retry_count,
                 )
@@ -1046,17 +954,9 @@ class RetryEngine:
 
         task = state.tasks.get(task_id)
 
-        current_attempt = (
-            task.retry_count + 1
-            if task
-            else 1
-        )
+        current_attempt = task.retry_count + 1 if task else 1
 
-        limit = (
-            max_retries
-            if max_retries is not None
-            else self.default_max_retries
-        )
+        limit = max_retries if max_retries is not None else self.default_max_retries
 
         req_reason = reason
 

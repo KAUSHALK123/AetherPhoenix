@@ -65,17 +65,21 @@ class RecoveryPlanner:
         task_obj = None
 
         if parsed_error is not None and (
-            hasattr(parsed_error, "likely_root_cause") or 
-            hasattr(parsed_error, "root_cause_summary") or 
-            hasattr(parsed_error, "recommended_strategy")
+            hasattr(parsed_error, "likely_root_cause")
+            or hasattr(parsed_error, "root_cause_summary")
+            or hasattr(parsed_error, "recommended_strategy")
         ):
             is_legacy = True
             root_cause_obj = parsed_error
             task_obj = root_cause
-        elif parsed_error is None and root_cause is not None and (
-            hasattr(root_cause, "likely_root_cause") or 
-            hasattr(root_cause, "root_cause_summary") or 
-            hasattr(root_cause, "recommended_strategy")
+        elif (
+            parsed_error is None
+            and root_cause is not None
+            and (
+                hasattr(root_cause, "likely_root_cause")
+                or hasattr(root_cause, "root_cause_summary")
+                or hasattr(root_cause, "recommended_strategy")
+            )
         ):
             is_legacy = True
             root_cause_obj = root_cause
@@ -83,11 +87,7 @@ class RecoveryPlanner:
 
         if is_legacy:
             is_retryable = getattr(root_cause_obj, "is_recoverable", True)
-            target_tool = (
-                getattr(task_obj, "required_tool", None)
-                if task_obj
-                else None
-            )
+            target_tool = getattr(task_obj, "required_tool", None) if task_obj else None
             parsed_details = {"target_tool": target_tool}
             failure_id = getattr(
                 root_cause_obj,

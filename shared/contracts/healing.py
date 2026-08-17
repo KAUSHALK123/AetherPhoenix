@@ -77,7 +77,10 @@ class RootCauseResult(BaseModel):
 
     @property
     def is_recoverable(self) -> bool:
-        return self.category not in (RootCauseCategory.PERMISSION, RootCauseCategory.USER)
+        return self.category not in (
+            RootCauseCategory.PERMISSION,
+            RootCauseCategory.USER,
+        )
 
     @property
     def recommended_strategy(self) -> str:
@@ -99,8 +102,6 @@ class RootCauseResult(BaseModel):
         if self.evidence.observed_error_message:
             res["observed_error_message"] = self.evidence.observed_error_message
         return res
-
-
 
 
 __all__ = [

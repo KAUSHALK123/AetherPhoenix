@@ -81,9 +81,7 @@ class HealingAgent(BaseAgent):
                 target_task.status = TaskStatus.WAITING
                 target_task.retry_count += 1
             attempt_num = (
-                request.attempt_number
-                if hasattr(request, "attempt_number")
-                else 1
+                request.attempt_number if hasattr(request, "attempt_number") else 1
             )
             return HealingResult(
                 task_id=request.task_id,
@@ -99,8 +97,6 @@ class HealingAgent(BaseAgent):
         if task is not None and "workflow_id" in kwargs:
             return await self.evaluate_and_heal(*args, **kwargs)
         return await self.analyze_failure(report=report, task=task)
-
-
 
     @property
     def registration(self) -> AgentRegistration:
@@ -212,4 +208,3 @@ class HealingAgent(BaseAgent):
         if sws:
             sws.healing_history.append(healing_result)
         return healing_result
-

@@ -143,7 +143,6 @@ class NormalizedError(BaseModel):
         return self.is_retryable
 
 
-
 __all__ = [
     "ErrorSource",
     "ErrorCategory",
