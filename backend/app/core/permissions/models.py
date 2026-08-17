@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, Optional
 
@@ -27,6 +28,7 @@ class PermissionStatus(str, Enum):
     PENDING = "PENDING"
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
 
 
 class PermissionRequest(BaseModel):
@@ -37,6 +39,8 @@ class PermissionRequest(BaseModel):
     reason: str
     context: Dict[str, Any] = Field(default_factory=dict)
     status: PermissionStatus = Field(default=PermissionStatus.PENDING)
+    requested_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    expires_at: Optional[datetime] = None
 
 
 class PermissionResponse(BaseModel):

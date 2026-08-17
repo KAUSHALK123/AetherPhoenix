@@ -8,11 +8,12 @@ from app.core.config import (
     get_config_manager,
     settings,
 )
-from app.core.permissions import PermissionManager
+from app.core.permissions import PermissionManager, get_permission_manager
 
 __all__ = [
     "ConfigurationManager",
     "PermissionManager",
+    "get_permission_manager",
     "RuntimeSettings",
     "Settings",
     "get_config",
