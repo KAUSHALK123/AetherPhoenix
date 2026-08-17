@@ -149,6 +149,33 @@ class TaskFailureReport(BaseModel):
     execution_context: dict[str, Any] = Field(default_factory=dict)
 
 
+class WorkerReexecutionRequest(BaseModel):
+    """Controlled re-execution request contract for a task under recovery flow."""
+
+    request_id: UUID = Field(default_factory=uuid4)
+    attempt_id: UUID = Field(default_factory=uuid4)
+    task_id: UUID
+    workflow_id: UUID
+    attempt_number: int = Field(default=1, ge=1)
+    recovery_plan_id: UUID | None = None
+    recovery_strategy: str | None = None
+    modified_parameters: dict[str, Any] = Field(default_factory=dict)
+    original_task_snapshot: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class WorkerReexecutionResult(BaseModel):
+    """Contract representing the outcome of a worker re-execution attempt."""
+
+    reexecution_id: UUID = Field(default_factory=uuid4)
+    attempt_id: UUID
+    task_id: UUID
+    workflow_id: UUID
+    attempt_number: int
+    execution_result: ExecutionResult
+    previous_attempt_ids: list[UUID] = Field(default_factory=list)
+
+
 class HealingRequest(BaseModel):
     """Structured request input for Healing Agent."""
 

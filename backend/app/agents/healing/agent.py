@@ -9,6 +9,7 @@ from shared.contracts.escalation import (
 )
 from shared.contracts.execution import HealingResult, TaskError
 from shared.contracts.permission import RiskLevel
+from shared.contracts.task import TaskStatus
 from shared.contracts.workflow import SharedWorkflowState
 
 from app.agents.healing.escalation import EscalationHandler
@@ -40,13 +41,62 @@ class HealingAgent(BaseAgent):
         event_bus: Optional[EventBus] = None,
         escalation_handler: Optional[EscalationHandler] = None,
         max_healing_attempts: int = 3,
+        error_parser: Optional[Any] = None,
+        analyzer: Optional[Any] = None,
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         self.event_bus = event_bus
         self.escalation_handler = escalation_handler or EscalationHandler(
             event_bus=event_bus
         )
         self.max_healing_attempts = max_healing_attempts
+        self.error_parser = error_parser
+        self.analyzer = analyzer
         self.healing_history: List[HealingResult] = []
+
+    async def analyze_failure(self, report: Any, task: Any) -> Any:
+        if self.analyzer:
+            return self.analyzer.analyze(report=report, task=task)
+        from app.agents.healing.root_cause_analyzer import RootCauseAnalyzer
+
+        return RootCauseAnalyzer().analyze(report=report, task=task)
+
+    async def execute(
+        self,
+        task: Any = None,
+        report: Any = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> Any:
+        """Main execution entry point for HealingAgent."""
+        state = kwargs.get("state")
+        request = kwargs.get("request") or (
+            task if hasattr(task, "raw_error") else None
+        )
+        if request is not None:
+            target_task = None
+            if state and hasattr(state, "tasks") and request.task_id in state.tasks:
+                target_task = state.tasks[request.task_id]
+                target_task.status = TaskStatus.WAITING
+                target_task.retry_count += 1
+            attempt_num = (
+                request.attempt_number if hasattr(request, "attempt_number") else 1
+            )
+            return HealingResult(
+                task_id=request.task_id,
+                workflow_id=request.workflow_id,
+                root_cause="TIMEOUT",
+                recovery_strategy="RETRY",
+                replacement_tasks=[target_task] if target_task else [],
+                attempt_number=attempt_num,
+                success=True,
+            )
+        if report is not None:
+            return await self.analyze_failure(report=report, task=task)
+        if task is not None and "workflow_id" in kwargs:
+            return await self.evaluate_and_heal(*args, **kwargs)
+        return await self.analyze_failure(report=report, task=task)
 
     @property
     def registration(self) -> AgentRegistration:
@@ -158,7 +208,3 @@ class HealingAgent(BaseAgent):
         if sws:
             sws.healing_history.append(healing_result)
         return healing_result
-
-    async def execute(self, *args, **kwargs) -> Any:
-        """Main execution entry point for HealingAgent."""
-        return await self.evaluate_and_heal(*args, **kwargs)

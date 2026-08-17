@@ -93,14 +93,16 @@ class RootCauseAnalyzer:
 
     def analyze(
         self,
-        report: Optional[TaskFailureReport] = None,
+        report: Optional[Any] = None,
         task: Optional[Task] = None,
-        result: Optional[ExecutionResult] = None,
+        result: Optional[Any] = None,
         state: Optional[SharedWorkflowState] = None,
         tool_info: Optional[Dict[str, Any]] = None,
         logs: Optional[List[str]] = None,
         failure_type: Optional[FailureType | str] = None,
         error_message: Optional[str] = None,
+        *args: Any,
+        **kwargs: Any,
     ) -> RootCauseResult:
         """
         Main analysis entrypoint. Performs structured diagnosis.
@@ -108,6 +110,30 @@ class RootCauseAnalyzer:
         Returns a RootCauseResult with root cause, confidence score, evidence,
         and alternatives.
         """
+        # Resolve positional/keyword arguments for legacy signatures:
+        # Legacy signature: analyze(self, parsed_error, task, state)
+        parsed_error = kwargs.get("parsed_error")
+
+        # If report is actually the parsed_error:
+        if report is not None and not isinstance(report, TaskFailureReport):
+            parsed_error = report
+            report = None
+
+        # If result is actually the state:
+        if result is not None and isinstance(result, SharedWorkflowState):
+            state = result
+            result = None
+
+        if parsed_error is not None:
+            if not error_message:
+                error_message = getattr(parsed_error, "raw_message", "") or getattr(
+                    parsed_error, "message", ""
+                )
+            if not failure_type:
+                failure_type = getattr(
+                    parsed_error, "original_failure_type", None
+                ) or getattr(parsed_error, "normalized_code", None)
+
         # Resolve IDs
         task_id = (
             report.task_id

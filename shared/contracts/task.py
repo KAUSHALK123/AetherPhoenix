@@ -114,3 +114,5 @@ class Task(BaseModel):
     rollback_info: RollbackInfo | None = None
     execution_logs: list[str] = Field(default_factory=list)
     artifacts_produced: list[str] = Field(default_factory=list)
+    current_attempt_id: UUID | None = None
+    attempt_history: list[dict[str, Any]] = Field(default_factory=list)

@@ -219,3 +219,36 @@ class WorkerAgent(BaseAgent):
                 ),
                 metrics=ExecutionMetrics(execution_time_ms=duration_ms),
             )
+
+    async def reexecute(
+        self,
+        request: Any,
+        state: Any,
+        *args: Any,
+        **kwargs: Any,
+    ) -> ExecutionResult:
+        """
+        Executes a controlled re-execution request for a task.
+        Revalidates permissions, applies recovery context, and delegates to execute().
+        """
+        task_id = getattr(request, "task_id", None)
+        if not task_id:
+            raise ValueError("Invalid re-execution request: missing task_id")
+
+        task = state.tasks.get(task_id) if hasattr(state, "tasks") else None
+        if not task:
+            raise ValueError(f"Task {task_id} not found in workflow state")
+
+        attempt_id = getattr(request, "attempt_id", None)
+        if attempt_id:
+            task.current_attempt_id = attempt_id
+
+        mod_params = getattr(request, "modified_parameters", {})
+        if mod_params and "updated_tool" in mod_params:
+            task.required_tool = mod_params["updated_tool"]
+
+        logger.info(
+            f"WorkerAgent re-executing task {task.task_id} "
+            f"(Attempt #{getattr(request, 'attempt_number', 1)})"
+        )
+        return await self.execute(task, *args, **kwargs)
