@@ -99,7 +99,6 @@ def test_error_parser_network_error():
     assert parsed.is_transient is True
 
 
-
 @pytest.fixture
 def parser():
     return ErrorParser()
