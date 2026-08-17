@@ -20,7 +20,13 @@ from .exceptions import (
     WindowNotFoundError,
 )
 from .interface import DesktopTool, DesktopToolAdapter, register_desktop_tool
-from .keyboard import KeyboardActionError, KeyboardController
+from .keyboard import (
+    DesktopUnavailableError,
+    InvalidKeyboardActionError,
+    KeyboardActionError,
+    KeyboardController,
+    KeyboardTimeoutError,
+)
 from .models import (
     ApplicationInfo,
     DesktopActionResult,
@@ -69,6 +75,11 @@ __all__ = [
     "DesktopSessionInfo",
     "DesktopState",
     "DesktopActionResult",
+    "DesktopActionResult",
+    "InvalidKeyboardActionError",
+    "DesktopUnavailableError",
+    "KeyboardTimeoutError",
     "InvalidCoordinatesError",
     "MouseTimeoutError",
 ]
+

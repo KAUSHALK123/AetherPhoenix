@@ -95,28 +95,31 @@ class DesktopTool(Tool):
         task_id: Optional[UUID] = None,
     ) -> Any:
         """
-        <<<<<<< HEAD
-                Executes a desktop action.
-                Safety validation, coordinate checks, and logging are handled
-                by controller abstractions.
-
-                Args:
-                    action: Desktop action name to execute.
-                    params: Parameters dictionary for the action.
-                    workflow_id: Optional workflow ID for auditing.
-                    task_id: Optional task ID for auditing.
-
-                Returns:
-                    Structured execution output dictionary or result model.
-        =======
-                Executes a desktop action synchronously.
-                Supports standard mouse/keyboard/app actions and controller actions.
-        >>>>>>> e222e4ed8c06e6e52513326d6d5591be57740dd4
+        Executes a desktop action synchronously.
+        Supports standard mouse/keyboard/app actions and controller actions.
         """
         params = params or {}
         logger.info(f"DesktopTool executing action: {action}")
 
+        # Enforce permission check if permission_manager is configured
+        if self._permission_manager:
+            workflow_id = workflow_id or params.get("workflow_id")
+            if workflow_id:
+                has_perm = self._permission_manager.check_permission(
+                    PermissionType.DESKTOP_AUTOMATION, workflow_id=workflow_id
+                )
+                if not has_perm:
+                    logger.warning(
+                        f"Permission denied for desktop action '{action}' "
+                        f"on workflow '{workflow_id}'"
+                    )
+                    raise PermissionDeniedException(
+                        f"Permission denied: {PermissionType.DESKTOP_AUTOMATION} "
+                        f"required for {action}"
+                    )
+
         try:
+            # Mouse actions (using instance controller)
             if action == "mouse_get_position":
                 pos = self.mouse_controller.get_position(
                     workflow_id=workflow_id, task_id=task_id
@@ -242,20 +245,51 @@ class DesktopTool(Tool):
                 res = self.mouse_controller.execute_action(req)
                 return res
 
-            elif action == "keyboard_type":
-                KeyboardController.type_text(
-                    text=params["text"], interval=params.get("interval", 0.05)
+            # Keyboard actions (using KeyboardController classmethods)
+            elif action in ("keyboard_type", "type_text"):
+                result = KeyboardController.type_text(
+                    text=params["text"],
+                    interval=params.get("interval", 0.05),
+                    timeout=params.get("timeout", 30.0),
                 )
-                return {"status": "success", "action": "keyboard_type"}
+                return result
+            elif action in ("keyboard_press", "key_press"):
+                result = KeyboardController.press_key(
+                    key=params["key"],
+                    duration=params.get("duration", 0.0),
+                    presses=params.get("presses", 1),
+                    interval=params.get("interval", 0.0),
+                )
+                return result
+            elif action in ("keyboard_down", "key_down"):
+                result = KeyboardController.key_down(key=params["key"])
+                return result
+            elif action in ("keyboard_up", "key_up"):
+                result = KeyboardController.key_up(key=params["key"])
+                return result
+            elif action in (
+                "keyboard_hotkey",
+                "keyboard_shortcut",
+                "hotkey",
+                "shortcut",
+            ):
+                keys = params.get("keys")
+                if not keys and "key" in params:
+                    keys = [params["key"]]
+                if not keys:
+                    raise ValueError("Keyboard shortcut requires 'keys' parameter")
+                result = KeyboardController.hotkey(
+                    *keys, timeout=params.get("timeout", 30.0)
+                )
+                return result
+            elif action in ("keyboard_special_key", "special_key"):
+                result = KeyboardController.press_special(
+                    special_key=params.get("special_key") or params["key"],
+                    duration=params.get("duration", 0.0),
+                )
+                return result
 
-            elif action == "keyboard_press":
-                KeyboardController.press_key(key=params["key"])
-                return {"status": "success", "action": "keyboard_press"}
-
-            elif action == "keyboard_hotkey":
-                KeyboardController.hotkey(*params["keys"])
-                return {"status": "success", "action": "keyboard_hotkey"}
-
+            # Application actions
             elif action == "app_launch":
                 ApplicationController.launch(app_path=params["app_path"])
                 return {"status": "success", "action": "app_launch"}
@@ -263,6 +297,7 @@ class DesktopTool(Tool):
             elif action == "app_connect":
                 ApplicationController.connect(title=params["title"])
                 return {"status": "success", "action": "app_connect"}
+
             elif action in (
                 "start_session",
                 "end_session",

@@ -47,6 +47,12 @@ from shared.contracts.feedback import (
     PlannerFeedback,
     ReplanningContext,
 )
+from shared.contracts.keyboard import (
+    KeyboardActionRequest,
+    KeyboardActionResult,
+    KeyboardActionType,
+    SpecialKey,
+)
 from shared.contracts.pdf import (
     CodeBlockElement,
     HeadingElement,
@@ -151,6 +157,9 @@ __all__ = [
     "HealingResult",
     "HealingSummary",
     "IntentCategory",
+    "KeyboardActionRequest",
+    "KeyboardActionResult",
+    "KeyboardActionType",
     "ListElement",
     "MouseActionRequest",
     "MouseActionResult",
@@ -192,6 +201,7 @@ __all__ = [
     "RuntimeEvent",
     "ScreenResolution",
     "SharedWorkflowState",
+    "SpecialKey",
     "StructuredDocumentInput",
     "SupervisorDecision",
     "SupervisorValidation",

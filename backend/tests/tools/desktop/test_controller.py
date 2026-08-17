@@ -313,7 +313,7 @@ async def test_mouse_and_keyboard_actions(
 
     # Keyboard Press
     res_press = await controller.press_key("enter")
-    mock_press.assert_called_once_with("enter")
+    mock_press.assert_called_once_with("enter", presses=1, interval=0.0)
     assert res_press["action"] == "keyboard_press"
 
     # Keyboard Hotkey
