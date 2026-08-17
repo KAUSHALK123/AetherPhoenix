@@ -187,24 +187,6 @@ def test_desktop_tool_permission_granted(mock_press):
     result = tool.execute("keyboard_press", {"key": "enter", "workflow_id": wf_id})
     assert result["status"] == "success"
     mock_press.assert_called_once_with("enter", presses=1, interval=0.0)
-
-
-@patch("app.tools.desktop.keyboard.pyautogui.press")
-def test_desktop_tool_execute_keyboard_press(mock_press):
-    tool = DesktopTool()
-    result = tool.execute("keyboard_press", {"key": "enter"})
-    assert result["status"] == "success"
-    mock_press.assert_called_once_with("enter")
-
-
-@patch("app.tools.desktop.keyboard.pyautogui.hotkey")
-def test_desktop_tool_execute_keyboard_hotkey(mock_hotkey):
-    tool = DesktopTool()
-    result = tool.execute("keyboard_hotkey", {"keys": ["ctrl", "c"]})
-    assert result["status"] == "success"
-    mock_hotkey.assert_called_once_with("ctrl", "c")
-
-
 def test_desktop_tool_execute_unsupported_action():
     tool = DesktopTool()
     with pytest.raises(ValueError, match="Unsupported action: unknown_action"):

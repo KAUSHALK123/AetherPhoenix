@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Optional
 
 from shared.contracts.capability import Capability
 from shared.contracts.execution import ExecutionMetrics, ExecutionResult, TaskError
