@@ -20,7 +20,6 @@ from app.engine.workflow import WorkflowEngine
 
 logger = logging.getLogger(__name__)
 
-# Non-retryable error codes:
 NON_RETRYABLE_ERROR_CODES = {
     "PERMISSION_DENIED",
     "TOOL_NOT_FOUND",
@@ -30,7 +29,6 @@ NON_RETRYABLE_ERROR_CODES = {
     "INVALID_PERMISSION",
 }
 
-# Transient/Retryable error codes (for destructive operations):
 TRANSIENT_ERROR_CODES = {
     "TIMEOUT",
     "BROWSER_TIMEOUT",

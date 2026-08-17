@@ -1,18 +1,12 @@
-"""Root Cause Analyzer Service.
-
-Examines normalized execution failures, task metadata, execution context,
-logs, tool health, and workflow dependencies to identify the most likely
-underlying root cause of a task failure.
-"""
-
 import logging
 import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from uuid import uuid4
+from uuid import UUID, uuid4
 
+from pydantic import BaseModel, Field
 from shared.contracts.execution import (
     ExecutionResult,
     FailureType,
@@ -28,6 +22,19 @@ from shared.contracts.task import Task, TaskStatus
 from shared.contracts.workflow import SharedWorkflowState
 
 logger = logging.getLogger(__name__)
+
+
+# Re-export for backward-compatibility with test imports
+class RootCauseAnalysis(BaseModel):
+    """Structured root cause diagnostic report (legacy compat model)."""
+
+    root_cause_id: UUID = Field(default_factory=uuid4)
+    category: RootCauseCategory = Field(default=RootCauseCategory.UNKNOWN)
+    summary: str
+    explanation: str
+    is_recoverable: bool = Field(default=True)
+    recommended_strategy: str = Field(default="RETRY")
+    confidence_score: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
 class RootCauseAnalyzer:

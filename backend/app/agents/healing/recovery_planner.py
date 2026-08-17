@@ -1,7 +1,7 @@
+from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from backend.app.agents.healing.validator import validate_recovery_plan
 from shared.contracts.permission import PermissionType, RiskLevel
 from shared.contracts.recovery_plan import (
     ErrorParserOutput,
@@ -9,6 +9,8 @@ from shared.contracts.recovery_plan import (
     RecoveryPlan,
     RootCauseAnalysis,
 )
+
+from app.agents.healing.validator import validate_recovery_plan
 
 RISK_HIERARCHY = {
     RiskLevel.SAFE: 0,
@@ -19,10 +21,24 @@ RISK_HIERARCHY = {
 }
 
 
+class RecoveryStrategy(str, Enum):
+    """Legacy recovery strategy labels retained for public API compatibility."""
+
+    RETRY = "RETRY"
+    RESTART_TOOL = "RESTART_TOOL"
+    WAIT = "WAIT"
+    ALTERNATIVE_TOOL = "ALTERNATIVE_TOOL"
+    ALTERNATIVE_WEBSITE = "ALTERNATIVE_WEBSITE"
+    ALTERNATIVE_API = "ALTERNATIVE_API"
+    REQUEST_PERMISSION_AGAIN = "REQUEST_PERMISSION_AGAIN"
+    ESCALATE_USER = "ESCALATE_USER"
+    CANCEL_WORKFLOW = "CANCEL_WORKFLOW"
+
+
 def _determine_highest_risk(risk_levels: List[RiskLevel]) -> RiskLevel:
     if not risk_levels:
         return RiskLevel.SAFE
-    return max(risk_levels, key=lambda r: RISK_HIERARCHY.get(r, 0))
+    return max(risk_levels, key=lambda risk: RISK_HIERARCHY.get(risk, 0))
 
 
 class RecoveryPlanner:

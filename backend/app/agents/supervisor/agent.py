@@ -55,6 +55,7 @@ class SupervisorAgent(BaseAgent):
         event_bus: Optional[EventBus] = None,
         failure_detector: Optional[FailureDetectorService] = None,
         max_retries: int = 3,
+        healing_loop: Optional[Any] = None,
         retry_engine: Optional[RetryEngine] = None,
     ) -> None:
         self.event_bus = event_bus
@@ -273,15 +274,53 @@ class SupervisorAgent(BaseAgent):
     ) -> bool:
         """
         Analyzes a failed task, determines retry eligibility,
+        and delegates recovery to the Self-Healing Loop.
+        Updates the task and workflow state, and publishes the corresponding events.
         and requests a retry if eligible through the RetryEngine.
 
         Returns:
-            bool: True if retry was successfully triggered, False otherwise.
+            bool: True if recovery/retry was successfully triggered, False otherwise.
         """
         logger.info(
             f"SupervisorAgent executing failure analysis for task {task.task_id}"
         )
 
+        eligible = self.is_eligible_for_retry(task, state, error, max_retries)
+        if not eligible:
+            logger.info(f"Task {task.task_id} is not eligible for retry.")
+            return False
+
+        # Delegate recovery execution to Self-Healing Loop
+        healing_result = await self.healing_loop.process_failure(
+            task=task,
+            failure_input=error
+            or TaskError(
+                error_code="VALIDATION_FAILED",
+                error_message="Supervisor output validation failed.",
+            ),
+            state=state,
+        )
+
+        if healing_result.success:
+            # Publish a TaskRetried event
+            if self.event_bus:
+                retry_event = ModelEvent(
+                    workflow_id=str(task.workflow_id),
+                    task_id=str(task.task_id),
+                    event_type="TaskRetried",
+                    source_component="SupervisorAgent",
+                    payload={
+                        "retry_count": task.retry_count,
+                        "max_retries": (
+                            max_retries if max_retries is not None else self.max_retries
+                        ),
+                        "error_code": error.error_code if error else None,
+                    },
+                )
+                await self.event_bus.publish(retry_event)
+            return True
+
+        return False
         retry_result = await self.retry_engine.request_retry(
             task_id=task.task_id,
             workflow_id=task.workflow_id,

@@ -1,16 +1,9 @@
-"""
-AetherPhoenix — Healing Agent Error Parser
-===========================================
-Normalizes raw Worker, Tool, Supervisor, Permission Manager, Filesystem,
-Browser, PowerShell, Network, Workflow Engine, and System failures into
-structured NormalizedError representations.
-"""
-
 from __future__ import annotations
 
 import traceback
 from typing import Any, Dict, Optional, Tuple
 
+from pydantic import BaseModel, Field
 from shared.contracts.execution import (
     ExecutionResult,
     FailureType,
@@ -35,6 +28,17 @@ from app.core.exceptions import (
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
+
+
+class ParsedError(BaseModel):
+    """Structured normalized error object produced by ErrorParser."""
+
+    category: ErrorCategory = Field(default=ErrorCategory.UNKNOWN)
+    normalized_code: str = Field(default="UNKNOWN_ERROR")
+    raw_message: str = Field(default="")
+    stack_trace: Optional[str] = None
+    is_transient: bool = Field(default=False)
+    original_failure_type: Optional[str] = None
 
 
 class ErrorParser:
@@ -436,5 +440,7 @@ class ErrorParser:
 
 
 __all__ = [
+    "ErrorCategory",
     "ErrorParser",
+    "ParsedError",
 ]
