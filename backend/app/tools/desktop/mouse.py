@@ -226,7 +226,7 @@ class MouseController:
             ) from e
 
     def move_to(
-        self_or_x: Any,
+        self_or_x: Any = None,
         x_or_y: Any = None,
         duration_or_none: float = 0.5,
         timeout: Optional[float] = None,
@@ -241,9 +241,11 @@ class MouseController:
         if not isinstance(self_or_x, MouseController):
             ctrl = MouseController()
             duration = kwargs.get("duration", duration_or_none)
+            x_val = kwargs.get("x", self_or_x)
+            y_val = kwargs.get("y", x_or_y)
             return ctrl.move_to(
-                x=self_or_x,
-                y=x_or_y,
+                x=x_val,
+                y=y_val,
                 duration=duration,
                 timeout=timeout,
                 workflow_id=workflow_id,
@@ -329,9 +331,11 @@ class MouseController:
         if not isinstance(self_or_x, MouseController):
             ctrl = MouseController()
             btn = y_or_button if isinstance(y_or_button, str) else button
+            x_val = kwargs.get("x", self_or_x)
+            y_val = kwargs.get("y", x_or_y)
             return ctrl.click(
-                x=self_or_x,
-                y=x_or_y,
+                x=x_val,
+                y=y_val,
                 button=btn,
                 duration=duration,
                 clicks=clicks,
@@ -554,7 +558,7 @@ class MouseController:
             ) from e
 
     def scroll(
-        self_or_clicks: Any,
+        self_or_clicks: Any = None,
         clicks_or_x: Any = None,
         x_or_y: Any = None,
         y: Optional[int] = None,
@@ -569,13 +573,15 @@ class MouseController:
         """
         if not isinstance(self_or_clicks, MouseController):
             ctrl = MouseController()
-            clicks = self_or_clicks
+            clicks_val = kwargs.get("clicks", self_or_clicks)
             is_int_click = isinstance(clicks_or_x, int)
-            x = clicks_or_x if is_int_click and x_or_y is not None else None
-            y_val = x_or_y if isinstance(x_or_y, int) else y
+            x_val = kwargs.get(
+                "x", clicks_or_x if is_int_click and x_or_y is not None else None
+            )
+            y_val = kwargs.get("y", x_or_y if isinstance(x_or_y, int) else y)
             return ctrl.scroll(
-                clicks=clicks,
-                x=x,
+                clicks=clicks_val,
+                x=x_val,
                 y=y_val,
                 timeout=timeout,
                 workflow_id=workflow_id,

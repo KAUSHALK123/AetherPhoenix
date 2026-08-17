@@ -30,7 +30,9 @@ def test_register_browser_capability():
 async def test_browser_initialization(mock_permission_checker):
     tool = BrowserTool(permission_checker=mock_permission_checker)
 
-    with patch("app.tools.browser.async_playwright") as mock_async_playwright:
+    with patch(
+        "app.tools.browser.controller.async_playwright"
+    ) as mock_async_playwright:
         # Setup mocks
         mock_playwright = AsyncMock()
         mock_browser = AsyncMock()
@@ -70,7 +72,9 @@ async def test_browser_permission_denied():
 async def test_browser_navigate(mock_permission_checker):
     tool = BrowserTool(permission_checker=mock_permission_checker)
 
-    with patch("app.tools.browser.async_playwright") as mock_async_playwright:
+    with patch(
+        "app.tools.browser.controller.async_playwright"
+    ) as mock_async_playwright:
         mock_playwright = AsyncMock()
         mock_browser = AsyncMock()
         mock_page = AsyncMock()
@@ -86,7 +90,7 @@ async def test_browser_navigate(mock_permission_checker):
         result = await tool.navigate("https://example.com")
         assert result is True
         mock_page.goto.assert_called_once_with(
-            "https://example.com", wait_until="domcontentloaded"
+            "https://example.com", wait_until="domcontentloaded", timeout=30000.0
         )
 
 
@@ -94,7 +98,9 @@ async def test_browser_navigate(mock_permission_checker):
 async def test_browser_extract_content(mock_permission_checker):
     tool = BrowserTool(permission_checker=mock_permission_checker)
 
-    with patch("app.tools.browser.async_playwright") as mock_async_playwright:
+    with patch(
+        "app.tools.browser.controller.async_playwright"
+    ) as mock_async_playwright:
         mock_playwright = AsyncMock()
         mock_browser = AsyncMock()
         mock_page = AsyncMock()
@@ -117,10 +123,13 @@ async def test_browser_extract_content(mock_permission_checker):
 async def test_browser_interact(mock_permission_checker):
     tool = BrowserTool(permission_checker=mock_permission_checker)
 
-    with patch("app.tools.browser.async_playwright") as mock_async_playwright:
+    with patch(
+        "app.tools.browser.controller.async_playwright"
+    ) as mock_async_playwright:
         mock_playwright = AsyncMock()
         mock_browser = AsyncMock()
         mock_page = AsyncMock()
+
         mock_async_playwright.return_value.start = AsyncMock(
             return_value=mock_playwright
         )
@@ -131,8 +140,8 @@ async def test_browser_interact(mock_permission_checker):
 
         # Test click
         await tool.interact("#button", "click")
-        mock_page.click.assert_called_once_with("#button")
+        mock_page.click.assert_called_once_with("#button", timeout=10000.0)
 
         # Test fill
         await tool.interact("#input", "fill", "text")
-        mock_page.fill.assert_called_once_with("#input", "text")
+        mock_page.fill.assert_called_once_with("#input", "text", timeout=10000.0)

@@ -1,11 +1,13 @@
 try:
     from app.tools.desktop import (
+        DesktopController,
         DesktopTool,
         DesktopToolAdapter,
         MouseController,
         register_desktop_tool,
     )
 except ImportError:
+    DesktopController = None
     DesktopTool = None
     DesktopToolAdapter = None
     MouseController = None
@@ -60,6 +62,7 @@ except ImportError:
 
 __all__ = [
     "ToolRegistry",
+    "DesktopController",
     "DesktopTool",
     "DesktopToolAdapter",
     "MouseController",

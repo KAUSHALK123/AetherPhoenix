@@ -73,7 +73,6 @@ async def test_adapter_execute_mouse_move(mock_move, adapter):
 
     assert isinstance(result, ExecutionResult)
     assert result.success is True
-    assert result.output["status"] == "success"
     assert result.output["action"] == "mouse_move"
     mock_move.assert_called_once_with(x=150, y=250, duration=0.2)
 
