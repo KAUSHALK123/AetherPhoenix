@@ -64,13 +64,9 @@ class CodeBlockElement(BaseModel):
     )
 
 
-PDFElement = Union[
-    HeadingElement,
-    ParagraphElement,
-    ListElement,
-    TableElement,
-    CodeBlockElement,
-]
+PDFElement = (
+    HeadingElement | ParagraphElement | ListElement | TableElement | CodeBlockElement
+)
 
 
 class PDFDocumentInput(BaseModel):

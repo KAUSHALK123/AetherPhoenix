@@ -510,9 +510,7 @@ class PermissionManager:
             from app.core.exceptions import PermissionDeniedException
 
             raise PermissionDeniedException(
-                message=(
-                    f"Permission '{perm_str}' denied " f"for workflow {workflow_id}."
-                ),
+                message=(f"Permission '{perm_str}' denied for workflow {workflow_id}."),
                 details={"permission_type": perm_str, "workflow_id": wf_id_str},
             )
 

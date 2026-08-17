@@ -6,6 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from shared.contracts.feedback import PlannerFeedback
 from shared.contracts.task import Task, TaskType
 
 
@@ -126,6 +127,10 @@ class PlannerRequest(BaseModel):
     context: dict[str, Any] | None = Field(
         default_factory=dict,
         description="Optional context such as file paths or metadata.",
+    )
+    feedback: PlannerFeedback | None = Field(
+        None,
+        description="Optional structured execution/healing feedback from the previous runs.",
     )
 
 

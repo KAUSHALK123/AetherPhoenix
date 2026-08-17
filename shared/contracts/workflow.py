@@ -6,8 +6,10 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field
 
 from shared.contracts.artifact import Artifact
+from shared.contracts.escalation import EscalationResult
 from shared.contracts.event import RuntimeEvent
 from shared.contracts.execution import HealingResult, SupervisorValidation
+from shared.contracts.feedback import PlannerFeedback
 from shared.contracts.permission import PermissionRequest
 from shared.contracts.planner import PlannerOutput
 from shared.contracts.task import Task
@@ -24,6 +26,8 @@ class WorkflowStatus(str, Enum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
+    ESCALATED = "ESCALATED"
+    BLOCKED = "BLOCKED"
 
 
 class ExecutionMode(str, Enum):
@@ -84,3 +88,10 @@ class SharedWorkflowState(BaseModel):
     healing_history: list[HealingResult] = Field(default_factory=list)
     metrics: dict[str, Any] = Field(default_factory=dict)
     events: list[RuntimeEvent] = Field(default_factory=list)
+    escalations: list[EscalationResult] = Field(default_factory=list)
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    events: list[RuntimeEvent] = Field(default_factory=list)
+    feedback: PlannerFeedback | None = Field(
+        None,
+        description="Execution/healing structured feedback generated during workflow failures.",
+    )

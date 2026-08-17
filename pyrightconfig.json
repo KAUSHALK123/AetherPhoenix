@@ -1,0 +1,11 @@
+{
+  "include": [
+    "backend",
+    "shared"
+  ],
+  "extraPaths": [
+    ".",
+    "backend",
+    "shared"
+  ]
+}

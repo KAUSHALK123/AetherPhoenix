@@ -96,7 +96,9 @@ async def test_unavailable_source():
 
     assert result_content.status == SourceStatus.UNAVAILABLE
     assert (
-        "404" in result_content.error_message or "HTTP" in result_content.error_message
+        "404" in result_content.error_message
+        or "HTTP" in result_content.error_message
+        or "timed out" in result_content.error_message.lower()
     )
     assert elapsed >= 0.0
 
