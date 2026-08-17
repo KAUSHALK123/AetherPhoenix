@@ -39,6 +39,13 @@ from shared.contracts.feedback import (
     PlannerFeedback,
     ReplanningContext,
 )
+from shared.contracts.memory import (
+    ConversationMemoryEntry,
+    MemoryCategory,
+    MemoryQuery,
+    sanitize_memory_content,
+    sanitize_memory_metadata,
+)
 from shared.contracts.pdf import (
     CodeBlockElement,
     HeadingElement,
@@ -114,6 +121,7 @@ __all__ = [
     "ClarificationResult",
     "CodeBlockElement",
     "Conflict",
+    "ConversationMemoryEntry",
     "DependencyType",
     "DocumentElement",
     "DocumentElementType",
@@ -144,6 +152,8 @@ __all__ = [
     "HealingSummary",
     "IntentCategory",
     "ListElement",
+    "MemoryCategory",
+    "MemoryQuery",
     "PDFDocumentInput",
     "PDFElement",
     # PDF

@@ -173,9 +173,15 @@ Automatically when the application closes.
 
 # 2. Conversation Memory
 
+## Status
+
+Implemented ✅ (`app.memory.conversation_memory`, `shared.contracts.memory`)
+
+---
+
 ## Purpose
 
-Stores chat conversations.
+Stores structured chat conversations and long-term context entries for future planner retrieval.
 
 ---
 
@@ -183,15 +189,15 @@ Stores chat conversations.
 
 - User Messages
 - AI Responses
-- Workflow Summaries
-- Attachments
-- Generated Artifacts
+- User Preferences
+- Task Decisions & Instructions
+- Project Context & Clarifications
 
 ---
 
 ## Used By
 
-Planner
+Planner Agent
 
 UI
 
