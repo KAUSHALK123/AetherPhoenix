@@ -14,6 +14,7 @@ class PermissionType(str, Enum):
     REGISTRY_EDIT = "REGISTRY_EDIT"
     NETWORK_ACCESS = "NETWORK_ACCESS"
     ADMIN_PRIVILEGE = "ADMIN_PRIVILEGE"
+    SCREEN_CAPTURE = "SCREEN_CAPTURE"
 
 
 class ExecutionMode(str, Enum):

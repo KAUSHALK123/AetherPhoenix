@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Optional
 
 from shared.contracts.capability import Capability
 from shared.contracts.execution import ExecutionMetrics, ExecutionResult, TaskError
@@ -107,6 +108,22 @@ class BrowserAdapter(BaseToolAdapter):
                 )
                 output = res.data
 
+            elif action == "capture_screenshot":
+                output_path = task.inputs.get("output_path")
+                full_page = task.inputs.get("full_page", False)
+                clip = task.inputs.get("clip")
+                image_type = task.inputs.get("image_type", "png")
+                quality = task.inputs.get("quality")
+                logs.append(f"Capturing screenshot (full_page={full_page})...")
+                res = await self.controller.capture_screenshot(
+                    output_path=output_path,
+                    full_page=full_page,
+                    clip=clip,
+                    image_type=image_type,
+                    quality=quality,
+                )
+                output = res.data
+
             else:
                 raise ValueError(f"Unknown browser action: {action}")
 
@@ -184,3 +201,23 @@ class BrowserTool:
             selector=selector, action=action, value=value
         )
         return res.success
+
+    async def capture_screenshot(
+        self,
+        output_path: Optional[str] = None,
+        full_page: bool = False,
+        clip: Optional[dict] = None,
+        image_type: str = "png",
+        quality: Optional[int] = None,
+    ) -> bytes:
+        self._check_permission(PermissionType.BROWSER_ACCESS)
+        res = await self.controller.capture_screenshot(
+            output_path=output_path,
+            full_page=full_page,
+            clip=clip,
+            image_type=image_type,
+            quality=quality,
+        )
+        if not res.success:
+            raise RuntimeError(res.error)
+        return res.data["screenshot_bytes"]

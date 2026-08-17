@@ -33,6 +33,19 @@ except ImportError:
     PDFToolAdapter = None
     register_pdf_tool = None
 
+try:
+    from app.tools.screenshot import (
+        ScreenshotCaptureError,
+        ScreenshotEngine,
+        ScreenshotToolAdapter,
+        register_screenshot_tool,
+    )
+except ImportError:
+    ScreenshotCaptureError = None
+    ScreenshotEngine = None
+    ScreenshotToolAdapter = None
+    register_screenshot_tool = None
+
 from app.tools.registry import ToolRegistry
 
 try:
@@ -76,6 +89,10 @@ __all__ = [
     "PDFGenerator",
     "PDFToolAdapter",
     "register_pdf_tool",
+    "ScreenshotEngine",
+    "ScreenshotToolAdapter",
+    "register_screenshot_tool",
+    "ScreenshotCaptureError",
     "WebResearchTool",
     "BaseResearchTool",
     "SearchEngineInterface",

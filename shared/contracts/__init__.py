@@ -109,6 +109,13 @@ from shared.contracts.task import (
     TaskPriority,
     TaskStatus,
 )
+from shared.contracts.screenshot import (
+    CaptureRegion,
+    CaptureSource,
+    ImageFormat,
+    ScreenshotRequest,
+    ScreenshotResult,
+)
 from shared.contracts.tool import Tool, ToolHealth, ToolState
 from shared.contracts.workflow import (
     ExecutionMode,
@@ -199,6 +206,11 @@ __all__ = [
     "ErrorParserOutput",
     "RollbackInfo",
     "RuntimeEvent",
+    "CaptureRegion",
+    "CaptureSource",
+    "ImageFormat",
+    "ScreenshotRequest",
+    "ScreenshotResult",
     "ScreenResolution",
     "SharedWorkflowState",
     "SpecialKey",

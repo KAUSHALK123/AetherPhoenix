@@ -38,6 +38,7 @@ from .models import (
     WindowInfo,
 )
 from .mouse import MouseController
+from .screenshot import DesktopScreenshotController, DesktopScreenshotError
 from .session import DesktopSession, DesktopSessionManager
 
 __all__ = [
@@ -75,11 +76,11 @@ __all__ = [
     "DesktopSessionInfo",
     "DesktopState",
     "DesktopActionResult",
-    "DesktopActionResult",
     "InvalidKeyboardActionError",
     "DesktopUnavailableError",
     "KeyboardTimeoutError",
     "InvalidCoordinatesError",
     "MouseTimeoutError",
+    "DesktopScreenshotController",
+    "DesktopScreenshotError",
 ]
-

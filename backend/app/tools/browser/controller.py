@@ -141,3 +141,41 @@ class BrowserController:
         except Exception as e:
             logger.error(f"Interaction '{action}' on '{selector}' failed: {str(e)}")
             return BrowserResult(success=False, error=str(e))
+
+    async def capture_screenshot(
+        self,
+        output_path: Optional[str] = None,
+        full_page: bool = False,
+        clip: Optional[dict] = None,
+        image_type: str = "png",
+        quality: Optional[int] = None,
+    ) -> BrowserResult:
+        """Captures a screenshot of the current page."""
+        if not self._page:
+            raise BrowserActionError("Browser session not started.")
+
+        try:
+            logger.info(f"Capturing browser screenshot (full_page={full_page})")
+            kwargs = {
+                "full_page": full_page,
+                "type": "jpeg" if image_type.lower() in ("jpeg", "jpg") else "png",
+            }
+            if output_path:
+                kwargs["path"] = output_path
+            if clip:
+                kwargs["clip"] = clip
+            if quality and kwargs["type"] == "jpeg":
+                kwargs["quality"] = quality
+
+            screenshot_bytes = await self._page.screenshot(**kwargs)
+            logger.info("Successfully captured browser screenshot.")
+            return BrowserResult(
+                success=True,
+                data={
+                    "screenshot_bytes": screenshot_bytes,
+                    "path": output_path,
+                },
+            )
+        except Exception as e:
+            logger.error(f"Failed to capture browser screenshot: {str(e)}")
+            return BrowserResult(success=False, error=str(e))
