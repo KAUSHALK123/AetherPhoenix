@@ -8,6 +8,7 @@ from shared.contracts.task import TaskCategory
 from shared.contracts.tool import Tool, ToolHealth, ToolState
 
 from app.engine.registry import CapabilityRegistry
+from app.tools.browser.dom import DOMAutomation
 from app.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -51,7 +52,7 @@ class BrowserTool:
         self._playwright: Optional[Playwright] = None
         self._browser: Optional[Browser] = None
         self._page: Optional[Page] = None
-        self._dom: Optional['DOMAutomation'] = None
+        self._dom: Optional[DOMAutomation] = None
         self.permission_checker = permission_checker
 
     def _check_permission(self, permission: PermissionType) -> None:
@@ -72,9 +73,8 @@ class BrowserTool:
         self._playwright = await async_playwright().start()
         self._browser = await self._playwright.chromium.launch(headless=True)
         self._page = await self._browser.new_page()
-        
+
         # Initialize DOM Automation
-        from app.tools.browser.dom import DOMAutomation
         self._dom = DOMAutomation(self._page)
 
     async def close_session(self) -> None:
@@ -127,16 +127,16 @@ class BrowserTool:
         self._check_permission(PermissionType.BROWSER_ACCESS)
         if not self._dom:
             raise RuntimeError("Browser session not started.")
-        
+
         logger.info(f"Inspecting element: {selector}")
         return await self._dom.inspect_element(selector, timeout)
-        
+
     async def click(self, selector: str, timeout: int = 5000) -> bool:
         """Clicks an element safely via DOM Automation."""
         self._check_permission(PermissionType.BROWSER_ACCESS)
         if not self._dom:
             raise RuntimeError("Browser session not started.")
-            
+
         try:
             logger.info(f"Clicking element: {selector}")
             await self._dom.click_element(selector, timeout)
@@ -150,7 +150,7 @@ class BrowserTool:
         self._check_permission(PermissionType.BROWSER_ACCESS)
         if not self._dom:
             raise RuntimeError("Browser session not started.")
-            
+
         try:
             logger.info(f"Filling text in element: {selector}")
             await self._dom.fill_element(selector, text, timeout)
@@ -164,7 +164,7 @@ class BrowserTool:
         self._check_permission(PermissionType.BROWSER_ACCESS)
         if not self._dom:
             raise RuntimeError("Browser session not started.")
-            
+
         try:
             logger.info(f"Reading text from element: {selector}")
             return await self._dom.extract_text(selector, timeout)

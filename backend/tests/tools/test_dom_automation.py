@@ -1,35 +1,37 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
+from app.tools.browser import BrowserTool
 from app.tools.browser.dom import (
     DOMAutomation,
     DOMElement,
     ElementNotFoundError,
     StaleElementError,
-    DOMAutomationError,
 )
-from shared.contracts.permission import PermissionType
-from app.tools.browser import BrowserTool
+
 
 @pytest.fixture
 def mock_page():
     page = MagicMock()
     return page
 
+
 @pytest.fixture
 def dom_automation(mock_page):
     return DOMAutomation(page=mock_page)
+
 
 @pytest.mark.asyncio
 async def test_inspect_element_success(dom_automation, mock_page):
     mock_locator = AsyncMock()
     mock_page.locator.return_value.first = mock_locator
-    
+
     mock_locator.evaluate.return_value = {
         "tagName": "div",
         "text": "Hello World",
-        "attributes": {"class": "test-class"}
+        "attributes": {"class": "test-class"},
     }
     mock_locator.is_visible.return_value = True
     mock_locator.is_enabled.return_value = True
@@ -45,25 +47,32 @@ async def test_inspect_element_success(dom_automation, mock_page):
     assert element.attributes == {"class": "test-class"}
     mock_locator.wait_for.assert_called_once_with(state="attached", timeout=5000)
 
+
 @pytest.mark.asyncio
 async def test_inspect_element_timeout(dom_automation, mock_page):
     mock_locator = AsyncMock()
     mock_page.locator.return_value.first = mock_locator
-    
+
     mock_locator.wait_for.side_effect = PlaywrightTimeoutError("Timeout")
 
-    with pytest.raises(ElementNotFoundError, match="Element not found within 5000ms: .my-selector"):
+    with pytest.raises(
+        ElementNotFoundError, match="Element not found within 5000ms: .my-selector"
+    ):
         await dom_automation.inspect_element(".my-selector")
+
 
 @pytest.mark.asyncio
 async def test_inspect_element_stale(dom_automation, mock_page):
     mock_locator = AsyncMock()
     mock_page.locator.return_value.first = mock_locator
-    
+
     mock_locator.evaluate.side_effect = Exception("Node is detached from document")
 
-    with pytest.raises(StaleElementError, match="Element became stale during inspection: .my-selector"):
+    with pytest.raises(
+        StaleElementError, match="Element became stale during inspection: .my-selector"
+    ):
         await dom_automation.inspect_element(".my-selector")
+
 
 @pytest.mark.asyncio
 async def test_click_element_success(dom_automation, mock_page):
@@ -76,6 +85,7 @@ async def test_click_element_success(dom_automation, mock_page):
     mock_locator.wait_for.assert_any_call(state="visible", timeout=5000)
     mock_locator.click.assert_called_once_with(timeout=5000)
 
+
 @pytest.mark.asyncio
 async def test_fill_element_success(dom_automation, mock_page):
     mock_locator = AsyncMock()
@@ -87,6 +97,7 @@ async def test_fill_element_success(dom_automation, mock_page):
     mock_locator.wait_for.assert_any_call(state="visible", timeout=5000)
     mock_locator.fill.assert_called_once_with("test text", timeout=5000)
 
+
 @pytest.mark.asyncio
 async def test_extract_text_success(dom_automation, mock_page):
     mock_locator = AsyncMock()
@@ -96,6 +107,7 @@ async def test_extract_text_success(dom_automation, mock_page):
     text = await dom_automation.extract_text(".text")
 
     assert text == "extracted text"
+
 
 @pytest.mark.asyncio
 async def test_invalid_selector(dom_automation):
@@ -107,18 +119,21 @@ async def test_invalid_selector(dom_automation):
 async def test_browser_tool_permission_denied():
     def mock_permission_checker(perm):
         return False
-    
+
     tool = BrowserTool(permission_checker=mock_permission_checker)
     tool._dom = AsyncMock()
 
-    with pytest.raises(PermissionError, match="Action denied: Missing BROWSER_ACCESS permission."):
+    with pytest.raises(
+        PermissionError, match="Action denied: Missing BROWSER_ACCESS permission."
+    ):
         await tool.click(".btn")
+
 
 @pytest.mark.asyncio
 async def test_browser_tool_click_success():
     def mock_permission_checker(perm):
         return True
-    
+
     tool = BrowserTool(permission_checker=mock_permission_checker)
     tool._dom = AsyncMock()
     tool._dom.click_element = AsyncMock()

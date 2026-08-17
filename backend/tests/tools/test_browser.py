@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from shared.contracts.permission import PermissionType
@@ -120,7 +120,10 @@ async def test_browser_interact(mock_permission_checker):
     with patch("app.tools.browser.async_playwright") as mock_async_playwright:
         mock_playwright = AsyncMock()
         mock_browser = AsyncMock()
-        mock_page = AsyncMock()
+        mock_page = MagicMock()
+        mock_locator = AsyncMock()
+        mock_page.locator.return_value.first = mock_locator
+
         mock_async_playwright.return_value.start = AsyncMock(
             return_value=mock_playwright
         )
@@ -131,8 +134,8 @@ async def test_browser_interact(mock_permission_checker):
 
         # Test click
         await tool.interact("#button", "click")
-        mock_page.click.assert_called_once_with("#button")
+        mock_locator.click.assert_called_once()
 
         # Test fill
         await tool.interact("#input", "fill", "text")
-        mock_page.fill.assert_called_once_with("#input", "text")
+        mock_locator.fill.assert_called_once_with("text", timeout=5000)
