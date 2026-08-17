@@ -1,11 +1,17 @@
+import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-import uuid
 
 from shared.contracts.permission import (
     PermissionRequest as SharedPermissionRequest,
+)
+from shared.contracts.permission import (
     PermissionStatus as SharedPermissionStatus,
+)
+from shared.contracts.permission import (
     PermissionType as SharedPermissionType,
+)
+from shared.contracts.permission import (
     RiskLevel as SharedRiskLevel,
 )
 
@@ -46,9 +52,7 @@ def make_awaitable(
                             Event(
                                 event_type=EventType.PERMISSION_REQUESTED,
                                 workflow_id=str(self.workflow_id),
-                                task_id=str(self.task_id)
-                                if self.task_id
-                                else None,
+                                task_id=str(self.task_id) if self.task_id else None,
                                 source_component="PermissionManager",
                                 payload={
                                     "permission_id": str(self.permission_id),
@@ -97,7 +101,8 @@ class PermissionManager:
     Core Permission Manager for AetherPhoenix.
 
     Handles both:
-    1. Shared permission contracts used across agents, workflow engines, and integrations.
+    1. Shared permission contracts used across agents,
+       workflow engines, and integrations.
     2. Internal permission models and execution-mode policies.
     """
 
@@ -122,9 +127,7 @@ class PermissionManager:
 
     def get_request(self, permission_id: Any) -> Optional[Any]:
         """Retrieve a permission request by its ID."""
-        return self.requests.get(permission_id) or self.requests.get(
-            str(permission_id)
-        )
+        return self.requests.get(permission_id) or self.requests.get(str(permission_id))
 
     def check_permission(self, *args: Any, **kwargs: Any) -> Any:
         """
@@ -147,24 +150,18 @@ class PermissionManager:
             permission_type = (
                 args[0] if len(args) > 0 else kwargs.get("permission_type")
             )
-            workflow_id = (
-                args[1] if len(args) > 1 else kwargs.get("workflow_id")
-            )
+            workflow_id = args[1] if len(args) > 1 else kwargs.get("workflow_id")
             wf_id_str = str(workflow_id)
             perm_str = getattr(permission_type, "value", str(permission_type))
 
             for req in self.requests.values():
-                if hasattr(req, "workflow_id") and hasattr(
-                    req, "permission_type"
-                ):
+                if hasattr(req, "workflow_id") and hasattr(req, "permission_type"):
                     req_wf_str = str(req.workflow_id)
                     req_perm_str = getattr(
                         req.permission_type, "value", str(req.permission_type)
                     )
                     if req_wf_str == wf_id_str and req_perm_str == perm_str:
-                        status_str = getattr(
-                            req.status, "value", str(req.status)
-                        )
+                        status_str = getattr(req.status, "value", str(req.status))
                         if status_str in ("GRANTED", "APPROVED"):
                             return True
             return False
@@ -196,13 +193,26 @@ class PermissionManager:
         New: request_permission(self, workflow_id, task_id, permission_type,
                                 reason, context=None)
         """
-        if hasattr(workflow_id, "permission_id") and hasattr(
-            workflow_id, "risk_level"
-        ):
+        if hasattr(workflow_id, "permission_id") and hasattr(workflow_id, "risk_level"):
             req = workflow_id
+
+            # Check for auto-approve synchronously
+            risk_str = getattr(req, "risk_level", "MEDIUM")
+            risk_val = getattr(risk_str, "value", str(risk_str))
+            status_str = getattr(req, "status", "PENDING")
+            status_val = getattr(status_str, "value", str(status_str))
+
+            if (
+                status_val == "PENDING"
+                and self.auto_approve_low_risk
+                and risk_val in ("SAFE", "LOW")
+            ):
+                req.status = SharedPermissionStatus.GRANTED
+                req.responded_at = datetime.now(timezone.utc)
+
             self.requests[req.permission_id] = req
             self.requests[str(req.permission_id)] = req
-            return req
+            return make_awaitable(req, manager=self, is_legacy=True)
 
         is_legacy = False
         if len(args) >= 1:
@@ -212,11 +222,7 @@ class PermissionManager:
                 and first_arg.__class__.__name__ == "PermissionType"
             ):
                 is_legacy = True
-        if (
-            "permission_type" in kwargs
-            and "task_id" not in kwargs
-            and len(args) == 0
-        ):
+        if "permission_type" in kwargs and "task_id" not in kwargs and len(args) == 0:
             is_legacy = True
         if "risk_level" in kwargs:
             is_legacy = True
@@ -241,6 +247,14 @@ class PermissionManager:
                 risk_level=risk_level,
                 status=SharedPermissionStatus.PENDING,
             )
+
+            # Check auto-approve synchronously
+            risk_str = getattr(req, "risk_level", "MEDIUM")
+            risk_val = getattr(risk_str, "value", str(risk_str))
+            if self.auto_approve_low_risk and risk_val in ("SAFE", "LOW"):
+                req.status = SharedPermissionStatus.GRANTED
+                req.responded_at = datetime.now(timezone.utc)
+
             self.requests[req.permission_id] = req
             self.requests[str(req.permission_id)] = req
 
@@ -266,9 +280,7 @@ class PermissionManager:
             self.requests[request_id] = req
 
             # Auto-approve based on mode
-            if not PermissionPolicy.requires_approval(
-                permission_type, self.mode
-            ):
+            if not PermissionPolicy.requires_approval(permission_type, self.mode):
                 req.status = PermissionStatus.APPROVED
 
             return make_awaitable(req)
@@ -280,18 +292,14 @@ class PermissionManager:
 
         # Handle shared model
         if hasattr(req, "permission_id"):
-            perm_str = getattr(
-                req.permission_type, "value", str(req.permission_type)
-            )
+            perm_str = getattr(req.permission_type, "value", str(req.permission_type))
             try:
                 perm_enum = PermissionType(perm_str)
             except ValueError:
                 perm_enum = PermissionType.BROWSER_ACCESS
 
             if PermissionPolicy.requires_approval(perm_enum, self.mode):
-                return (
-                    getattr(req.status, "value", str(req.status)) == "GRANTED"
-                )
+                return getattr(req.status, "value", str(req.status)) == "GRANTED"
 
             req.status = SharedPermissionStatus.GRANTED
             return True
@@ -323,9 +331,7 @@ class PermissionManager:
             message=message or "Approved",
         )
 
-    def reject_permission(
-        self, request_id: Any, message: Optional[str] = None
-    ) -> Any:
+    def reject_permission(self, request_id: Any, message: Optional[str] = None) -> Any:
         perm_id_str = str(request_id)
         req = self.requests.get(request_id) or self.requests.get(perm_id_str)
         if not req:
@@ -382,9 +388,7 @@ class PermissionManager:
     async def grant_permission(self, permission_id: Any) -> Any:
         """Async grant method."""
         perm_id_str = str(permission_id)
-        request = self.requests.get(permission_id) or self.requests.get(
-            perm_id_str
-        )
+        request = self.requests.get(permission_id) or self.requests.get(perm_id_str)
         if not request:
             raise KeyError(f"Permission request {permission_id} not found.")
 
@@ -402,9 +406,7 @@ class PermissionManager:
                     Event(
                         event_type=EventType.PERMISSION_GRANTED,
                         workflow_id=str(request.workflow_id),
-                        task_id=str(request.task_id)
-                        if request.task_id
-                        else None,
+                        task_id=str(request.task_id) if request.task_id else None,
                         source_component="PermissionManager",
                         payload={
                             "permission_id": str(permission_id),
@@ -424,9 +426,7 @@ class PermissionManager:
     async def reject_permission_legacy(self, permission_id: Any) -> Any:
         """Async reject method."""
         perm_id_str = str(permission_id)
-        request = self.requests.get(permission_id) or self.requests.get(
-            perm_id_str
-        )
+        request = self.requests.get(permission_id) or self.requests.get(perm_id_str)
         if not request:
             raise KeyError(f"Permission request {permission_id} not found.")
 
@@ -444,9 +444,7 @@ class PermissionManager:
                     Event(
                         event_type=EventType.PERMISSION_REJECTED,
                         workflow_id=str(request.workflow_id),
-                        task_id=str(request.task_id)
-                        if request.task_id
-                        else None,
+                        task_id=str(request.task_id) if request.task_id else None,
                         source_component="PermissionManager",
                         payload={
                             "permission_id": str(permission_id),
@@ -466,9 +464,7 @@ class PermissionManager:
     async def reject_permission_async(self, permission_id: Any) -> Any:
         return await self.reject_permission_legacy(permission_id)
 
-    def get_pending_requests(
-        self, workflow_id: Optional[str] = None
-    ) -> List[Any]:
+    def get_pending_requests(self, workflow_id: Optional[str] = None) -> List[Any]:
         pending = []
         seen = set()
         for req in self.requests.values():
@@ -483,14 +479,10 @@ class PermissionManager:
 
         if workflow_id:
             wf_id_str = str(workflow_id)
-            pending = [
-                req for req in pending if str(req.workflow_id) == wf_id_str
-            ]
+            pending = [req for req in pending if str(req.workflow_id) == wf_id_str]
         return pending
 
-    def enforce_permission(
-        self, permission_type: Any, workflow_id: Any
-    ) -> None:
+    def enforce_permission(self, permission_type: Any, workflow_id: Any) -> None:
         wf_id_str = str(workflow_id)
         perm_str = getattr(permission_type, "value", str(permission_type))
 
@@ -541,9 +533,7 @@ class PermissionManager:
             from app.core.exceptions import PermissionDeniedException
 
             raise PermissionDeniedException(
-                message=(
-                    f"Permission '{perm_str}' denied for workflow {workflow_id}."
-                ),
+                message=(f"Permission '{perm_str}' denied for workflow {workflow_id}."),
                 details={
                     "permission_type": perm_str,
                     "workflow_id": wf_id_str,
@@ -559,9 +549,7 @@ class PermissionManager:
         unique_results = []
         seen = set()
         for r in results:
-            ident = getattr(r, "permission_id", None) or getattr(
-                r, "request_id", None
-            )
+            ident = getattr(r, "permission_id", None) or getattr(r, "request_id", None)
             if ident not in seen:
                 seen.add(ident)
                 unique_results.append(r)
@@ -569,9 +557,7 @@ class PermissionManager:
         if workflow_id:
             wf_id_str = str(workflow_id)
             unique_results = [
-                req
-                for req in unique_results
-                if str(req.workflow_id) == wf_id_str
+                req for req in unique_results if str(req.workflow_id) == wf_id_str
             ]
         if status:
             status_str = getattr(status, "value", str(status))
@@ -581,18 +567,15 @@ class PermissionManager:
                 if getattr(req.status, "value", str(req.status)) == status_str
                 or (
                     status_str == "PENDING"
-                    and getattr(req.status, "value", str(req.status))
-                    == "PENDING"
+                    and getattr(req.status, "value", str(req.status)) == "PENDING"
                 )
                 or (
                     status_str == "GRANTED"
-                    and getattr(req.status, "value", str(req.status))
-                    == "APPROVED"
+                    and getattr(req.status, "value", str(req.status)) == "APPROVED"
                 )
                 or (
                     status_str == "APPROVED"
-                    and getattr(req.status, "value", str(req.status))
-                    == "GRANTED"
+                    and getattr(req.status, "value", str(req.status)) == "GRANTED"
                 )
             ]
         return unique_results

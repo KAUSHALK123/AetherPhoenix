@@ -5,7 +5,6 @@ from uuid import uuid4
 
 import pytest
 from shared.contracts.permission import PermissionStatus, PermissionType, RiskLevel
-from shared.contracts.workflow import ExecutionMode
 
 from app.core.events.bus import EventBus
 from app.core.events.models import EventType
@@ -13,7 +12,11 @@ from app.core.exceptions import PermissionDeniedException
 from app.core.permissions import PermissionManager
 from app.core.permissions.models import (
     ExecutionMode as ModelExecutionMode,
+)
+from app.core.permissions.models import (
     PermissionStatus as ModelPermissionStatus,
+)
+from app.core.permissions.models import (
     PermissionType as ModelPermissionType,
 )
 
@@ -29,9 +32,7 @@ def permission_manager(event_bus):
 
 
 @pytest.mark.asyncio
-async def test_request_permission_low_risk_auto_approved(
-    permission_manager, event_bus
-):
+async def test_request_permission_low_risk_auto_approved(permission_manager, event_bus):
     received_events = []
 
     async def event_handler(event):
@@ -245,12 +246,8 @@ def test_reject_permission():
 
 def test_get_pending_requests():
     manager = PermissionManager(mode=ModelExecutionMode.SAFE)
-    manager.request_permission(
-        "wf-1", "t-1", ModelPermissionType.FILE_READ, "read"
-    )
-    manager.request_permission(
-        "wf-2", "t-2", ModelPermissionType.FILE_WRITE, "write"
-    )
+    manager.request_permission("wf-1", "t-1", ModelPermissionType.FILE_READ, "read")
+    manager.request_permission("wf-2", "t-2", ModelPermissionType.FILE_WRITE, "write")
 
     all_pending = manager.get_pending_requests()
     assert len(all_pending) == 2
