@@ -1,3 +1,9 @@
+from app.tools.desktop import (
+    DesktopTool,
+    DesktopToolAdapter,
+    MouseController,
+    register_desktop_tool,
+)
 from app.tools.document import (
     DocumentGenerator,
     DocumentToolAdapter,
@@ -21,6 +27,10 @@ from app.tools.web_research import (
 
 __all__ = [
     "ToolRegistry",
+    "DesktopTool",
+    "DesktopToolAdapter",
+    "MouseController",
+    "register_desktop_tool",
     "DocumentGenerator",
     "DocumentToolAdapter",
     "register_document_tool",

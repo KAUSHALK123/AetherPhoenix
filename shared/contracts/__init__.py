@@ -2,6 +2,14 @@
 
 from shared.contracts.artifact import Artifact, ArtifactType
 from shared.contracts.capability import Capability
+from shared.contracts.desktop import (
+    MouseActionRequest,
+    MouseActionResult,
+    MouseActionType,
+    MouseButton,
+    MousePosition,
+    ScreenResolution,
+)
 from shared.contracts.document import (
     DocumentElement,
     DocumentElementType,
@@ -70,6 +78,8 @@ from shared.contracts.planner import (
     TaskDecompositionPlan,
     UserRequirement,
 )
+from shared.contracts.recovery_plan import RecoveryPlan
+from shared.contracts.retry import RetryRequest, RetryResult, RetryStatus
 from shared.contracts.risk import (
     Conflict,
     RiskAnalysisResult,
@@ -133,6 +143,11 @@ __all__ = [
     "HealingSummary",
     "IntentCategory",
     "ListElement",
+    "MouseActionRequest",
+    "MouseActionResult",
+    "MouseActionType",
+    "MouseButton",
+    "MousePosition",
     "PDFDocumentInput",
     "PDFElement",
     # PDF
@@ -152,13 +167,18 @@ __all__ = [
     "PlannerRequest",
     "PlannerResponse",
     "ProgressState",
+    "RecoveryPlan",
     "ReplanningContext",
+    "RetryRequest",
+    "RetryResult",
+    "RetryStatus",
     "RiskAnalysisResult",
     # Risk
     "RiskAssessment",
     "RiskLevel",
     "RollbackInfo",
     "RuntimeEvent",
+    "ScreenResolution",
     "SharedWorkflowState",
     "StructuredDocumentInput",
     "SupervisorDecision",
