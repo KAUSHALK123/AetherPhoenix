@@ -58,3 +58,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = ['app', 'alembic']
+
+[tool.pyright]
+extraPaths = [".", ".."]
+
