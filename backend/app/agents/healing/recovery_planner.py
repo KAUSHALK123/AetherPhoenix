@@ -2,6 +2,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
+from shared.contracts.execution import FailureType
 from shared.contracts.permission import PermissionType, RiskLevel
 from shared.contracts.recovery_plan import (
     RecoveryAction,
@@ -105,19 +106,28 @@ class RecoveryPlanner:
                     failure_id: Any,
                     task_id: Any,
                     workflow_id: Any,
+                    raw_error_message: str = "",
+                    error_type: Any = None,
                 ) -> None:
                     self.is_retryable = is_retryable
                     self.parsed_details = parsed_details
                     self.failure_id = failure_id
                     self.task_id = task_id
                     self.workflow_id = workflow_id
+                    self.raw_error_message = raw_error_message
+                    self.error_type = error_type
 
+            raw_err_msg = str(
+                getattr(root_cause_obj, "explanation", "")
+                or getattr(root_cause_obj, "diagnostic_explanation", "")
+            )
             parsed_error = CompatParsedError(
                 is_retryable,
                 parsed_details,
                 failure_id,
                 task_id,
                 workflow_id,
+                raw_error_message=raw_err_msg,
             )
             root_cause = root_cause_obj
             task_context = {}
@@ -128,15 +138,36 @@ class RecoveryPlanner:
         if task_context:
             context.update(task_context)
 
+        likely_cause = getattr(root_cause, "likely_root_cause", "")
+        rc_cat_str = str(getattr(root_cause, "category", ""))
+        err_type = getattr(parsed_error, "error_type", None)
+
         # Check for unviable recovery conditions
         if (
             (
                 not parsed_error.is_retryable
-                and root_cause.category
-                not in ("MISSING_DIRECTORY", "PERMISSION_DENIED")
+                and rc_cat_str
+                not in (
+                    "MISSING_DIRECTORY",
+                    "PERMISSION_DENIED",
+                    "INFRASTRUCTURE",
+                    "RootCauseCategory.INFRASTRUCTURE",
+                    "PERMISSION",
+                    "RootCauseCategory.PERMISSION",
+                    "DEPENDENCY_FAILURE",
+                    "WORKFLOW",
+                    "RootCauseCategory.WORKFLOW",
+                )
+                and err_type
+                not in (
+                    FailureType.OUTPUT_MISSING,
+                    FailureType.PERMISSION_DENIED,
+                    FailureType.DEPENDENCY_FAILED,
+                )
             )
-            or root_cause.category == "UNRECOVERABLE"
+            or rc_cat_str == "UNRECOVERABLE"
             or root_cause.confidence_score < 0.3
+            or err_type == FailureType.UNEXPECTED_EXCEPTION
         ):
             unviable_plan = RecoveryPlan(
                 plan_id=uuid4(),
@@ -159,7 +190,16 @@ class RecoveryPlanner:
         strategy_name = "GENERIC_RETRY_STRATEGY"
         max_retries = 3
 
-        if root_cause.category == "MISSING_DIRECTORY":
+        if (
+            rc_cat_str in ("MISSING_DIRECTORY",)
+            or likely_cause
+            in (
+                "OUTPUT_DIRECTORY_MISSING",
+                "MISSING_DIRECTORY",
+                "FILE_OR_DIRECTORY_NOT_FOUND",
+            )
+            or err_type == FailureType.OUTPUT_MISSING
+        ):
             strategy_name = "MISSING_DIRECTORY_RECOVERY"
             target_path = context.get(
                 "missing_path", context.get("output_path", "expected_directory")
@@ -230,7 +270,16 @@ class RecoveryPlanner:
                 ),
             ]
 
-        elif root_cause.category == "PERMISSION_DENIED":
+        elif (
+            rc_cat_str
+            in (
+                "PERMISSION_DENIED",
+                "PERMISSION",
+                "RootCauseCategory.PERMISSION",
+            )
+            or likely_cause == "PERMISSION_DENIED"
+            or err_type == FailureType.PERMISSION_DENIED
+        ):
             strategy_name = "PERMISSION_ELEVATION_RECOVERY"
             requested_perm = context.get("required_permission")
             if isinstance(requested_perm, str):
@@ -240,8 +289,13 @@ class RecoveryPlanner:
                     requested_perm = None
             if not isinstance(requested_perm, PermissionType):
                 matched_perm = None
+                raw_msg = str(
+                    getattr(parsed_error, "raw_error_message", "")
+                    or getattr(parsed_error, "message", "")
+                    or ""
+                )
                 for pt in PermissionType:
-                    if pt.value.lower() in parsed_error.raw_error_message.lower():
+                    if pt.value.lower() in raw_msg.lower():
                         matched_perm = pt
                         break
                 requested_perm = (
@@ -295,7 +349,11 @@ class RecoveryPlanner:
                 ),
             ]
 
-        elif root_cause.category == "TIMEOUT":
+        elif (
+            rc_cat_str in ("TIMEOUT", "EXECUTION_TIMEOUT")
+            or likely_cause == "EXECUTION_TIMEOUT"
+            or err_type == FailureType.TIMEOUT
+        ):
             strategy_name = "TIMEOUT_BACKOFF_RECOVERY"
             target_tool = context.get("target_tool", "browser")
 
@@ -330,7 +388,11 @@ class RecoveryPlanner:
                 ),
             ]
 
-        elif root_cause.category == "ARTIFACT_INVALID":
+        elif (
+            rc_cat_str in ("ARTIFACT_INVALID", "INVALID_ARTIFACT")
+            or likely_cause == "INVALID_ARTIFACT"
+            or err_type == FailureType.ARTIFACT_VALIDATION_FAILED
+        ):
             strategy_name = "ARTIFACT_REGENERATION_RECOVERY"
             artifact_path = context.get("artifact_path", "output_artifact")
 
@@ -377,7 +439,17 @@ class RecoveryPlanner:
                 ),
             ]
 
-        elif root_cause.category == "DEPENDENCY_FAILURE":
+        elif (
+            rc_cat_str
+            in (
+                "DEPENDENCY_FAILURE",
+                "WORKFLOW",
+                "MISSING_DEPENDENCY",
+                "RootCauseCategory.WORKFLOW",
+            )
+            or likely_cause in ("DEPENDENCY_FAILURE", "MISSING_DEPENDENCY")
+            or err_type == FailureType.DEPENDENCY_FAILED
+        ):
             strategy_name = "DEPENDENCY_RECOVERY"
             dep_task_id = context.get("dependency_task_id", "prerequisite_task")
 
@@ -407,6 +479,27 @@ class RecoveryPlanner:
                     success_criteria=["Task execution completed successfully"],
                     failure_criteria=["Task execution failed"],
                     action_parameters={},
+                ),
+            ]
+
+        elif str(root_cause.category) in ("NETWORK", "RootCauseCategory.NETWORK"):
+            strategy_name = "NETWORK_RETRY_RECOVERY"
+            target_tool = context.get("target_tool", "default_tool")
+
+            actions = [
+                RecoveryAction(
+                    action_type="RETRY_TASK",
+                    description=(
+                        f"Re-run task using tool: {target_tool} with backoff delay"
+                    ),
+                    target_tool=target_tool,
+                    required_capabilities=["task_execution"],
+                    required_permissions=[],
+                    risk_level=RiskLevel.LOW,
+                    preconditions=["Network connectivity active"],
+                    success_criteria=["Task completed without network errors"],
+                    failure_criteria=["Network error repeated on retry"],
+                    action_parameters={"backoff_delay_seconds": 2},
                 ),
             ]
 
@@ -480,6 +573,30 @@ class RecoveryPlanner:
             is_viable=True,
             task_context=context,
         )
+
+        # Generate replacement tasks for alternative tool recovery when applicable
+        if (
+            str(root_cause.category)
+            in ("TOOL", "RootCauseCategory.TOOL", "TOOL_UNAVAILABLE")
+            or strategy_name in ("ALTERNATIVE_TOOL", "REPLACE_TOOL")
+        ) and task_obj is not None:
+            from shared.contracts.task import Task
+
+            alt_tool = (
+                "web_research_tool"
+                if getattr(task_obj, "required_tool", None) == "browser_tool"
+                else "web_research"
+            )
+            alt_task = Task(
+                task_id=uuid4(),
+                workflow_id=task_obj.workflow_id,
+                task_name=f"{task_obj.task_name} (Recovered)",
+                description=task_obj.description,
+                required_tool=alt_tool,
+                category=task_obj.category,
+                expected_output=task_obj.expected_output,
+            )
+            plan.replacement_tasks = [alt_task]
 
         validate_recovery_plan(plan)
         return plan

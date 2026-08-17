@@ -54,6 +54,7 @@ class RootCauseAnalyzer:
 
     NETWORK_ERROR_PATTERNS = [
         re.compile(r"connection\s*refused", re.IGNORECASE),
+        re.compile(r"connection\s*timed?\s*out", re.IGNORECASE),
         re.compile(r"network\s*is\s*unreachable", re.IGNORECASE),
         re.compile(r"dns\s*resolution\s*failed", re.IGNORECASE),
         re.compile(r"name\s*or\s*service\s*not\s*known", re.IGNORECASE),
@@ -432,6 +433,31 @@ class RootCauseAnalyzer:
         """Scans combined message and execution logs for error signatures."""
         log_block = message + "\n" + "\n".join(logs)
 
+        if f_type == FailureType.ARTIFACT_VALIDATION_FAILED or (
+            "artifact" in log_block.lower()
+            and ("invalid" in log_block.lower() or "corrupt" in log_block.lower())
+        ):
+            evidence.matched_patterns.append("INVALID_ARTIFACT")
+            return (
+                "INVALID_ARTIFACT",
+                RootCauseCategory.INFRASTRUCTURE,
+                0.90,
+                "Output artifact validation failed or file was corrupted/empty.",
+            )
+
+        if (
+            f_type == FailureType.DEPENDENCY_FAILED
+            or "prerequisite" in log_block.lower()
+            or "dependency failed" in log_block.lower()
+        ):
+            evidence.matched_patterns.append("DEPENDENCY_FAILURE")
+            return (
+                "DEPENDENCY_FAILURE",
+                RootCauseCategory.WORKFLOW,
+                0.90,
+                "Prerequisite task dependency failed.",
+            )
+
         if f_type == FailureType.PERMISSION_DENIED or any(
             p.search(log_block) for p in self.PERMISSION_PATTERNS
         ):
@@ -443,6 +469,15 @@ class RootCauseAnalyzer:
                 "Missing authorization or user permission denial.",
             )
 
+        if any(p.search(log_block) for p in self.NETWORK_ERROR_PATTERNS):
+            evidence.matched_patterns.append("NETWORK_UNAVAILABLE")
+            return (
+                "NETWORK_UNAVAILABLE",
+                RootCauseCategory.NETWORK,
+                0.85,
+                "Network connection failed or remote host was unreachable.",
+            )
+
         if f_type == FailureType.TIMEOUT or any(
             p.search(log_block) for p in self.TIMEOUT_PATTERNS
         ):
@@ -452,15 +487,6 @@ class RootCauseAnalyzer:
                 RootCauseCategory.RUNTIME,
                 0.85,
                 "Task execution duration exceeded configured timeout limit.",
-            )
-
-        if any(p.search(log_block) for p in self.NETWORK_ERROR_PATTERNS):
-            evidence.matched_patterns.append("NETWORK_UNAVAILABLE")
-            return (
-                "NETWORK_UNAVAILABLE",
-                RootCauseCategory.NETWORK,
-                0.85,
-                "Network connection failed or remote host was unreachable.",
             )
 
         return None
