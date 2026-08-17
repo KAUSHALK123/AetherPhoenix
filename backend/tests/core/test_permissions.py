@@ -1,5 +1,6 @@
 """Unit tests for PermissionManager core runtime component."""
 
+import asyncio
 from uuid import uuid4
 
 import pytest
@@ -10,6 +11,11 @@ from app.core.events.bus import EventBus
 from app.core.events.models import EventType
 from app.core.exceptions import PermissionDeniedException
 from app.core.permissions import PermissionManager
+from app.core.permissions.models import (
+    ExecutionMode as ModelExecutionMode,
+    PermissionStatus as ModelPermissionStatus,
+    PermissionType as ModelPermissionType,
+)
 
 
 @pytest.fixture
@@ -23,7 +29,9 @@ def permission_manager(event_bus):
 
 
 @pytest.mark.asyncio
-async def test_request_permission_low_risk_auto_approved(permission_manager, event_bus):
+async def test_request_permission_low_risk_auto_approved(
+    permission_manager, event_bus
+):
     received_events = []
 
     async def event_handler(event):
@@ -115,7 +123,6 @@ async def test_grant_and_reject_permission(permission_manager, event_bus):
 def test_enforce_permission_success_and_failure(permission_manager):
     workflow_id = uuid4()
 
-    # Pre-grant permission manually in state
     with pytest.raises(PermissionDeniedException) as exc_info:
         permission_manager.enforce_permission(PermissionType.POWERSHELL, workflow_id)
 
@@ -126,9 +133,6 @@ def test_enforce_permission_success_and_failure(permission_manager):
 def test_list_permissions_filtering(permission_manager):
     w1 = uuid4()
     w2 = uuid4()
-
-    # Add items synchronously for list testing
-    import asyncio
 
     asyncio.run(
         permission_manager.request_permission(
@@ -149,31 +153,27 @@ def test_list_permissions_filtering(permission_manager):
 
 
 def test_request_permission():
-    from app.core.permissions.models import PermissionStatus, PermissionType
-
-    manager = PermissionManager(mode=ExecutionMode.SAFE)
+    manager = PermissionManager(mode=ModelExecutionMode.SAFE)
     req = manager.request_permission(
         workflow_id="wf-1",
         task_id="task-1",
-        permission_type=PermissionType.FILE_READ,
+        permission_type=ModelPermissionType.FILE_READ,
         reason="Need to read config",
     )
 
     assert req.request_id is not None
     assert req.workflow_id == "wf-1"
-    assert req.status == PermissionStatus.PENDING
-    assert req.permission_type == PermissionType.FILE_READ
+    assert req.status == ModelPermissionStatus.PENDING
+    assert req.permission_type == ModelPermissionType.FILE_READ
     assert len(manager.get_pending_requests()) == 1
 
 
 def test_safe_mode_requires_approval():
-    from app.core.permissions.models import PermissionType
-
-    manager = PermissionManager(mode=ExecutionMode.SAFE)
+    manager = PermissionManager(mode=ModelExecutionMode.SAFE)
     req = manager.request_permission(
         workflow_id="wf-1",
         task_id="task-1",
-        permission_type=PermissionType.FILE_READ,
+        permission_type=ModelPermissionType.FILE_READ,
         reason="Need to read config",
     )
 
@@ -186,13 +186,11 @@ def test_safe_mode_requires_approval():
 
 
 def test_assisted_mode_risky_permission():
-    from app.core.permissions.models import PermissionType
-
-    manager = PermissionManager(mode=ExecutionMode.ASSISTED)
+    manager = PermissionManager(mode=ModelExecutionMode.ASSISTED)
     req = manager.request_permission(
         workflow_id="wf-1",
         task_id="task-1",
-        permission_type=PermissionType.FILE_DELETE,
+        permission_type=ModelPermissionType.FILE_DELETE,
         reason="Need to delete temp file",
     )
 
@@ -204,30 +202,26 @@ def test_assisted_mode_risky_permission():
 
 
 def test_assisted_mode_safe_permission():
-    from app.core.permissions.models import PermissionStatus, PermissionType
-
-    manager = PermissionManager(mode=ExecutionMode.ASSISTED)
+    manager = PermissionManager(mode=ModelExecutionMode.ASSISTED)
     req = manager.request_permission(
         workflow_id="wf-1",
         task_id="task-1",
-        permission_type=PermissionType.FILE_READ,
+        permission_type=ModelPermissionType.FILE_READ,
         reason="Need to read file",
     )
 
     # FILE_READ is safe in ASSISTED mode
     assert manager.validate_permission(req.request_id)
     # Status should auto-update
-    assert req.status == PermissionStatus.APPROVED
+    assert req.status == ModelPermissionStatus.APPROVED
 
 
 def test_autonomous_mode():
-    from app.core.permissions.models import PermissionType
-
-    manager = PermissionManager(mode=ExecutionMode.AUTONOMOUS)
+    manager = PermissionManager(mode=ModelExecutionMode.AUTONOMOUS)
     req = manager.request_permission(
         workflow_id="wf-1",
         task_id="task-1",
-        permission_type=PermissionType.TERMINAL_EXECUTE,
+        permission_type=ModelPermissionType.TERMINAL_EXECUTE,
         reason="Need to run command",
     )
 
@@ -236,27 +230,27 @@ def test_autonomous_mode():
 
 
 def test_reject_permission():
-    from app.core.permissions.models import PermissionStatus, PermissionType
-
-    manager = PermissionManager(mode=ExecutionMode.SAFE)
+    manager = PermissionManager(mode=ModelExecutionMode.SAFE)
     req = manager.request_permission(
         workflow_id="wf-1",
         task_id="task-1",
-        permission_type=PermissionType.FILE_READ,
+        permission_type=ModelPermissionType.FILE_READ,
         reason="Read file",
     )
 
     manager.reject_permission(req.request_id)
     assert not manager.validate_permission(req.request_id)
-    assert req.status == PermissionStatus.REJECTED
+    assert req.status == ModelPermissionStatus.REJECTED
 
 
 def test_get_pending_requests():
-    from app.core.permissions.models import PermissionType
-
-    manager = PermissionManager(mode=ExecutionMode.SAFE)
-    manager.request_permission("wf-1", "t-1", PermissionType.FILE_READ, "read")
-    manager.request_permission("wf-2", "t-2", PermissionType.FILE_WRITE, "write")
+    manager = PermissionManager(mode=ModelExecutionMode.SAFE)
+    manager.request_permission(
+        "wf-1", "t-1", ModelPermissionType.FILE_READ, "read"
+    )
+    manager.request_permission(
+        "wf-2", "t-2", ModelPermissionType.FILE_WRITE, "write"
+    )
 
     all_pending = manager.get_pending_requests()
     assert len(all_pending) == 2

@@ -1,5 +1,16 @@
-import uuid
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
+import uuid
+from uuid import UUID
+
+from shared.contracts.permission import (
+    PermissionRequest as SharedPermissionRequest,
+    PermissionStatus as SharedPermissionStatus,
+    PermissionType as SharedPermissionType,
+    RiskLevel as SharedRiskLevel,
+)
+
+from app.core.logging import get_logger
 
 from .models import (
     ExecutionMode,
@@ -10,8 +21,10 @@ from .models import (
 )
 from .policies import PermissionPolicy
 
+logger = get_logger(__name__)
 
-def make_awaitable(obj, manager=None, is_legacy=False):
+
+def make_awaitable(obj: Any, manager: Optional[Any] = None, is_legacy: bool = False) -> Any:
     if obj is None:
         return None
     if hasattr(obj, "__await__"):
@@ -22,7 +35,6 @@ def make_awaitable(obj, manager=None, is_legacy=False):
         def __await__(self):
             async def _val():
                 if is_legacy and manager:
-                    # Run legacy request side-effects upon await
                     risk_str = getattr(self, "risk_level", "MEDIUM")
                     risk_val = getattr(risk_str, "value", str(risk_str))
 
@@ -78,31 +90,43 @@ class AwaitableBool:
 
 
 class PermissionManager:
+    """
+    Core Permission Manager for AetherPhoenix.
+
+    Handles both:
+    1. Shared permission contracts used across agents, workflow engines, and integrations.
+    2. Internal permission models and execution-mode policies.
+    """
+
     def __init__(
         self,
         mode: ExecutionMode = ExecutionMode.SAFE,
         event_bus: Optional[Any] = None,
         auto_approve_low_risk: bool = True,
-        *args,
-        **kwargs,
-    ):
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
         self.mode = mode
         self.event_bus = event_bus
         self.auto_approve_low_risk = auto_approve_low_risk
         self.requests: Dict[str, Any] = {}
         self._permissions = self.requests
+        self._shared_requests = self.requests
 
-    def set_mode(self, mode: ExecutionMode):
+    def set_mode(self, mode: ExecutionMode) -> None:
+        """Set the execution mode (SAFE, ASSISTED, AUTONOMOUS)."""
         self.mode = mode
 
-    def check_permission(self, *args, **kwargs) -> Any:
+    def get_request(self, permission_id: Any) -> Optional[Any]:
+        """Retrieve a permission request by its ID."""
+        return self.requests.get(permission_id) or self.requests.get(str(permission_id))
+
+    def check_permission(self, *args: Any, **kwargs: Any) -> Any:
         """
         Dual signature check.
         Legacy: check_permission(self, permission_type, workflow_id)
         New: check_permission(self, action, permission_type)
         """
-        from shared.contracts.permission import PermissionType as SharedPermissionType
-
         is_legacy = False
         if len(args) >= 1:
             first_arg = args[0]
@@ -150,18 +174,22 @@ class PermissionManager:
     def request_permission(
         self,
         workflow_id: Any,
-        *args,
-        **kwargs,
+        *args: Any,
+        **kwargs: Any,
     ) -> Any:
         """
         Dual signature request.
+        Shared object: request_permission(self, shared_permission_request)
         Legacy: request_permission(self, workflow_id, permission_type, reason,
                                    risk_level=RiskLevel.MEDIUM, task_id=None)
         New: request_permission(self, workflow_id, task_id, permission_type,
                                 reason, context=None)
         """
-        from shared.contracts.permission import PermissionType as SharedPermissionType
-        from shared.contracts.permission import RiskLevel as SharedRiskLevel
+        if hasattr(workflow_id, "permission_id") and hasattr(workflow_id, "risk_level"):
+            req = workflow_id
+            self.requests[req.permission_id] = req
+            self.requests[str(req.permission_id)] = req
+            return req
 
         is_legacy = False
         if len(args) >= 1:
@@ -188,13 +216,6 @@ class PermissionManager:
             )
             task_id = args[3] if len(args) > 3 else kwargs.get("task_id")
 
-            from shared.contracts.permission import (
-                PermissionRequest as SharedPermissionRequest,
-            )
-            from shared.contracts.permission import (
-                PermissionStatus as SharedPermissionStatus,
-            )
-
             req = SharedPermissionRequest(
                 workflow_id=workflow_id,
                 task_id=task_id,
@@ -219,7 +240,7 @@ class PermissionManager:
             req = PermissionRequest(
                 request_id=request_id,
                 workflow_id=str(workflow_id),
-                task_id=str(task_id),
+                task_id=str(task_id) if task_id else None,
                 permission_type=permission_type,
                 reason=reason,
                 context=context or {},
@@ -240,16 +261,10 @@ class PermissionManager:
 
         # Handle shared model
         if hasattr(req, "permission_id"):
-            from shared.contracts.permission import (
-                PermissionStatus as SharedPermissionStatus,
-            )
-
-            # Policy-based check using string conversion
             perm_str = getattr(req.permission_type, "value", str(req.permission_type))
             try:
                 perm_enum = PermissionType(perm_str)
             except ValueError:
-                # Fallback mapping
                 perm_enum = PermissionType.BROWSER_ACCESS
 
             if PermissionPolicy.requires_approval(perm_enum, self.mode):
@@ -272,12 +287,7 @@ class PermissionManager:
         if not req:
             raise ValueError(f"Permission request {request_id} not found.")
 
-        # Update status depending on request model type
         if hasattr(req, "permission_id"):
-            from shared.contracts.permission import (
-                PermissionStatus as SharedPermissionStatus,
-            )
-
             req.status = SharedPermissionStatus.GRANTED
             status_val = PermissionStatus.APPROVED
         else:
@@ -294,16 +304,9 @@ class PermissionManager:
         if not req:
             raise ValueError(f"Permission request {request_id} not found.")
 
-        # Update status depending on request model type
         if hasattr(req, "permission_id"):
-            from shared.contracts.permission import (
-                PermissionStatus as SharedPermissionStatus,
-            )
-
             req.status = SharedPermissionStatus.REJECTED
             try:
-                from datetime import datetime, timezone
-
                 req.responded_at = datetime.now(timezone.utc)
             except Exception:
                 pass
@@ -331,13 +334,13 @@ class PermissionManager:
                 return req
 
             class AwaitableRequestWrapper:
-                def __init__(self, r):
+                def __init__(self, r: Any) -> None:
                     self.r = r
 
-                def __getattr__(self, name):
+                def __getattr__(self, name: str) -> Any:
                     return getattr(self.r, name)
 
-                def __await__(self):
+                def __await__(self) -> Any:
                     return _async_side_effects().__await__()
 
             return AwaitableRequestWrapper(req)
@@ -350,21 +353,15 @@ class PermissionManager:
             )
 
     async def grant_permission(self, permission_id: Any) -> Any:
-        """Legacy async grant method."""
+        """Async grant method."""
         perm_id_str = str(permission_id)
         request = self.requests.get(permission_id) or self.requests.get(perm_id_str)
         if not request:
             raise KeyError(f"Permission request {permission_id} not found.")
 
         if hasattr(request, "permission_id"):
-            from shared.contracts.permission import (
-                PermissionStatus as SharedPermissionStatus,
-            )
-
             request.status = SharedPermissionStatus.GRANTED
             try:
-                from datetime import datetime, timezone
-
                 request.responded_at = datetime.now(timezone.utc)
             except Exception:
                 pass
@@ -394,21 +391,15 @@ class PermissionManager:
         return request
 
     async def reject_permission_legacy(self, permission_id: Any) -> Any:
-        """Legacy async reject method."""
+        """Async reject method."""
         perm_id_str = str(permission_id)
         request = self.requests.get(permission_id) or self.requests.get(perm_id_str)
         if not request:
             raise KeyError(f"Permission request {permission_id} not found.")
 
         if hasattr(request, "permission_id"):
-            from shared.contracts.permission import (
-                PermissionStatus as SharedPermissionStatus,
-            )
-
             request.status = SharedPermissionStatus.REJECTED
             try:
-                from datetime import datetime, timezone
-
                 request.responded_at = datetime.now(timezone.utc)
             except Exception:
                 pass
@@ -437,7 +428,6 @@ class PermissionManager:
 
         return request
 
-    # Keep async reject_permission mapping for legacy calls that await it
     async def reject_permission_async(self, permission_id: Any) -> Any:
         return await self.reject_permission_legacy(permission_id)
 
@@ -472,7 +462,6 @@ class PermissionManager:
                 if status_str in ("GRANTED", "APPROVED"):
                     return
                 elif status_str in ("REJECTED", "PENDING"):
-                    # Check policy
                     try:
                         perm_enum = PermissionType(perm_str)
                     except ValueError:
@@ -500,7 +489,6 @@ class PermissionManager:
                         )
                     return
 
-        # Not found request check policy
         try:
             perm_enum = PermissionType(perm_str)
         except ValueError:
