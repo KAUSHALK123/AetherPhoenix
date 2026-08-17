@@ -50,6 +50,10 @@ class EventType(str, Enum):
     TOOL_LOADED = "ToolLoaded"
     TOOL_FAILED = "ToolFailed"
 
+    # Feedback
+    FEEDBACK_GENERATED = "FeedbackGenerated"
+    REPLANNING_TRIGGERED = "ReplanningTriggered"
+
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)

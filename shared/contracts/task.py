@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -78,17 +78,17 @@ class RollbackInfo(BaseModel):
     """Rollback instructions for destructive task operations."""
 
     rollback_point: str
-    changed_files: List[str] = Field(default_factory=list)
-    changed_registry: List[str] = Field(default_factory=list)
-    changed_variables: Dict[str, str] = Field(default_factory=dict)
-    previous_values: Dict[str, Any] = Field(default_factory=dict)
+    changed_files: list[str] = Field(default_factory=list)
+    changed_registry: list[str] = Field(default_factory=list)
+    changed_variables: dict[str, str] = Field(default_factory=dict)
+    previous_values: dict[str, Any] = Field(default_factory=dict)
 
 
 class Task(BaseModel):
     """Task contract representing an atomic executable unit of work."""
 
     task_id: UUID = Field(default_factory=uuid4)
-    parent_task_id: Optional[UUID] = None
+    parent_task_id: UUID | None = None
     workflow_id: UUID
     task_name: str
     description: str
@@ -97,20 +97,20 @@ class Task(BaseModel):
     required_tool: str
     category: TaskCategory
     priority: TaskPriority = TaskPriority.MEDIUM
-    dependencies: List[UUID] = Field(default_factory=list)
-    preconditions: List[str] = Field(default_factory=list)
-    permissions: List[str] = Field(default_factory=list)
+    dependencies: list[UUID] = Field(default_factory=list)
+    preconditions: list[str] = Field(default_factory=list)
+    permissions: list[str] = Field(default_factory=list)
     risk_level: str = "LOW"
     expected_output: str
-    artifact_location: Optional[str] = None
-    success_criteria: List[str] = Field(default_factory=list)
-    failure_criteria: List[str] = Field(default_factory=list)
-    estimated_duration_seconds: Optional[int] = None
+    artifact_location: str | None = None
+    success_criteria: list[str] = Field(default_factory=list)
+    failure_criteria: list[str] = Field(default_factory=list)
+    estimated_duration_seconds: int | None = None
     status: TaskStatus = TaskStatus.CREATED
     retry_count: int = Field(default=0, ge=0)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    started_at: Optional[datetime] = None
-    finished_at: Optional[datetime] = None
-    rollback_info: Optional[RollbackInfo] = None
-    execution_logs: List[str] = Field(default_factory=list)
-    artifacts_produced: List[str] = Field(default_factory=list)
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    rollback_info: RollbackInfo | None = None
+    execution_logs: list[str] = Field(default_factory=list)
+    artifacts_produced: list[str] = Field(default_factory=list)

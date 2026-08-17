@@ -21,10 +21,7 @@ from shared.contracts.execution import (
     ExecutionMetrics,
     ExecutionResult,
     FailureType,
-    HealingRequest,
     HealingResult,
-    HealingState,
-    RecoveryStrategyType,
     SupervisorDecision,
     SupervisorValidation,
     TaskError,
@@ -35,11 +32,12 @@ from shared.contracts.execution_log import (
     ExecutionStatus,
     WorkerExecutionLog,
 )
-from shared.contracts.healing import (
-    AlternativeCause,
-    DiagnosticEvidence,
-    RootCauseCategory,
-    RootCauseResult,
+from shared.contracts.feedback import (
+    CapabilityFailureInfo,
+    FailureSummary,
+    HealingSummary,
+    PlannerFeedback,
+    ReplanningContext,
 )
 from shared.contracts.pdf import (
     CodeBlockElement,
@@ -72,22 +70,10 @@ from shared.contracts.planner import (
     TaskDecompositionPlan,
     UserRequirement,
 )
-from shared.contracts.recovery_plan import (
-    ErrorParserOutput,
-    RecoveryAction,
-    RecoveryPlan,
-    RootCauseAnalysis,
-)
 from shared.contracts.risk import (
     Conflict,
     RiskAnalysisResult,
     RiskAssessment,
-)
-from shared.contracts.retry import (
-    RecoveryPlan,
-    RetryRequest,
-    RetryResult,
-    RetryStatus,
 )
 from shared.contracts.task import (
     DependencyType,
@@ -108,17 +94,16 @@ from shared.contracts.workflow import (
 )
 
 __all__ = [
-    "AlternativeCause",
     # Artifact
     "Artifact",
     "ArtifactType",
     # Capability
     "Capability",
+    "CapabilityFailureInfo",
     "ClarificationResult",
     "CodeBlockElement",
     "Conflict",
     "DependencyType",
-    "DiagnosticEvidence",
     "DocumentElement",
     "DocumentElementType",
     # Document
@@ -138,14 +123,14 @@ __all__ = [
     "ExecutionPhase",
     "ExecutionResult",
     "ExecutionStatus",
+    "FailureSummary",
     "FailureType",
     "Goal",
     "GoalExtractionResult",
     "GoalPriority",
     "HeadingElement",
-    "HealingRequest",
     "HealingResult",
-    "HealingState",
+    "HealingSummary",
     "IntentCategory",
     "ListElement",
     "PDFDocumentInput",
@@ -160,27 +145,19 @@ __all__ = [
     "PermissionType",
     "PlanMetadata",
     "PlanVersion",
+    # Feedback
+    "PlannerFeedback",
     "PlannerOutput",
     # Planner
     "PlannerRequest",
     "PlannerResponse",
     "ProgressState",
-    "RecoveryStrategyType",
+    "ReplanningContext",
     "RiskAnalysisResult",
     # Risk
     "RiskAssessment",
-    "Conflict",
-    "ErrorParserOutput",
-    "RecoveryAction",
-    "RecoveryPlan",
-    # Recovery Plan
-    "RiskAnalysisResult",
     "RiskLevel",
     "RollbackInfo",
-    "RootCauseAnalysis",
-    # Healing
-    "RootCauseCategory",
-    "RootCauseResult",
     "RuntimeEvent",
     "SharedWorkflowState",
     "StructuredDocumentInput",
@@ -190,14 +167,6 @@ __all__ = [
     "Task",
     "TaskCategory",
     "TaskDecompositionPlan",
-    "PlanVersion",
-    "PlanMetadata",
-    "PlannerOutput",
-    # Retry
-    "RecoveryPlan",
-    "RetryRequest",
-    "RetryResult",
-    "RetryStatus",
     "TaskDependency",
     "TaskError",
     "TaskFailureReport",

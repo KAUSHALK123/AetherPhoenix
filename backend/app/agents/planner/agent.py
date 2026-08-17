@@ -122,6 +122,45 @@ class PlannerAgent:
             "PlannerAgent processing request for session: %s", request.session_id
         )
 
+        # Check for circular feedback loops
+        if request.feedback and request.feedback.replanning_context:
+            session_id = request.session_id
+            if not hasattr(self, "replanning_cycles"):
+                self.replanning_cycles = {}
+            cycles = self.replanning_cycles.get(session_id, 0)
+            if cycles >= 3:
+                logger.error(
+                    "Circular planning loop detected for session %s. Terminating.",
+                    session_id,
+                )
+                self.replanning_cycles.pop(session_id, None)
+                self.active_sessions.pop(session_id, None)
+                return PlannerResponse(
+                    session_id=session_id,
+                    status="error",
+                    reply=(
+                        "Circular planning loop detected. "
+                        "Execution fails repeatedly without recovery."
+                    ),
+                    action="terminate",
+                )
+            self.replanning_cycles[session_id] = cycles + 1
+
+        # Extract unavailable tools from feedback
+        unavailable_tools = []
+        if request.feedback:
+            if (
+                request.feedback.capability_failure
+                and request.feedback.capability_failure.is_permanent
+            ):
+                unavailable_tools.append(request.feedback.capability_failure.tool_name)
+            if request.feedback.failure_summary:
+                if (
+                    request.feedback.healing_summary
+                    and request.feedback.healing_summary.outcome == "UNRECOVERABLE"
+                ):
+                    unavailable_tools.append(request.feedback.failure_summary.tool_used)
+
         # Restore session context if this is a clarification answer
         if request.session_id in self.active_sessions:
             original_goal = self.active_sessions[request.session_id]
@@ -185,7 +224,9 @@ class PlannerAgent:
         tasks = decomposition_plan.tasks
 
         # Capability Discovery
-        tasks, unsupported_caps = self.capability_engine.discover_capabilities(tasks)
+        tasks, unsupported_caps = self.capability_engine.discover_capabilities(
+            tasks, unavailable_tools=unavailable_tools
+        )
         if unsupported_caps:
             decomposition_plan.unsupported_capabilities = unsupported_caps
             self.active_sessions.pop(request.session_id, None)

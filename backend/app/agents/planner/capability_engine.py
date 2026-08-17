@@ -1,5 +1,5 @@
 import logging
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from shared.contracts.task import Task
 
@@ -17,18 +17,24 @@ class CapabilityDiscoveryEngine:
     def __init__(self, registry: CapabilityRegistry = None):
         self.registry = registry or CapabilityRegistry()
 
-    def discover_capabilities(self, tasks: List[Task]) -> Tuple[List[Task], List[str]]:
+    def discover_capabilities(
+        self, tasks: List[Task], unavailable_tools: Optional[List[str]] = None
+    ) -> Tuple[List[Task], List[str]]:
         """
         Iterates over tasks, finds a matching capability by category,
-        and assigns the required tool.
+        and assigns the correct Tool to each Task based on the Capability Registry.
         Returns the modified tasks and a list of unsupported capability categories.
         """
         unsupported = []
 
         for task in tasks:
-            # Skip if tool is already assigned explicitly and not empty
+            # Skip if tool is already assigned explicitly and not empty,
+            # unless it is unavailable
             if task.required_tool and task.required_tool.strip() != "":
-                continue
+                if unavailable_tools and task.required_tool in unavailable_tools:
+                    task.required_tool = ""
+                else:
+                    continue
 
             if task.assigned_agent == "System":
                 continue
@@ -41,6 +47,15 @@ class CapabilityDiscoveryEngine:
                 continue
 
             enabled_caps = [c for c in caps if c.enabled]
+            if unavailable_tools:
+                enabled_caps = [
+                    c
+                    for c in enabled_caps
+                    if not any(
+                        t in unavailable_tools for t in (c.required_tools or [c.name])
+                    )
+                ]
+
             if not enabled_caps:
                 unsupported.append(task.category.value)
                 continue
