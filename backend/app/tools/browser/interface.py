@@ -9,8 +9,8 @@ from shared.contracts.tool import Tool, ToolHealth, ToolState
 
 from app.engine.registry import CapabilityRegistry
 from app.tools.adapter import BaseToolAdapter
+from app.tools.browser.controller import BrowserActionError, BrowserController
 from app.tools.registry import ToolRegistry
-from app.tools.browser.controller import BrowserController, BrowserActionError
 
 logger = logging.getLogger(__name__)
 
@@ -64,12 +64,12 @@ class BrowserAdapter(BaseToolAdapter):
                 logs.append("Starting browser session...")
                 res = await self.controller.start_session()
                 output = res.data
-                
+
             elif action == "close_session":
                 logs.append("Closing browser session...")
                 res = await self.controller.close_session()
                 output = {"status": "closed"}
-                
+
             elif action == "navigate":
                 url = task.inputs.get("url")
                 timeout = task.inputs.get("timeout_ms", 30000.0)
@@ -78,31 +78,35 @@ class BrowserAdapter(BaseToolAdapter):
                 logs.append(f"Navigating to {url}...")
                 res = await self.controller.navigate(url, timeout_ms=timeout)
                 output = res.data
-                
+
             elif action == "extract_content":
                 include_html = task.inputs.get("include_html", False)
                 logs.append(f"Extracting content (include_html={include_html})...")
                 res = await self.controller.extract_content(include_html=include_html)
                 output = res.data
-                
+
             elif action == "interact":
                 selector = task.inputs.get("selector")
                 interaction_action = task.inputs.get("interaction_action")
                 value = task.inputs.get("value")
                 timeout = task.inputs.get("timeout_ms", 10000.0)
-                
+
                 if not selector or not interaction_action:
-                    raise ValueError("selector and interaction_action are required for interaction.")
-                    
-                logs.append(f"Interacting with {selector} (action={interaction_action})...")
+                    raise ValueError(
+                        "selector and interaction_action are required for interaction."
+                    )
+
+                logs.append(
+                    f"Interacting with {selector} (action={interaction_action})..."
+                )
                 res = await self.controller.interact(
-                    selector=selector, 
-                    action=interaction_action, 
-                    value=value, 
-                    timeout_ms=timeout
+                    selector=selector,
+                    action=interaction_action,
+                    value=value,
+                    timeout_ms=timeout,
                 )
                 output = res.data
-                
+
             else:
                 raise ValueError(f"Unknown browser action: {action}")
 
@@ -115,7 +119,9 @@ class BrowserAdapter(BaseToolAdapter):
                 success=True,
                 output=output,
                 logs=logs,
-                metrics=ExecutionMetrics(execution_time_ms=(time.time() - start_time) * 1000.0)
+                metrics=ExecutionMetrics(
+                    execution_time_ms=(time.time() - start_time) * 1000.0
+                ),
             )
 
         except Exception as e:
@@ -127,21 +133,27 @@ class BrowserAdapter(BaseToolAdapter):
                 success=False,
                 error=TaskError(error_code="BROWSER_ERROR", error_message=str(e)),
                 logs=logs,
-                metrics=ExecutionMetrics(execution_time_ms=(time.time() - start_time) * 1000.0)
+                metrics=ExecutionMetrics(
+                    execution_time_ms=(time.time() - start_time) * 1000.0
+                ),
             )
+
 
 class BrowserTool:
     """
     Deprecated: Kept for backward compatibility with existing tests.
     Use BrowserAdapter or BrowserController instead.
     """
+
     def __init__(self, permission_checker=None):
         self.controller = BrowserController()
         self.permission_checker = permission_checker
-        
+
     def _check_permission(self, permission: PermissionType) -> None:
         if self.permission_checker and not self.permission_checker(permission):
-            raise PermissionError(f"Action denied: Missing {permission.value} permission.")
+            raise PermissionError(
+                f"Action denied: Missing {permission.value} permission."
+            )
 
     async def start_session(self) -> None:
         self._check_permission(PermissionType.BROWSER_ACCESS)
@@ -168,5 +180,7 @@ class BrowserTool:
         return res.data.get("content", "")
 
     async def interact(self, selector: str, action: str, value: str = None) -> bool:
-        res = await self.controller.interact(selector=selector, action=action, value=value)
+        res = await self.controller.interact(
+            selector=selector, action=action, value=value
+        )
         return res.success

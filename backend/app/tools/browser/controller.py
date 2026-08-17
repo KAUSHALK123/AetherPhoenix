@@ -1,17 +1,18 @@
-import logging
 import time
 import uuid
 from typing import Optional
 
 from playwright.async_api import Browser, Page, Playwright, async_playwright
+from shared.contracts.browser import BrowserResult, BrowserSession, BrowserState
 
-from shared.contracts.browser import BrowserSession, BrowserState, BrowserResult
 from app.core.logging.logger import get_logger
 
 logger = get_logger(__name__)
 
+
 class BrowserActionError(Exception):
     pass
+
 
 class BrowserController:
     """
@@ -40,13 +41,15 @@ class BrowserController:
             self._playwright = await async_playwright().start()
             self._browser = await self._playwright.chromium.launch(headless=True)
             self._page = await self._browser.new_page()
-            
+
             self._session = BrowserSession(
                 session_id=str(uuid.uuid4()),
                 state=BrowserState.READY,
-                start_time=time.time()
+                start_time=time.time(),
             )
-            return BrowserResult(success=True, data={"session_id": self._session.session_id})
+            return BrowserResult(
+                success=True, data={"session_id": self._session.session_id}
+            )
         except Exception as e:
             logger.error(f"Failed to start browser session: {e}")
             self._session = None
@@ -63,7 +66,7 @@ class BrowserController:
                 await self._playwright.stop()
                 self._playwright = None
             self._page = None
-            
+
             if self._session:
                 self._session.state = BrowserState.CLOSED
                 self._session = None
@@ -76,12 +79,16 @@ class BrowserController:
     async def navigate(self, url: str, timeout_ms: float = 30000.0) -> BrowserResult:
         """Navigates to a specific URL."""
         if not self._page or not self._session:
-            raise BrowserActionError("Browser session not started. Call start_session() first.")
+            raise BrowserActionError(
+                "Browser session not started. Call start_session() first."
+            )
 
         try:
             logger.info(f"Navigating to {url}")
             self._session.state = BrowserState.LOADING
-            await self._page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
+            await self._page.goto(
+                url, wait_until="domcontentloaded", timeout=timeout_ms
+            )
             self._session.current_url = url
             self._session.state = BrowserState.READY
             return BrowserResult(success=True, data={"url": url})
@@ -100,13 +107,19 @@ class BrowserController:
                 content = await self._page.content()
             else:
                 content = await self._page.evaluate("document.body.innerText")
-            
+
             return BrowserResult(success=True, data={"content": content or ""})
         except Exception as e:
             logger.error(f"Failed to extract content: {str(e)}")
             return BrowserResult(success=False, error=str(e))
 
-    async def interact(self, selector: str, action: str, value: Optional[str] = None, timeout_ms: float = 10000.0) -> BrowserResult:
+    async def interact(
+        self,
+        selector: str,
+        action: str,
+        value: Optional[str] = None,
+        timeout_ms: float = 10000.0,
+    ) -> BrowserResult:
         """
         Abstractions for basic page interactions (click, fill).
         """
@@ -122,7 +135,9 @@ class BrowserController:
                 await self._page.fill(selector, value, timeout=timeout_ms)
             else:
                 raise ValueError(f"Unsupported action: {action}")
-            return BrowserResult(success=True, data={"action": action, "selector": selector})
+            return BrowserResult(
+                success=True, data={"action": action, "selector": selector}
+            )
         except Exception as e:
             logger.error(f"Interaction '{action}' on '{selector}' failed: {str(e)}")
             return BrowserResult(success=False, error=str(e))
