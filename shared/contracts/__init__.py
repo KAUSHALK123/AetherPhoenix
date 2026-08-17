@@ -39,6 +39,12 @@ from shared.contracts.feedback import (
     PlannerFeedback,
     ReplanningContext,
 )
+from shared.contracts.keyboard import (
+    KeyboardActionRequest,
+    KeyboardActionResult,
+    KeyboardActionType,
+    SpecialKey,
+)
 from shared.contracts.pdf import (
     CodeBlockElement,
     HeadingElement,
@@ -76,6 +82,11 @@ from shared.contracts.recovery_plan import (
     RecoveryPlan,
     RootCauseAnalysis,
 )
+from shared.contracts.retry import (
+    RetryRequest,
+    RetryResult,
+    RetryStatus,
+)
 from shared.contracts.risk import (
     Conflict,
     RiskAnalysisResult,
@@ -89,11 +100,6 @@ from shared.contracts.task import (
     TaskDependency,
     TaskPriority,
     TaskStatus,
-)
-from shared.contracts.retry import (
-    RetryRequest,
-    RetryResult,
-    RetryStatus,
 )
 from shared.contracts.tool import Tool, ToolHealth, ToolState
 from shared.contracts.workflow import (
@@ -143,6 +149,9 @@ __all__ = [
     "HealingResult",
     "HealingSummary",
     "IntentCategory",
+    "KeyboardActionRequest",
+    "KeyboardActionResult",
+    "KeyboardActionType",
     "ListElement",
     "PDFDocumentInput",
     "PDFElement",
@@ -178,6 +187,7 @@ __all__ = [
     "RetryResult",
     "RetryStatus",
     "SharedWorkflowState",
+    "SpecialKey",
     "StructuredDocumentInput",
     "SupervisorDecision",
     "SupervisorValidation",
