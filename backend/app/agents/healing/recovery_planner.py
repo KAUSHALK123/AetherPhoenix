@@ -4,10 +4,8 @@ from uuid import uuid4
 
 from shared.contracts.permission import PermissionType, RiskLevel
 from shared.contracts.recovery_plan import (
-    ErrorParserOutput,
     RecoveryAction,
     RecoveryPlan,
-    RootCauseAnalysis,
 )
 
 from app.agents.healing.validator import validate_recovery_plan
@@ -52,14 +50,78 @@ class RecoveryPlanner:
 
     def plan(
         self,
-        parsed_error: ErrorParserOutput,
-        root_cause: RootCauseAnalysis,
+        parsed_error: Any = None,
+        root_cause: Any = None,
         task_context: Optional[Dict[str, Any]] = None,
+        *args: Any,
+        **kwargs: Any,
     ) -> RecoveryPlan:
         """
         Generates an ordered, validated RecoveryPlan based on parsed error
         and root cause analysis.
         """
+        is_legacy = False
+        root_cause_obj = None
+        task_obj = None
+
+        if parsed_error is not None and (
+            hasattr(parsed_error, "likely_root_cause") or 
+            hasattr(parsed_error, "root_cause_summary") or 
+            hasattr(parsed_error, "recommended_strategy")
+        ):
+            is_legacy = True
+            root_cause_obj = parsed_error
+            task_obj = root_cause
+        elif parsed_error is None and root_cause is not None and (
+            hasattr(root_cause, "likely_root_cause") or 
+            hasattr(root_cause, "root_cause_summary") or 
+            hasattr(root_cause, "recommended_strategy")
+        ):
+            is_legacy = True
+            root_cause_obj = root_cause
+            task_obj = kwargs.get("task")
+
+        if is_legacy:
+            is_retryable = getattr(root_cause_obj, "is_recoverable", True)
+            target_tool = (
+                getattr(task_obj, "required_tool", None)
+                if task_obj
+                else None
+            )
+            parsed_details = {"target_tool": target_tool}
+            failure_id = getattr(
+                root_cause_obj,
+                "failure_id",
+                getattr(root_cause_obj, "analysis_id", uuid4()),
+            )
+            task_id = getattr(root_cause_obj, "task_id", uuid4())
+            workflow_id = getattr(root_cause_obj, "workflow_id", uuid4())
+
+            class CompatParsedError:
+                def __init__(
+                    self,
+                    is_retryable: bool,
+                    parsed_details: dict,
+                    failure_id: Any,
+                    task_id: Any,
+                    workflow_id: Any,
+                ) -> None:
+                    self.is_retryable = is_retryable
+                    self.parsed_details = parsed_details
+                    self.failure_id = failure_id
+                    self.task_id = task_id
+                    self.workflow_id = workflow_id
+
+            parsed_error = CompatParsedError(
+                is_retryable,
+                parsed_details,
+                failure_id,
+                task_id,
+                workflow_id,
+            )
+            root_cause = root_cause_obj
+            task_context = {}
+
         context = dict(parsed_error.parsed_details)
         if root_cause.context:
             context.update(root_cause.context)

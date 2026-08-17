@@ -59,6 +59,49 @@ class RootCauseResult(BaseModel):
     alternative_causes: list[AlternativeCause] = Field(default_factory=list)
     analyzed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+    @property
+    def summary(self) -> str:
+        return self.likely_root_cause
+
+    @property
+    def root_cause_summary(self) -> str:
+        return self.likely_root_cause
+
+    @property
+    def root_cause_id(self) -> UUID:
+        return self.analysis_id
+
+    @property
+    def explanation(self) -> str:
+        return self.diagnostic_explanation
+
+    @property
+    def is_recoverable(self) -> bool:
+        return self.category not in (RootCauseCategory.PERMISSION, RootCauseCategory.USER)
+
+    @property
+    def recommended_strategy(self) -> str:
+        if self.category == RootCauseCategory.PERMISSION:
+            return "REQUEST_PERMISSION_AGAIN"
+        elif self.category == RootCauseCategory.TOOL:
+            return "ALTERNATIVE_TOOL"
+        elif self.category == RootCauseCategory.NETWORK:
+            return "RETRY"
+        elif self.category == RootCauseCategory.USER:
+            return "ESCALATE_USER"
+        return "RETRY"
+
+    @property
+    def context(self) -> dict[str, Any]:
+        res = dict(self.evidence.context_signals)
+        if self.evidence.observed_failure_type:
+            res["observed_failure_type"] = self.evidence.observed_failure_type
+        if self.evidence.observed_error_message:
+            res["observed_error_message"] = self.evidence.observed_error_message
+        return res
+
+
+
 
 __all__ = [
     "AlternativeCause",

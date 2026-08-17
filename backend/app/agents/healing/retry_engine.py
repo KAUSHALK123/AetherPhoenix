@@ -116,6 +116,7 @@ class RetryEngine:
         is_recoverable: bool = True,
         max_retries: Optional[int] = None,
         max_healing_attempts: Optional[int] = None,
+        **kwargs: Any,
     ) -> Tuple[bool, str]:
         """
         Backward-compatible retry eligibility check.
@@ -123,6 +124,22 @@ class RetryEngine:
         This keeps the worker-re-execution feature's healing limits and
         failure-signature loop protection.
         """
+        # Backward compatibility for passing root_cause object
+        root_cause = kwargs.get("root_cause")
+        if root_cause is not None:
+            if hasattr(root_cause, "category"):
+                root_cause_category = str(root_cause.category)
+            else:
+                root_cause_category = str(root_cause)
+
+            if hasattr(root_cause, "root_cause_summary"):
+                root_cause_summary = str(root_cause.root_cause_summary)
+            elif hasattr(root_cause, "summary"):
+                root_cause_summary = str(root_cause.summary)
+
+            if hasattr(root_cause, "is_recoverable"):
+                is_recoverable = bool(root_cause.is_recoverable)
+
 
         limit_retries = (
             max_retries
@@ -837,6 +854,7 @@ class RetryEngine:
         state: SharedWorkflowState,
         root_cause_category: str = "RUNTIME",
         attempt_number: int = 1,
+        **kwargs: Any,
     ) -> HealingResult:
         """
         Backward-compatible recovery API.
@@ -844,6 +862,14 @@ class RetryEngine:
         Converts the older recovery-plan interface into the current
         retry execution flow.
         """
+        # Backward compatibility for passing root_cause object
+        root_cause = kwargs.get("root_cause")
+        if root_cause is not None:
+            if hasattr(root_cause, "category"):
+                root_cause_category = str(root_cause.category)
+            else:
+                root_cause_category = str(root_cause)
+
 
         logger.info(
             "RetryEngine executing recovery for task %s "

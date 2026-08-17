@@ -6,6 +6,7 @@ import pytest
 from shared.contracts.execution import (
     ExecutionResult,
     FailureType,
+    HealingRequest,
     TaskError,
     TaskFailureReport,
 )
@@ -16,7 +17,7 @@ from shared.contracts.workflow import (
     WorkflowStatus,
 )
 
-from app.agents.healing.agent import HealingAgent, HealingRequest
+from app.agents.healing.agent import HealingAgent
 from app.agents.healing.error_parser import ErrorCategory, ErrorParser, ParsedError
 from app.agents.healing.models import (
     ErrorSeverity,
