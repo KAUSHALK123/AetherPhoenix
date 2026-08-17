@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import List
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -38,5 +37,5 @@ class Tool(BaseModel):
     adapter: str = Field(
         ..., description="The adapter implementation that runs this tool"
     )
-    dependencies: List[str] = Field(default_factory=list)
-    required_permissions: List[str] = Field(default_factory=list)
+    dependencies: list[str] = Field(default_factory=list)
+    required_permissions: list[str] = Field(default_factory=list)

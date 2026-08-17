@@ -99,3 +99,11 @@ class WorkflowEngine(BaseWorkflowEngine):
                 self.state.running_tasks.remove(task_id)
             if task_id not in self.state.failed_tasks:
                 self.state.failed_tasks.append(task_id)
+
+        elif status in (TaskStatus.WAITING, TaskStatus.READY):
+            if task_id in self.state.running_tasks:
+                self.state.running_tasks.remove(task_id)
+            if task_id in self.state.failed_tasks:
+                self.state.failed_tasks.remove(task_id)
+            if task_id in self.state.completed_tasks:
+                self.state.completed_tasks.remove(task_id)

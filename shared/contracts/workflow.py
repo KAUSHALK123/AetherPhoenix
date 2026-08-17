@@ -6,8 +6,10 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field
 
 from shared.contracts.artifact import Artifact
+from shared.contracts.escalation import EscalationResult
 from shared.contracts.event import RuntimeEvent
-from shared.contracts.execution import HealingResult
+from shared.contracts.execution import HealingResult, SupervisorValidation
+from shared.contracts.feedback import PlannerFeedback
 from shared.contracts.permission import PermissionRequest
 from shared.contracts.task import Task
 
@@ -23,6 +25,8 @@ class WorkflowStatus(str, Enum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
+    ESCALATED = "ESCALATED"
+    BLOCKED = "BLOCKED"
 
 
 class ExecutionMode(str, Enum):
@@ -37,15 +41,15 @@ class WorkflowMetadata(BaseModel):
     """Top-level workflow identification and lifecycle metadata."""
 
     workflow_id: UUID = Field(default_factory=uuid4)
-    conversation_id: Optional[UUID] = None
-    user_id: Optional[str] = None
+    conversation_id: UUID | None = None
+    user_id: str | None = None
     goal: str
     execution_mode: ExecutionMode = ExecutionMode.ASSISTED
     status: WorkflowStatus = WorkflowStatus.CREATED
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    estimated_duration_seconds: Optional[int] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    estimated_duration_seconds: int | None = None
 
 
 class PlannerOutput(BaseModel):
@@ -68,8 +72,10 @@ class ProgressState(BaseModel):
     running_tasks: int = Field(default=0, ge=0)
     failed_tasks: int = Field(default=0, ge=0)
     pending_tasks: int = Field(default=0, ge=0)
+    blocked_tasks: int = Field(default=0, ge=0)
     overall_percentage: float = Field(default=0.0, ge=0.0, le=100.0)
-    estimated_remaining_time_seconds: Optional[int] = None
+    execution_duration_seconds: float = Field(default=0.0, ge=0.0)
+    estimated_remaining_time_seconds: int | None = None
 
 
 class SharedWorkflowState(BaseModel):
@@ -79,7 +85,7 @@ class SharedWorkflowState(BaseModel):
     """
 
     metadata: WorkflowMetadata
-    planner_output: Optional[PlannerOutput] = None
+    planner_output: PlannerOutput | None = None
     tasks: Dict[UUID, Task] = Field(default_factory=dict)
     execution_queue: List[UUID] = Field(default_factory=list)
     running_tasks: List[UUID] = Field(default_factory=list)
@@ -87,8 +93,14 @@ class SharedWorkflowState(BaseModel):
     failed_tasks: List[UUID] = Field(default_factory=list)
     progress: ProgressState = Field(default_factory=ProgressState)
     permissions: List[PermissionRequest] = Field(default_factory=list)
+    validations: Dict[UUID, SupervisorValidation] = Field(default_factory=dict)
     artifacts: List[Artifact] = Field(default_factory=list)
     logs: List[Dict[str, Any]] = Field(default_factory=list)
     healing_history: List[HealingResult] = Field(default_factory=list)
     metrics: Dict[str, Any] = Field(default_factory=dict)
     events: List[RuntimeEvent] = Field(default_factory=list)
+    escalations: List[EscalationResult] = Field(default_factory=list)
+    feedback: PlannerFeedback | None = Field(
+        None,
+        description="Execution/healing structured feedback generated during workflow failures.",
+    )

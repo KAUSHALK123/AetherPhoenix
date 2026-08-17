@@ -2,13 +2,53 @@
 
 from shared.contracts.artifact import Artifact, ArtifactType
 from shared.contracts.capability import Capability
+from shared.contracts.document import (
+    DocumentElement,
+    DocumentElementType,
+    DocumentFormat,
+    DocumentGenerationResult,
+    DocumentSection,
+    StructuredDocumentInput,
+)
+from shared.contracts.escalation import (
+    EscalationReason,
+    EscalationRequest,
+    EscalationResult,
+    EscalationSeverity,
+)
 from shared.contracts.event import EventSource, EventType, RuntimeEvent
 from shared.contracts.execution import (
     ExecutionMetrics,
     ExecutionResult,
+    FailureType,
     HealingResult,
+    SupervisorDecision,
     SupervisorValidation,
     TaskError,
+    TaskFailureReport,
+)
+from shared.contracts.execution_log import (
+    ExecutionPhase,
+    ExecutionStatus,
+    WorkerExecutionLog,
+)
+from shared.contracts.feedback import (
+    CapabilityFailureInfo,
+    FailureSummary,
+    HealingSummary,
+    PlannerFeedback,
+    ReplanningContext,
+)
+from shared.contracts.pdf import (
+    CodeBlockElement,
+    HeadingElement,
+    ListElement,
+    ParagraphElement,
+    PDFDocumentInput,
+    PDFElement,
+    PDFElementType,
+    PDFGenerationResult,
+    TableElement,
 )
 from shared.contracts.permission import (
     PermissionRequest,
@@ -22,10 +62,24 @@ from shared.contracts.planner import (
     GoalExtractionResult,
     GoalPriority,
     IntentCategory,
+    PlanMetadata,
+    PlannerOutput,
     PlannerRequest,
     PlannerResponse,
+    PlanVersion,
     TaskDecompositionPlan,
     UserRequirement,
+)
+from shared.contracts.recovery_plan import (
+    ErrorParserOutput,
+    RecoveryAction,
+    RecoveryPlan,
+    RootCauseAnalysis,
+)
+from shared.contracts.risk import (
+    Conflict,
+    RiskAnalysisResult,
+    RiskAssessment,
 )
 from shared.contracts.task import (
     DependencyType,
@@ -36,6 +90,11 @@ from shared.contracts.task import (
     TaskPriority,
     TaskStatus,
 )
+from shared.contracts.retry import (
+    RetryRequest,
+    RetryResult,
+    RetryStatus,
+)
 from shared.contracts.tool import Tool, ToolHealth, ToolState
 from shared.contracts.workflow import (
     ExecutionMode,
@@ -45,11 +104,6 @@ from shared.contracts.workflow import (
     WorkflowMetadata,
     WorkflowStatus,
 )
-from shared.contracts.risk import (
-    RiskAssessment,
-    Conflict,
-    RiskAnalysisResult,
-)
 
 __all__ = [
     # Artifact
@@ -57,43 +111,96 @@ __all__ = [
     "ArtifactType",
     # Capability
     "Capability",
+    "CapabilityFailureInfo",
+    "ClarificationResult",
+    "CodeBlockElement",
+    "Conflict",
+    "DependencyType",
+    "DocumentElement",
+    "DocumentElementType",
+    # Document
+    "DocumentFormat",
+    "DocumentGenerationResult",
+    "DocumentSection",
+    "EscalationReason",
+    "EscalationRequest",
+    "EscalationResult",
+    "EscalationSeverity",
+    "EventSource",
     # Event
     "EventType",
-    "EventSource",
-    "RuntimeEvent",
     # Execution
     "ExecutionMetrics",
-    "TaskError",
+    "ExecutionMode",
+    "ExecutionPhase",
     "ExecutionResult",
-    "SupervisorValidation",
+    "ExecutionStatus",
+    "FailureSummary",
+    "FailureType",
+    "Goal",
+    "GoalExtractionResult",
+    "GoalPriority",
+    "HeadingElement",
     "HealingResult",
+    "HealingSummary",
+    "IntentCategory",
+    "ListElement",
+    "PDFDocumentInput",
+    "PDFElement",
+    # PDF
+    "PDFElementType",
+    "PDFGenerationResult",
+    "ParagraphElement",
+    "PermissionRequest",
+    "PermissionStatus",
     # Permission
     "PermissionType",
-    "PermissionStatus",
-    "RiskLevel",
-    "PermissionRequest",
+    "PlanMetadata",
+    "PlanVersion",
+    # Feedback
+    "PlannerFeedback",
+    "PlannerOutput",
     # Planner
     "PlannerRequest",
     "PlannerResponse",
-    "IntentCategory",
-    "GoalPriority",
-    "Goal",
-    "GoalExtractionResult",
-    "UserRequirement",
-    "ClarificationResult",
+    "ProgressState",
+    "RecoveryAction",
+    "RecoveryPlan",
+    "ReplanningContext",
+    "RiskAnalysisResult",
+    # Risk
+    "RiskAssessment",
+    "RiskLevel",
+    "RootCauseAnalysis",
+    "ErrorParserOutput",
+    "RollbackInfo",
+    "RuntimeEvent",
+    "RetryRequest",
+    "RetryResult",
+    "RetryStatus",
+    "SharedWorkflowState",
+    "StructuredDocumentInput",
+    "SupervisorDecision",
+    "SupervisorValidation",
+    "TableElement",
+    "Task",
+    "TaskCategory",
     "TaskDecompositionPlan",
+    "TaskDependency",
+    "TaskError",
+    "TaskFailureReport",
+    "TaskPriority",
     # Task
     "TaskStatus",
-    "TaskPriority",
-    "TaskCategory",
-    "DependencyType",
-    "TaskDependency",
-    "RollbackInfo",
-    "Task",
     # Tool
     "Tool",
-    "ToolState",
     "ToolHealth",
+    "ToolState",
+    "UserRequirement",
+    "WorkerExecutionLog",
+    "WorkflowMetadata",
+    # Workflow
+    "WorkflowStatus",
     # Workflow
     "WorkflowStatus",
     "ExecutionMode",

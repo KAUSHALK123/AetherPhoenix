@@ -28,6 +28,7 @@ class EventType(str, Enum):
     TASK_STARTED = "TaskStarted"
     TASK_COMPLETED = "TaskCompleted"
     TASK_FAILED = "TaskFailed"
+    TASK_RETRIED = "TaskRetried"
 
     # Permission
     PERMISSION_REQUESTED = "PermissionRequested"
@@ -38,6 +39,13 @@ class EventType(str, Enum):
     HEALING_STARTED = "HealingStarted"
     HEALING_COMPLETED = "HealingCompleted"
     HEALING_FAILED = "HealingFailed"
+    HEALING_ESCALATED = "HealingEscalated"
+    ESCALATION_REQUESTED = "EscalationRequested"
+
+    # Worker Re-execution
+    WORKER_REEXECUTION_STARTED = "WorkerReexecutionStarted"
+    WORKER_REEXECUTION_COMPLETED = "WorkerReexecutionCompleted"
+    WORKER_REEXECUTION_FAILED = "WorkerReexecutionFailed"
 
     # Artifact
     ARTIFACT_CREATED = "ArtifactCreated"
@@ -46,6 +54,10 @@ class EventType(str, Enum):
     # Tool
     TOOL_LOADED = "ToolLoaded"
     TOOL_FAILED = "ToolFailed"
+
+    # Feedback
+    FEEDBACK_GENERATED = "FeedbackGenerated"
+    REPLANNING_TRIGGERED = "ReplanningTriggered"
 
 
 def utc_now() -> datetime:

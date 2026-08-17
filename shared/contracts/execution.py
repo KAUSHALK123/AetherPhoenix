@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from enum import Enum
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -12,9 +13,9 @@ class ExecutionMetrics(BaseModel):
     """Runtime performance and resource metrics for a task execution."""
 
     execution_time_ms: float = Field(default=0.0, ge=0.0)
-    memory_usage_mb: Optional[float] = Field(default=None, ge=0.0)
-    cpu_usage_percent: Optional[float] = Field(default=None, ge=0.0)
-    exit_code: Optional[int] = None
+    memory_usage_mb: float | None = Field(default=None, ge=0.0)
+    cpu_usage_percent: float | None = Field(default=None, ge=0.0)
+    exit_code: int | None = None
 
 
 class TaskError(BaseModel):
@@ -22,7 +23,7 @@ class TaskError(BaseModel):
 
     error_code: str
     error_message: str
-    stack_trace: Optional[str] = None
+    stack_trace: str | None = None
     is_recoverable: bool = True
 
 
@@ -33,12 +34,21 @@ class ExecutionResult(BaseModel):
     task_id: UUID
     workflow_id: UUID
     success: bool
-    output: Dict[str, Any] = Field(default_factory=dict)
-    artifacts: List[Artifact] = Field(default_factory=list)
+    output: dict[str, Any] = Field(default_factory=dict)
+    artifacts: list[Artifact] = Field(default_factory=list)
     metrics: ExecutionMetrics = Field(default_factory=ExecutionMetrics)
-    logs: List[str] = Field(default_factory=list)
-    error: Optional[TaskError] = None
+    logs: list[str] = Field(default_factory=list)
+    error: TaskError | None = None
     finished_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class SupervisorDecision(str, Enum):
+    """Possible outcomes of a supervisor validation."""
+
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+    NEEDS_REVIEW = "NEEDS_REVIEW"
+    BLOCKED = "BLOCKED"
 
 
 class SupervisorValidation(BaseModel):
@@ -48,9 +58,50 @@ class SupervisorValidation(BaseModel):
     task_id: UUID
     workflow_id: UUID
     is_valid: bool
-    checks: Dict[str, bool] = Field(default_factory=dict)
-    issues: List[str] = Field(default_factory=list)
+    decision: SupervisorDecision = SupervisorDecision.NEEDS_REVIEW
+    checks: dict[str, bool] = Field(default_factory=dict)
+    issues: list[str] = Field(default_factory=list)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class HealingState(str, Enum):
+    """Lifecycle state machine for Healing Core execution."""
+
+    IDLE = "IDLE"
+    ANALYZING = "ANALYZING"
+    PLANNING = "PLANNING"
+    GENERATING_TASKS = "GENERATING_TASKS"
+    WAITING = "WAITING"
+    COMPLETED = "COMPLETED"
+    ESCALATED = "ESCALATED"
+    FAILED = "FAILED"
+
+
+class RootCauseCategory(str, Enum):
+    """Categorization of failure root causes."""
+
+    INFRASTRUCTURE = "INFRASTRUCTURE"
+    TOOL_FAILURE = "TOOL_FAILURE"
+    PERMISSION_DENIED = "PERMISSION_DENIED"
+    NETWORK_ERROR = "NETWORK_ERROR"
+    TIMEOUT = "TIMEOUT"
+    RUNTIME_ERROR = "RUNTIME_ERROR"
+    USER_REJECTED = "USER_REJECTED"
+    WORKFLOW_ERROR = "WORKFLOW_ERROR"
+    EXTERNAL_API = "EXTERNAL_API"
+    UNKNOWN = "UNKNOWN"
+
+
+class RecoveryStrategyType(str, Enum):
+    """Recovery strategy types selected by Healing Agent."""
+
+    RETRY = "RETRY"
+    RESTART_TOOL = "RESTART_TOOL"
+    WAIT = "WAIT"
+    ALTERNATIVE_TOOL = "ALTERNATIVE_TOOL"
+    ALTERNATIVE_PARAMS = "ALTERNATIVE_PARAMS"
+    ESCALATE = "ESCALATE"
+    CANCEL_WORKFLOW = "CANCEL_WORKFLOW"
 
 
 class HealingResult(BaseModel):
@@ -61,7 +112,80 @@ class HealingResult(BaseModel):
     workflow_id: UUID
     root_cause: str
     recovery_strategy: str
-    replacement_tasks: List[Task] = Field(default_factory=list)
+    replacement_tasks: list[Task] = Field(default_factory=list)
     attempt_number: int = Field(default=1, ge=1)
     success: bool
+    healing_state: HealingState | None = None
+    root_cause_category: RootCauseCategory | None = None
+    escalation_reason: str | None = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class FailureType(str, Enum):
+    """Classification of task execution failures."""
+
+    WORKER_FAILURE = "WORKER_FAILURE"
+    TOOL_ERROR = "TOOL_ERROR"
+    OUTPUT_MISSING = "OUTPUT_MISSING"
+    ARTIFACT_VALIDATION_FAILED = "ARTIFACT_VALIDATION_FAILED"
+    TIMEOUT = "TIMEOUT"
+    DEPENDENCY_FAILED = "DEPENDENCY_FAILED"
+    PERMISSION_DENIED = "PERMISSION_DENIED"
+    TOOL_UNAVAILABLE = "TOOL_UNAVAILABLE"
+    UNEXPECTED_EXCEPTION = "UNEXPECTED_EXCEPTION"
+    WORKFLOW_BLOCKED = "WORKFLOW_BLOCKED"
+
+
+class TaskFailureReport(BaseModel):
+    """Structured failure report produced by Supervisor Agent."""
+
+    failure_id: UUID = Field(default_factory=uuid4)
+    task_id: UUID
+    workflow_id: UUID
+    failure_type: FailureType
+    message: str
+    detected_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    retryability: bool
+    execution_context: dict[str, Any] = Field(default_factory=dict)
+
+
+class WorkerReexecutionRequest(BaseModel):
+    """Controlled re-execution request contract for a task under recovery flow."""
+
+    request_id: UUID = Field(default_factory=uuid4)
+    attempt_id: UUID = Field(default_factory=uuid4)
+    task_id: UUID
+    workflow_id: UUID
+    attempt_number: int = Field(default=1, ge=1)
+    recovery_plan_id: UUID | None = None
+    recovery_strategy: str | None = None
+    modified_parameters: dict[str, Any] = Field(default_factory=dict)
+    original_task_snapshot: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class WorkerReexecutionResult(BaseModel):
+    """Contract representing the outcome of a worker re-execution attempt."""
+
+    reexecution_id: UUID = Field(default_factory=uuid4)
+    attempt_id: UUID
+    task_id: UUID
+    workflow_id: UUID
+    attempt_number: int
+    execution_result: ExecutionResult
+    previous_attempt_ids: list[UUID] = Field(default_factory=list)
+
+
+class HealingRequest(BaseModel):
+    """Structured request input for Healing Agent."""
+
+    request_id: UUID = Field(default_factory=uuid4)
+    workflow_id: UUID
+    task_id: UUID
+    failure_report: TaskFailureReport | None = None
+    execution_result: ExecutionResult | None = None
+    validation: SupervisorValidation | None = None
+    error_message: str | None = None
+    attempt_number: int = Field(default=1, ge=1)
+    execution_context: dict[str, Any] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

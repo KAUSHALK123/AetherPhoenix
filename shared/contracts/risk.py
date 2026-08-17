@@ -1,11 +1,8 @@
-from enum import Enum
-from typing import Dict, List
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from shared.contracts.permission import RiskLevel
-
 
 
 class RiskAssessment(BaseModel):
@@ -16,13 +13,13 @@ class RiskAssessment(BaseModel):
 
 
 class Conflict(BaseModel):
-    tasks_involved: List[UUID]
+    tasks_involved: list[UUID]
     description: str
 
 
 class RiskAnalysisResult(BaseModel):
-    assessments: List[RiskAssessment] = Field(default_factory=list)
-    conflicts: List[Conflict] = Field(default_factory=list)
+    assessments: list[RiskAssessment] = Field(default_factory=list)
+    conflicts: list[Conflict] = Field(default_factory=list)
     overall_risk_level: RiskLevel = RiskLevel.SAFE
     highest_score: int = 0
-    safety_metadata: Dict[str, List[str]] = Field(default_factory=dict)
+    safety_metadata: dict[str, list[str]] = Field(default_factory=dict)

@@ -6,6 +6,7 @@ echo Backend Setup and Testing
 echo ----------------------------------------
 cd backend
 call uv sync
+call uv run playwright install chromium --with-deps
 set PYTHONPATH=..
 call uv run pytest
 call uv run ruff check .
