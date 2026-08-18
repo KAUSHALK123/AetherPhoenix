@@ -33,3 +33,10 @@ class Artifact(BaseModel):
     checksum: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @staticmethod
+    def compute_checksum(content: bytes) -> str:
+        """Computes SHA-256 checksum for byte content."""
+        import hashlib
+
+        return hashlib.sha256(content).hexdigest()

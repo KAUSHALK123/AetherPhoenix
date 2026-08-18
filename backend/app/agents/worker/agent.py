@@ -1,5 +1,6 @@
 import logging
 import time
+from pathlib import Path
 from typing import Any, Dict
 
 from shared.contracts.execution import ExecutionMetrics, ExecutionResult, TaskError
@@ -12,6 +13,10 @@ from app.core.logging.execution_logger import WorkerExecutionLogger
 from app.core.permissions.manager import PermissionManager
 from app.memory.task_history import TaskHistoryService, get_task_history_service
 from app.runtime.interfaces import AgentRegistration, BaseAgent
+from app.services.artifact_storage import (
+    ArtifactStorageService,
+    get_artifact_storage_service,
+)
 from app.tools.adapter import BaseToolAdapter
 from app.tools.registry import ToolRegistry
 
@@ -29,6 +34,7 @@ class WorkerAgent(BaseAgent):
         tool_registry: ToolRegistry,
         permission_manager: PermissionManager | None = None,
         task_history_service: TaskHistoryService | None = None,
+        artifact_storage_service: ArtifactStorageService | None = None,
     ):
         self.tool_registry = tool_registry
         if permission_manager is None:
@@ -38,6 +44,9 @@ class WorkerAgent(BaseAgent):
         else:
             self.permission_manager = permission_manager
         self.task_history_service = task_history_service or get_task_history_service()
+        self.artifact_storage_service = (
+            artifact_storage_service or get_artifact_storage_service()
+        )
         self._adapters: Dict[str, BaseToolAdapter] = {}
 
     def register_adapter(self, adapter_name: str, adapter: BaseToolAdapter) -> None:
@@ -168,6 +177,10 @@ class WorkerAgent(BaseAgent):
             if result.metrics.execution_time_ms == 0.0:
                 result.metrics.execution_time_ms = total_duration_ms
 
+            if result.artifacts:
+                for art in result.artifacts:
+                    await self.artifact_storage_service.register_artifact(art)
+
             if result.success:
                 exec_logger.log_task_complete(
                     duration_ms=total_duration_ms,
@@ -177,6 +190,7 @@ class WorkerAgent(BaseAgent):
                 self.task_history_service.record_task_completed(
                     task_id=task.task_id, result=result
                 )
+
             else:
                 exec_logger.log_task_failure(
                     duration_ms=total_duration_ms,
@@ -287,3 +301,16 @@ class WorkerAgent(BaseAgent):
             f"WorkerAgent re-executing task {task.task_id} " f"(Attempt #{attempt_num})"
         )
         return await self.execute(task, *args, **kwargs)
+
+    async def register_artifact(
+        self,
+        artifact: Any,
+        content: bytes | str | None = None,
+        source_path: str | Path | None = None,
+    ) -> Any:
+        """
+        Registers and persists an artifact generated during task execution.
+        """
+        return await self.artifact_storage_service.register_artifact(
+            artifact=artifact, content=content, source_path=source_path
+        )
