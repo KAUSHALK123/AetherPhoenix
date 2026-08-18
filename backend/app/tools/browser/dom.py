@@ -8,6 +8,21 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 
+JS_INSPECT_ELEMENT_SCRIPT = (
+    "(el) => {\n"
+    "    const attrs = {};\n"
+    "    for (const attr of el.attributes) {\n"
+    "        attrs[attr.name] = attr.value;\n"
+    "    }\n"
+    "    return {\n"
+    "        tagName: el.tagName.toLowerCase(),\n"
+    "        text: el.innerText || el.textContent || '',\n"
+    "        attributes: attrs\n"
+    "    };\n"
+    "}"
+)
+
+
 class DOMAutomationError(Exception):
     """Base exception for DOM automation errors."""
 
@@ -76,19 +91,7 @@ class DOMAutomation:
 
         try:
             # We use evaluate to safely pull all attributes and basic properties
-            element_data = await locator.evaluate(
-                """(el) => {
-                    const attrs = {};
-                    for (const attr of el.attributes) {
-                        attrs[attr.name] = attr.value;
-                    }
-                    return {
-                        tagName: el.tagName.toLowerCase(),
-                        text: el.innerText || el.textContent || "",
-                        attributes: attrs
-                    };
-                }"""
-            )
+            element_data = await locator.evaluate(JS_INSPECT_ELEMENT_SCRIPT)
 
             is_visible = await locator.is_visible()
             is_enabled = await locator.is_enabled()
