@@ -100,6 +100,11 @@ class SafeExecutionPolicy:
         "file_delete": RiskLevel.HIGH,
         "file_write": RiskLevel.MEDIUM,
         "file_read": RiskLevel.LOW,
+        # Memory low risk actions
+        "memory_create": RiskLevel.LOW,
+        "memory_read": RiskLevel.LOW,
+        "memory_update": RiskLevel.LOW,
+        "memory_delete": RiskLevel.LOW,
     }
 
     # Action limits (e.g. max actions per session/task in SAFE mode)
