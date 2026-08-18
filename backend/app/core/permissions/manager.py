@@ -86,9 +86,11 @@ class AwaitablePermissionCheck:
                             event = Event(
                                 event_type=EventType.PERMISSION_REJECTED,
                                 workflow_id=str(req.workflow_id),
-                                task_id=str(req.task_id)
-                                if getattr(req, "task_id", None)
-                                else None,
+                                task_id=(
+                                    str(req.task_id)
+                                    if getattr(req, "task_id", None)
+                                    else None
+                                ),
                                 source_component="PermissionManager",
                                 payload={
                                     "permission_id": str(
