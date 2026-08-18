@@ -47,6 +47,13 @@ from shared.contracts.feedback import (
     PlannerFeedback,
     ReplanningContext,
 )
+from shared.contracts.memory import (
+    ConversationMemoryEntry,
+    MemoryCategory,
+    MemoryQuery,
+    sanitize_memory_content,
+    sanitize_memory_metadata,
+)
 from shared.contracts.keyboard import (
     KeyboardActionRequest,
     KeyboardActionResult,
@@ -136,6 +143,7 @@ __all__ = [
     "ClarificationResult",
     "CodeBlockElement",
     "Conflict",
+    "ConversationMemoryEntry",
     "DependencyType",
     "DocumentElement",
     "DocumentElementType",
@@ -169,6 +177,8 @@ __all__ = [
     "KeyboardActionResult",
     "KeyboardActionType",
     "ListElement",
+    "MemoryCategory",
+    "MemoryQuery",
     "MouseActionRequest",
     "MouseActionResult",
     "MouseActionType",
