@@ -37,6 +37,7 @@ from app.tools.desktop.models import (
     WindowInfo,
 )
 from app.tools.desktop.mouse import MouseController
+from app.tools.desktop.screenshot import DesktopScreenshotController
 from app.tools.desktop.session import DesktopSession, DesktopSessionManager
 
 logger = get_logger(__name__)
@@ -874,6 +875,34 @@ class DesktopController:
                 output_data = await self.hotkey(
                     *params["keys"], session_id=params.get("session_id")
                 )
+
+            elif action in (
+                "screenshot_fullscreen",
+                "desktop_screenshot",
+                "screenshot",
+            ):
+                img = DesktopScreenshotController.capture_fullscreen(
+                    output_path=params.get("output_path")
+                )
+                output_data = {
+                    "width": img.width,
+                    "height": img.height,
+                    "output_path": params.get("output_path"),
+                }
+
+            elif action == "screenshot_region":
+                img = DesktopScreenshotController.capture_region(
+                    x=params["x"],
+                    y=params["y"],
+                    width=params["width"],
+                    height=params["height"],
+                    output_path=params.get("output_path"),
+                )
+                output_data = {
+                    "width": img.width,
+                    "height": img.height,
+                    "output_path": params.get("output_path"),
+                }
 
             elif action == "app_connect":
                 # Legacy app connect

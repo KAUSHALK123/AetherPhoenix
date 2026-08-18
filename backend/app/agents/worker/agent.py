@@ -113,13 +113,19 @@ class WorkerAgent(BaseAgent):
                         logger.warning(f"Unknown permission type: {perm_str}")
                         continue
 
-                    is_approved = await self.permission_manager.check_permission(
+                    chk = self.permission_manager.check_permission(
                         action=f"Execute tool {tool_name}",
                         permission_type=perm_type,
-                        workflow_id=task.workflow_id,
-                        task_id=task.task_id,
-                        context={"task_id": str(task.task_id)},
+                        context={
+                            "task_id": str(task.task_id),
+                            "workflow_id": str(task.workflow_id),
+                        },
                     )
+                    if hasattr(chk, "__await__"):
+                        is_approved = await chk
+                    else:
+                        is_approved = bool(chk)
+
                     if not is_approved:
                         raise PermissionDeniedException(
                             f"Permission denied for {perm_type.value}"

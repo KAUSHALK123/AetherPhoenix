@@ -153,6 +153,8 @@ class PipelineOrchestrator:
                         # Publish TASK_COMPLETED / TASK_FAILED based on
                         # validation decision
                         if validation.is_valid:
+                            t.status = TaskStatus.COMPLETED
+                            engine.update_task_status(t.task_id, TaskStatus.COMPLETED)
                             await self._emit_orchestrator_event(
                                 event_type=EventType.TASK_COMPLETED,
                                 workflow_id=workflow_id,
@@ -164,6 +166,8 @@ class PipelineOrchestrator:
                                 },
                             )
                         else:
+                            t.status = TaskStatus.FAILED
+                            engine.update_task_status(t.task_id, TaskStatus.FAILED)
                             await self._emit_orchestrator_event(
                                 event_type=EventType.TASK_FAILED,
                                 workflow_id=workflow_id,

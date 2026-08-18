@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from shared.contracts.capability import Capability
 from shared.contracts.execution import ExecutionMetrics, ExecutionResult, TaskError
@@ -17,7 +17,10 @@ logger = logging.getLogger(__name__)
 
 
 def register_browser_capability(
-    tool_registry: ToolRegistry, cap_registry: CapabilityRegistry
+    tool_registry: ToolRegistry,
+    cap_registry: Optional[CapabilityRegistry] = None,
+    worker_agent: Optional[Any] = None,
+    permission_manager: Optional[Any] = None,
 ):
     """Registers the browser tool and capability into the system."""
     browser_tool = Tool(
@@ -25,7 +28,7 @@ def register_browser_capability(
         version="1.0.0",
         status=ToolState.READY,
         health=ToolHealth.HEALTHY,
-        adapter="app.tools.browser.interface.BrowserAdapter",
+        adapter="browser_adapter",
         dependencies=["playwright"],
         required_permissions=[
             PermissionType.BROWSER_ACCESS.value,
@@ -34,13 +37,21 @@ def register_browser_capability(
     )
     tool_registry.register(browser_tool)
 
-    browser_cap = Capability(
-        name="web_searcher",
-        description="Searches and extracts content from the web",
-        category=TaskCategory.BROWSER,
-        required_tools=["browser_automation"],
-    )
-    cap_registry.register(browser_cap)
+    if cap_registry is not None:
+        browser_cap = Capability(
+            name="web_searcher",
+            description="Searches and extracts content from the web",
+            category=TaskCategory.BROWSER,
+            required_tools=["browser_automation"],
+        )
+        cap_registry.register(browser_cap)
+
+    if worker_agent is not None:
+        adapter = BrowserAdapter(permission_manager=permission_manager)
+        worker_agent.register_adapter("browser_adapter", adapter)
+        worker_agent.register_adapter(
+            "app.tools.browser.interface.BrowserAdapter", adapter
+        )
 
 
 class BrowserAdapter(BaseToolAdapter):
@@ -49,8 +60,14 @@ class BrowserAdapter(BaseToolAdapter):
     Implements the BaseToolAdapter interface.
     """
 
-    def __init__(self):
-        self.controller = BrowserController()
+    def __init__(
+        self,
+        controller: Optional[BrowserController] = None,
+        permission_manager: Optional[Any] = None,
+    ):
+        self.controller = controller or BrowserController(
+            permission_manager=permission_manager
+        )
 
     async def execute(self, task: Task) -> ExecutionResult:
         """
@@ -58,39 +75,61 @@ class BrowserAdapter(BaseToolAdapter):
         """
         start_time = time.time()
         logs = []
-        action = task.inputs.get("action")
+        inputs = (
+            getattr(task, "input_parameters", {}) or getattr(task, "inputs", {}) or {}
+        )
+        action = inputs.get("action")
+        workflow_id = task.workflow_id
+        task_id = task.task_id
 
         try:
             if action == "start_session":
                 logs.append("Starting browser session...")
-                res = await self.controller.start_session()
+                res = await self.controller.start_session(
+                    workflow_id=workflow_id, task_id=task_id
+                )
                 output = res.data
 
             elif action == "close_session":
                 logs.append("Closing browser session...")
-                res = await self.controller.close_session()
+                res = await self.controller.close_session(
+                    workflow_id=workflow_id, task_id=task_id
+                )
                 output = {"status": "closed"}
 
             elif action == "navigate":
-                url = task.inputs.get("url")
-                timeout = task.inputs.get("timeout_ms", 30000.0)
+                url = inputs.get("url")
+                timeout = inputs.get("timeout_ms", 30000.0)
                 if not url:
                     raise ValueError("URL is required for navigation.")
                 logs.append(f"Navigating to {url}...")
-                res = await self.controller.navigate(url, timeout_ms=timeout)
+                res = await self.controller.navigate(
+                    url,
+                    timeout_ms=timeout,
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                )
                 output = res.data
 
             elif action == "extract_content":
-                include_html = task.inputs.get("include_html", False)
+                include_html = inputs.get("include_html", False)
                 logs.append(f"Extracting content (include_html={include_html})...")
-                res = await self.controller.extract_content(include_html=include_html)
+                res = await self.controller.extract_content(
+                    include_html=include_html,
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                )
                 output = res.data
 
             elif action == "interact":
-                selector = task.inputs.get("selector")
-                interaction_action = task.inputs.get("interaction_action")
-                value = task.inputs.get("value")
-                timeout = task.inputs.get("timeout_ms", 10000.0)
+                selector = inputs.get("selector")
+                interaction_action = (
+                    inputs.get("interaction_action")
+                    or inputs.get("action_type")
+                    or "click"
+                )
+                value = inputs.get("value")
+                timeout = inputs.get("timeout_ms", 10000.0)
 
                 if not selector or not interaction_action:
                     raise ValueError(
@@ -105,15 +144,17 @@ class BrowserAdapter(BaseToolAdapter):
                     action=interaction_action,
                     value=value,
                     timeout_ms=timeout,
+                    workflow_id=workflow_id,
+                    task_id=task_id,
                 )
                 output = res.data
 
-            elif action == "capture_screenshot":
-                output_path = task.inputs.get("output_path")
-                full_page = task.inputs.get("full_page", False)
-                clip = task.inputs.get("clip")
-                image_type = task.inputs.get("image_type", "png")
-                quality = task.inputs.get("quality")
+            elif action in ("capture_screenshot", "screenshot"):
+                output_path = inputs.get("output_path")
+                full_page = inputs.get("full_page", False)
+                clip = inputs.get("clip")
+                image_type = inputs.get("image_type", "png")
+                quality = inputs.get("quality")
                 logs.append(f"Capturing screenshot (full_page={full_page})...")
                 res = await self.controller.capture_screenshot(
                     output_path=output_path,
@@ -121,6 +162,8 @@ class BrowserAdapter(BaseToolAdapter):
                     clip=clip,
                     image_type=image_type,
                     quality=quality,
+                    workflow_id=workflow_id,
+                    task_id=task_id,
                 )
                 output = res.data
 
@@ -163,8 +206,12 @@ class BrowserTool:
     """
 
     def __init__(self, permission_checker=None):
-        self.controller = BrowserController()
         self.permission_checker = permission_checker
+        # If a custom legacy permission_checker is provided,
+        # do not bind default PermissionManager
+        self.controller = BrowserController(
+            permission_manager=False if permission_checker else None
+        )
 
     def _check_permission(self, permission: PermissionType) -> None:
         if self.permission_checker and not self.permission_checker(permission):

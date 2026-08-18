@@ -3,7 +3,10 @@ import time
 from typing import Any, Callable, Optional
 from uuid import UUID
 
-import pyautogui
+try:
+    import pyautogui
+except (ImportError, Exception):
+    pyautogui = None
 from shared.contracts.desktop import (
     MouseActionRequest,
     MouseActionResult,
@@ -26,7 +29,8 @@ from app.tools.desktop.exceptions import (
 logger = get_logger(__name__)
 
 # Ensure PyAutoGUI fail-safe is enabled for controlled execution
-pyautogui.FAILSAFE = True
+if pyautogui is not None:
+    pyautogui.FAILSAFE = True
 
 
 class MouseController:
@@ -44,8 +48,12 @@ class MouseController:
         default_timeout: float = 10.0,
     ) -> None:
         self.permission_manager = permission_manager
-        self.screen_size_provider = screen_size_provider or pyautogui.size
-        self.position_provider = position_provider or pyautogui.position
+        self.screen_size_provider = screen_size_provider or (
+            pyautogui.size if pyautogui is not None else lambda: (1920, 1080)
+        )
+        self.position_provider = position_provider or (
+            pyautogui.position if pyautogui is not None else lambda: (0, 0)
+        )
         self.default_timeout = default_timeout
 
     def _check_permission(

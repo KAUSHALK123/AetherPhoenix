@@ -40,6 +40,8 @@ class BrowserController:
 
     @property
     def permission_manager(self) -> Optional[PermissionManager]:
+        if self._permission_manager is False:
+            return None
         if self._permission_manager is None:
             try:
                 self._permission_manager = get_permission_manager()

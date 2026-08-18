@@ -1,7 +1,11 @@
 import time
 from typing import Any, Dict, List, Set, Union
 
-import pyautogui
+try:
+    import pyautogui
+except (ImportError, Exception):
+    pyautogui = None
+
 from shared.contracts.keyboard import (
     KeyboardActionRequest,
     KeyboardActionResult,

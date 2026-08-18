@@ -88,6 +88,32 @@ class TaskDecompositionEngine:
         if any(w in lower_goal for w in ["ppt", "presentation", "slides"]):
             return self._decompose_presentation_goal(goal, workflow_id)
         elif any(
+            w in lower_goal
+            for w in [
+                "website",
+                "browser",
+                "webpage",
+                "navigate to",
+                "open url",
+                "scrape",
+            ]
+        ):
+            return self._decompose_browser_goal(goal, workflow_id)
+        elif any(
+            w in lower_goal
+            for w in [
+                "desktop automation",
+                "text editor",
+                "notepad",
+                "gui window",
+                "mouse click",
+                "keyboard type",
+                "type text",
+                "launch app",
+            ]
+        ):
+            return self._decompose_desktop_goal(goal, workflow_id)
+        elif any(
             w in lower_goal for w in ["research", "search", "investigate", "find"]
         ):
             return self._decompose_research_goal(goal, workflow_id)
@@ -682,3 +708,79 @@ class TaskDecompositionEngine:
             raise ValueError("Circular dependency detected during topological sort")
 
         return ordered
+
+    def _decompose_browser_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
+        """Decomposes a browser automation goal into structured tasks."""
+        phase = Task(
+            workflow_id=workflow_id,
+            task_name="Phase 1: Browser Navigation & Interaction",
+            description=f"Execute browser automation for goal: '{goal}'",
+            task_type=TaskType.PHASE,
+            assigned_agent="System",
+            success_criteria=["Browser tasks executed successfully"],
+            failure_criteria=["Browser action failed"],
+            required_tool="",
+            category=TaskCategory.BROWSER,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="Browser task result",
+            status=TaskStatus.CREATED,
+        )
+
+        nav_task = Task(
+            workflow_id=workflow_id,
+            task_name="Navigate and Search",
+            description=f"Open target web page and perform interactions for: {goal}",
+            task_type=TaskType.LEAF,
+            assigned_agent="WorkerAgent",
+            parent_task_id=phase.task_id,
+            success_criteria=["Page navigated and interaction completed"],
+            failure_criteria=["Navigation or extraction failed"],
+            required_tool="browser_automation",
+            category=TaskCategory.BROWSER,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="Target content or screenshot",
+            inputs={"action": "navigate", "url": "https://www.google.com"},
+            status=TaskStatus.CREATED,
+        )
+
+        return [phase, nav_task]
+
+    def _decompose_desktop_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
+        """Decomposes a desktop automation goal into structured tasks."""
+        phase = Task(
+            workflow_id=workflow_id,
+            task_name="Phase 1: Desktop Application Control",
+            description=f"Execute desktop automation for goal: '{goal}'",
+            task_type=TaskType.PHASE,
+            assigned_agent="System",
+            success_criteria=["Desktop tasks executed successfully"],
+            failure_criteria=["Desktop interaction failed"],
+            required_tool="",
+            category=TaskCategory.DESKTOP,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="Desktop application state or text typed",
+            status=TaskStatus.CREATED,
+        )
+
+        app_task = Task(
+            workflow_id=workflow_id,
+            task_name="Launch and Type in Application",
+            description=f"Interact with desktop application for: {goal}",
+            task_type=TaskType.LEAF,
+            assigned_agent="WorkerAgent",
+            parent_task_id=phase.task_id,
+            success_criteria=["Application launched and input dispatched"],
+            failure_criteria=["Application or input failure"],
+            required_tool="desktop_automation",
+            category=TaskCategory.DESKTOP,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="Application typed text",
+            inputs={"action": "keyboard_type", "text": "Hello"},
+            status=TaskStatus.CREATED,
+        )
+
+        return [phase, app_task]
