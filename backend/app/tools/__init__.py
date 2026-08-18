@@ -1,4 +1,21 @@
 try:
+    from app.tools.desktop import (
+        DesktopController,
+        DesktopTool,
+        DesktopToolAdapter,
+        KeyboardController,
+        MouseController,
+        register_desktop_tool,
+    )
+except ImportError:
+    DesktopController = None
+    DesktopTool = None
+    DesktopToolAdapter = None
+    KeyboardController = None
+    MouseController = None
+    register_desktop_tool = None
+
+try:
     from app.tools.document import (
         DocumentGenerator,
         DocumentToolAdapter,
@@ -15,6 +32,19 @@ except ImportError:
     PDFGenerator = None
     PDFToolAdapter = None
     register_pdf_tool = None
+
+try:
+    from app.tools.screenshot import (
+        ScreenshotCaptureError,
+        ScreenshotEngine,
+        ScreenshotToolAdapter,
+        register_screenshot_tool,
+    )
+except ImportError:
+    ScreenshotCaptureError = None
+    ScreenshotEngine = None
+    ScreenshotToolAdapter = None
+    register_screenshot_tool = None
 
 from app.tools.ppt import PPTGenerator, ppt_tool_metadata
 from app.tools.registry import ToolRegistry
@@ -48,12 +78,22 @@ except ImportError:
 
 __all__ = [
     "ToolRegistry",
+    "DesktopController",
+    "DesktopTool",
+    "DesktopToolAdapter",
+    "KeyboardController",
+    "MouseController",
+    "register_desktop_tool",
     "DocumentGenerator",
     "DocumentToolAdapter",
     "register_document_tool",
     "PDFGenerator",
     "PDFToolAdapter",
     "register_pdf_tool",
+    "ScreenshotEngine",
+    "ScreenshotToolAdapter",
+    "register_screenshot_tool",
+    "ScreenshotCaptureError",
     "WebResearchTool",
     "BaseResearchTool",
     "SearchEngineInterface",

@@ -21,11 +21,22 @@ class RequirementAnalyzer:
         lower_text = text.lower()
         if any(
             word in lower_text
-            for word in ["create", "add", "update", "modify", "delete"]
+            for word in [
+                "create",
+                "add",
+                "update",
+                "modify",
+                "delete",
+                "type",
+                "open",
+                "launch",
+                "click",
+            ]
         ):
             return IntentCategory.SYSTEM_MODIFICATION
         elif any(
-            word in lower_text for word in ["get", "find", "search", "read", "show"]
+            word in lower_text
+            for word in ["get", "find", "search", "read", "show", "browse"]
         ):
             return IntentCategory.DATA_RETRIEVAL
         elif any(word in lower_text for word in ["write", "generate", "draft"]):

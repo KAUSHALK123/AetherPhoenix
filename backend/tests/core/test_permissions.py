@@ -11,6 +11,9 @@ from app.core.events.models import EventType
 from app.core.exceptions import PermissionDeniedException
 from app.core.permissions import PermissionManager
 from app.core.permissions.models import (
+    ExecutionMode,
+)
+from app.core.permissions.models import (
     ExecutionMode as ModelExecutionMode,
 )
 from app.core.permissions.models import (
@@ -131,19 +134,16 @@ def test_enforce_permission_success_and_failure(permission_manager):
     assert exc_info.value.code == "PERMISSION_DENIED"
 
 
-def test_list_permissions_filtering(permission_manager):
+@pytest.mark.asyncio
+async def test_list_permissions_filtering(permission_manager):
     w1 = uuid4()
     w2 = uuid4()
 
-    asyncio.run(
-        permission_manager.request_permission(
-            w1, PermissionType.BROWSER_ACCESS, "testing", RiskLevel.MEDIUM
-        )
+    await permission_manager.request_permission(
+        w1, PermissionType.BROWSER_ACCESS, "testing", RiskLevel.MEDIUM
     )
-    asyncio.run(
-        permission_manager.request_permission(
-            w2, PermissionType.INTERNET, "testing", RiskLevel.LOW
-        )
+    await permission_manager.request_permission(
+        w2, PermissionType.INTERNET, "testing", RiskLevel.LOW
     )
 
     w1_perms = permission_manager.list_permissions(workflow_id=w1)
@@ -265,3 +265,59 @@ def test_invalid_request_id():
         manager.approve_permission("invalid-id")
     with pytest.raises(ValueError):
         manager.reject_permission("invalid-id")
+
+
+def test_duplicate_request_returns_same_request():
+    from app.core.permissions.models import PermissionType
+
+    manager = PermissionManager(mode=ExecutionMode.SAFE)
+    req1 = manager.request_permission("wf-1", "t-1", PermissionType.FILE_READ, "read")
+    req2 = manager.request_permission("wf-1", "t-1", PermissionType.FILE_READ, "read")
+
+    assert req1.request_id == req2.request_id
+
+
+@pytest.mark.asyncio
+async def test_permission_timeout_expires():
+    from app.core.permissions.models import PermissionType
+
+    manager = PermissionManager(mode=ExecutionMode.SAFE)
+    req = manager.request_permission("wf-1", "t-1", PermissionType.FILE_READ, "read")
+
+    check = manager.check_permission(
+        action="test action",
+        permission_type=PermissionType.FILE_READ,
+        workflow_id="wf-1",
+        task_id="t-1",
+        timeout_seconds=0.01,
+    )
+
+    is_approved = await check
+    assert is_approved is False
+    assert req.status == PermissionStatus.EXPIRED
+
+
+@pytest.mark.asyncio
+async def test_awaitable_permission_check_blocking():
+    from app.core.permissions.models import PermissionType
+
+    manager = PermissionManager(mode=ExecutionMode.SAFE)
+
+    check = manager.check_permission(
+        action="test action",
+        permission_type=PermissionType.FILE_READ,
+        workflow_id="wf-1",
+        task_id="t-1",
+        timeout_seconds=5.0,
+    )
+
+    async def approve_soon():
+        await asyncio.sleep(0.1)
+        pending = manager.get_pending_requests("wf-1")
+        if pending:
+            manager.approve_permission(pending[0].request_id)
+
+    asyncio.create_task(approve_soon())
+
+    is_approved = await check
+    assert is_approved is True

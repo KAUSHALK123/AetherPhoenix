@@ -29,7 +29,12 @@ class WorkerAgent(BaseAgent):
         permission_manager: PermissionManager | None = None,
     ):
         self.tool_registry = tool_registry
-        self.permission_manager = permission_manager
+        if permission_manager is None:
+            from app.core.permissions import get_permission_manager
+
+            self.permission_manager = get_permission_manager()
+        else:
+            self.permission_manager = permission_manager
         self._adapters: Dict[str, BaseToolAdapter] = {}
 
     def register_adapter(self, adapter_name: str, adapter: BaseToolAdapter) -> None:
@@ -108,11 +113,19 @@ class WorkerAgent(BaseAgent):
                         logger.warning(f"Unknown permission type: {perm_str}")
                         continue
 
-                    is_approved = await self.permission_manager.check_permission(
+                    chk = self.permission_manager.check_permission(
                         action=f"Execute tool {tool_name}",
                         permission_type=perm_type,
-                        context={"task_id": str(task.task_id)},
+                        context={
+                            "task_id": str(task.task_id),
+                            "workflow_id": str(task.workflow_id),
+                        },
                     )
+                    if hasattr(chk, "__await__"):
+                        is_approved = await chk
+                    else:
+                        is_approved = bool(chk)
+
                     if not is_approved:
                         raise PermissionDeniedException(
                             f"Permission denied for {perm_type.value}"

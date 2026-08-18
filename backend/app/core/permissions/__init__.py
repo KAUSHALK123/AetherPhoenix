@@ -1,4 +1,4 @@
-from .manager import PermissionManager
+from .manager import PermissionManager, get_permission_manager
 from .models import (
     ExecutionMode,
     PermissionRequest,
@@ -17,4 +17,5 @@ __all__ = [
     "PermissionManager",
     "PermissionPolicy",
     "RISKY_PERMISSIONS",
+    "get_permission_manager",
 ]
