@@ -18,6 +18,7 @@ from app.core.events.models import Event as ModelEvent
 from app.core.events.models import EventType as ModelEventType
 from app.engine.monitor import WorkflowProgressMonitor
 from app.engine.validator import OutputValidationService
+from app.memory.task_history import TaskHistoryService, get_task_history_service
 from app.runtime.interfaces import AgentRegistration, BaseAgent
 
 logger = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ class SupervisorAgent(BaseAgent):
         max_retries: int = 3,
         healing_loop: Optional[Any] = None,
         retry_engine: Optional[RetryEngine] = None,
+        task_history_service: Optional[TaskHistoryService] = None,
     ) -> None:
         self.event_bus = event_bus
         self.max_retries = max_retries
@@ -66,6 +68,7 @@ class SupervisorAgent(BaseAgent):
         self.retry_engine = retry_engine or RetryEngine(
             event_bus=self.event_bus, default_max_retries=self.max_retries
         )
+        self.task_history_service = task_history_service or get_task_history_service()
         from app.agents.healing.self_healing_loop import SelfHealingLoop
 
         self.healing_loop = healing_loop or SelfHealingLoop(
@@ -243,6 +246,16 @@ class SupervisorAgent(BaseAgent):
                 task.status = TaskStatus.FAILED
                 if task.task_id not in state.failed_tasks:
                     state.failed_tasks.append(task.task_id)
+                self.task_history_service.record_task_failed(
+                    task_id=task.task_id,
+                    error=TaskError(
+                        error_code="SUPERVISOR_VALIDATION_FAILED",
+                        error_message=(
+                            "; ".join(issues) if issues else "Validation failed"
+                        ),
+                    ),
+                    metadata={"supervisor_decision": decision.value, "checks": checks},
+                )
 
             self.monitor.update_progress_state(state)
 
@@ -309,6 +322,12 @@ class SupervisorAgent(BaseAgent):
         )
 
         if healing_result.success:
+            self.task_history_service.record_retry_attempt(
+                task_id=task.task_id,
+                attempt_number=task.retry_count + 1,
+                reason=error.error_message if error else None,
+                metadata={"supervisor_trigger": True},
+            )
             # Publish a TaskRetried event
             if self.event_bus:
                 retry_event = ModelEvent(
@@ -324,6 +343,7 @@ class SupervisorAgent(BaseAgent):
                         "error_code": error.error_code if error else None,
                     },
                 )
+
                 await self.event_bus.publish(retry_event)
             return True
 

@@ -3,6 +3,7 @@ from typing import Dict, Optional
 from shared.contracts.workflow import SharedWorkflowState
 
 from app.core.logging import get_logger
+from app.memory.task_history import TaskHistoryService, get_task_history_service
 from app.runtime.context import RuntimeContext
 from app.runtime.interfaces import BaseAgent
 
@@ -15,10 +16,11 @@ class RuntimeKernel:
     Manages agent lifecycle, execution context, and shared state.
     """
 
-    def __init__(self):
+    def __init__(self, task_history_service: Optional[TaskHistoryService] = None):
         self.is_running: bool = False
         self.registered_agents: Dict[str, BaseAgent] = {}
         self.active_contexts: Dict[str, RuntimeContext] = {}
+        self.task_history_service = task_history_service or get_task_history_service()
 
     async def initialize(self) -> None:
         """Starts the Runtime Kernel and initializes all registered agents."""
@@ -75,7 +77,11 @@ class RuntimeKernel:
         Returns:
             The newly created RuntimeContext.
         """
-        context = RuntimeContext(session_id=session_id, shared_state=shared_state)
+        context = RuntimeContext(
+            session_id=session_id,
+            shared_state=shared_state,
+            task_history_service=self.task_history_service,
+        )
         self.active_contexts[context.context_id] = context
         logger.info(
             f"Created RuntimeContext {context.context_id} for session {session_id}"
