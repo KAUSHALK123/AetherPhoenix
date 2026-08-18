@@ -119,6 +119,7 @@ from shared.contracts.task import (
 from shared.contracts.tool import Tool, ToolHealth, ToolState
 from shared.contracts.workflow import (
     ExecutionMode,
+    PlannerOutput,
     ProgressState,
     SharedWorkflowState,
     WorkflowMetadata,
@@ -236,4 +237,15 @@ __all__ = [
     "WorkflowMetadata",
     # Workflow
     "WorkflowStatus",
+    # Workflow
+    "WorkflowStatus",
+    "ExecutionMode",
+    "WorkflowMetadata",
+    "PlannerOutput",
+    "ProgressState",
+    "SharedWorkflowState",
+    # Risk
+    "RiskAssessment",
+    "Conflict",
+    "RiskAnalysisResult",
 ]

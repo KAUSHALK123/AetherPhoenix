@@ -139,8 +139,32 @@ class NormalizedError(BaseModel):
         return self.message
 
     @property
+    def raw_error_message(self) -> str:
+        return self.message
+
+    @property
     def is_transient(self) -> bool:
         return self.is_retryable
+
+    @property
+    def parsed_details(self) -> Dict[str, Any]:
+        return self.context
+
+    @property
+    def error_type(self) -> Any:
+        return self.context.get("error_type")
+
+    @property
+    def failure_id(self) -> Any:
+        return self.error_id
+
+    @property
+    def task_id(self) -> Any:
+        return self.context.get("task_id")
+
+    @property
+    def workflow_id(self) -> Any:
+        return self.context.get("workflow_id")
 
 
 __all__ = [

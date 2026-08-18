@@ -46,6 +46,7 @@ except ImportError:
     ScreenshotToolAdapter = None
     register_screenshot_tool = None
 
+from app.tools.ppt import PPTGenerator, ppt_tool_metadata
 from app.tools.registry import ToolRegistry
 
 try:
@@ -104,4 +105,6 @@ __all__ = [
     "ExtractedPageContent",
     "WebResearchRequest",
     "StructuredResearchResult",
+    "PPTGenerator",
+    "ppt_tool_metadata",
 ]

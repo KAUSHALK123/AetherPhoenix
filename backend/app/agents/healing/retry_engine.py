@@ -126,7 +126,10 @@ class RetryEngine:
         root_cause = kwargs.get("root_cause")
         if root_cause is not None:
             if hasattr(root_cause, "category"):
-                root_cause_category = str(root_cause.category)
+                if hasattr(root_cause.category, "value"):
+                    root_cause_category = str(root_cause.category.value)
+                else:
+                    root_cause_category = str(root_cause.category)
             else:
                 root_cause_category = str(root_cause)
 
@@ -150,7 +153,10 @@ class RetryEngine:
 
         # 1. Per-task retry limit.
         if task.retry_count >= limit_retries:
-            msg = f"Task {task.task_id} reached max retry limit of {limit_retries}."
+            msg = (
+                f"Task {task.task_id} reached maximum retry limit "
+                f"of {limit_retries}."
+            )
             logger.info(msg)
             return False, msg
 
@@ -175,8 +181,13 @@ class RetryEngine:
         )
 
         current_count = self._failure_signature_counts.get(signature, 0)
+        matching_counts = [
+            count
+            for (t_id, _, _), count in self._failure_signature_counts.items()
+            if t_id == str(task.task_id)
+        ]
 
-        if current_count >= 3:
+        if current_count >= 3 or (matching_counts and max(matching_counts) >= 3):
             msg = (
                 f"Infinite loop detected: Task {task.task_id} repeatedly "
                 "failed with identical signature."
@@ -521,12 +532,17 @@ class RetryEngine:
                 f"by healing protection: {reexecution_reason}"
             )
 
+            rej_status = (
+                RetryStatus.REJECTED_MAX_RETRIES
+                if "retry limit" in reexecution_reason.lower()
+                else RetryStatus.REJECTED_NON_RETRYABLE
+            )
             return RetryResult(
                 retry_id=request.retry_id,
                 task_id=request.task_id,
                 workflow_id=request.workflow_id,
                 success=False,
-                status=RetryStatus.REJECTED_NON_RETRYABLE,
+                status=rej_status,
                 attempt_number=task.retry_count,
                 message=reexecution_reason,
             )
@@ -600,9 +616,6 @@ class RetryEngine:
         )
 
         # Create worker re-execution request.
-        #
-        # This preserves the feature branch's worker-reexecution
-        # contract/history without replacing the main RetryRequest flow.
         try:
             self.create_reexecution_request(
                 task=task,
@@ -780,7 +793,10 @@ class RetryEngine:
         root_cause = kwargs.get("root_cause")
         if root_cause is not None:
             if hasattr(root_cause, "category"):
-                root_cause_category = str(root_cause.category)
+                if hasattr(root_cause.category, "value"):
+                    root_cause_category = str(root_cause.category.value)
+                else:
+                    root_cause_category = str(root_cause.category)
             else:
                 root_cause_category = str(root_cause)
 
@@ -831,26 +847,28 @@ class RetryEngine:
 
         try:
             # Record failure signature.
+            desc = getattr(
+                plan,
+                "description",
+                getattr(
+                    plan,
+                    "root_cause",
+                    "General runtime execution failure during task processing.",
+                ),
+            )
             signature = (
                 str(task.task_id),
                 root_cause_category,
-                getattr(
-                    plan,
-                    "description",
-                    "Recovery plan",
-                ),
+                desc,
             )
 
-            self._failure_signature_counts[signature] = (
-                self._failure_signature_counts.get(
-                    signature,
-                    0,
-                )
-                + 1
-            )
-
-            # Protect against repeated identical recovery.
-            if self._failure_signature_counts[signature] > 3:
+            prior_count = self._failure_signature_counts.get(signature, 0)
+            matching_counts = [
+                count
+                for (t_id, cat, _), count in self._failure_signature_counts.items()
+                if t_id == str(task.task_id) and cat == root_cause_category
+            ]
+            if prior_count >= 3 or (matching_counts and max(matching_counts) >= 3):
                 logger.warning(
                     "Infinite recovery loop detected for task %s.",
                     task.task_id,
@@ -865,6 +883,8 @@ class RetryEngine:
                     attempt_number=attempt_number,
                     success=False,
                 )
+
+            self._failure_signature_counts[signature] = prior_count + 1
 
             engine = WorkflowEngine(state)
 

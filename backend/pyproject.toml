@@ -20,6 +20,7 @@ dependencies = [
     "pyautogui>=0.9.54",
     "pywinauto>=0.6.8",
     "playwright>=1.42.0",
+    "python-pptx>=1.0.2",
 ]
 
 [dependency-groups]

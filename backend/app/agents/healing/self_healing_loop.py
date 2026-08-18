@@ -219,11 +219,21 @@ class SelfHealingLoop(BaseAgent):
                 if "limit" in reason.lower()
                 else HealingState.FAILED
             )
+            rc_cat = (
+                root_cause.category.value
+                if hasattr(root_cause.category, "value")
+                else str(root_cause.category)
+            )
+            strat_val = (
+                plan.strategy.value
+                if hasattr(plan.strategy, "value")
+                else str(plan.strategy)
+            )
             result = HealingResult(
                 task_id=task_id,
                 workflow_id=workflow_id,
-                root_cause=root_cause.category.value,
-                recovery_strategy=plan.strategy.value,
+                root_cause=rc_cat,
+                recovery_strategy=strat_val,
                 replacement_tasks=[],
                 attempt_number=attempt_number,
                 success=False,
@@ -237,7 +247,7 @@ class SelfHealingLoop(BaseAgent):
                 payload={
                     "reason": reason,
                     "attempt_number": attempt_number,
-                    "root_cause": root_cause.category.value,
+                    "root_cause": rc_cat,
                 },
             )
             return result

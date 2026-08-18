@@ -55,12 +55,46 @@ class HealingAgent(BaseAgent):
         self.analyzer = analyzer
         self.healing_history: List[HealingResult] = []
 
-    async def analyze_failure(self, report: Any, task: Any) -> Any:
+    async def analyze_failure(self, report: Any, task: Any = None) -> Any:
         if self.analyzer:
             return self.analyzer.analyze(report=report, task=task)
         from app.agents.healing.root_cause_analyzer import RootCauseAnalyzer
 
         return RootCauseAnalyzer().analyze(report=report, task=task)
+
+    def plan_recovery(self, failure_report: Any) -> Any:
+        """Generates a validated RecoveryPlan for a failure report."""
+        from app.agents.healing.error_parser import ErrorParser
+        from app.agents.healing.recovery_planner import RecoveryPlanner
+        from app.agents.healing.root_cause_analyzer import RootCauseAnalyzer
+
+        parser = self.error_parser or ErrorParser()
+        analyzer = self.analyzer or RootCauseAnalyzer()
+        planner = RecoveryPlanner()
+
+        parsed_error = parser.parse(failure_report)
+        root_cause = analyzer.analyze(parsed_error)
+        return planner.plan(parsed_error, root_cause)
+
+    def handle_failure(
+        self, failure_report: Any, *args: Any, **kwargs: Any
+    ) -> Tuple[Any, Any]:
+        """Consumes a failure report, performs diagnosis,
+        and produces a validated plan.
+        """
+        plan = self.plan_recovery(failure_report)
+        res = HealingResult(
+            task_id=getattr(failure_report, "task_id", None)
+            or getattr(plan, "task_id", None),
+            workflow_id=getattr(failure_report, "workflow_id", None)
+            or getattr(plan, "workflow_id", None),
+            root_cause=getattr(plan, "root_cause", "UNKNOWN"),
+            recovery_strategy=getattr(plan, "strategy_name", "RETRY"),
+            replacement_tasks=getattr(plan, "replacement_tasks", []),
+            attempt_number=1,
+            success=getattr(plan, "is_viable", True),
+        )
+        return res, plan
 
     async def execute(
         self,
