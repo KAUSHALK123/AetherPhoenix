@@ -139,8 +139,8 @@ class ContextRetrievalService:
 
                 workflow_task_records = []
                 if w_id:
-                    workflow_task_records = (
-                        self.task_history.get_workflow_task_records(w_id)
+                    workflow_task_records = self.task_history.get_workflow_task_records(
+                        w_id
                     )
                 else:
                     workflow_task_records = self.task_history.filter_history(
