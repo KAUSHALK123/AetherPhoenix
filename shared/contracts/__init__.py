@@ -123,7 +123,12 @@ from shared.contracts.task import (
     TaskPriority,
     TaskStatus,
 )
+from shared.contracts.task_history import (
+    TaskHistoryRecord,
+    WorkflowHistoryRecord,
+)
 from shared.contracts.tool import Tool, ToolHealth, ToolState
+
 from shared.contracts.workflow import (
     ExecutionMode,
     PlannerOutput,
@@ -235,6 +240,7 @@ __all__ = [
     "TaskDependency",
     "TaskError",
     "TaskFailureReport",
+    "TaskHistoryRecord",
     "TaskPriority",
     # Task
     "TaskStatus",
@@ -244,6 +250,7 @@ __all__ = [
     "ToolState",
     "UserRequirement",
     "WorkerExecutionLog",
+    "WorkflowHistoryRecord",
     "WorkflowMetadata",
     # Workflow
     "WorkflowStatus",
