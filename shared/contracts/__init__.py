@@ -121,6 +121,8 @@ from shared.contracts.task_history import (
     WorkflowHistoryRecord,
 )
 from shared.contracts.tool import Tool, ToolHealth, ToolState
+from shared.contracts.vector import VectorRecord, VectorSearchResult
+
 
 from shared.contracts.workflow import (
     ExecutionMode,
@@ -238,6 +240,8 @@ __all__ = [
     "ToolHealth",
     "ToolState",
     "UserRequirement",
+    "VectorRecord",
+    "VectorSearchResult",
     "WorkerExecutionLog",
     "WorkflowHistoryRecord",
     "WorkflowMetadata",
