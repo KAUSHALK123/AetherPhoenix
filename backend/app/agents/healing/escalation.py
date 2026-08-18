@@ -150,9 +150,10 @@ class EscalationHandler:
             return existing
 
         severity = self.classify_severity(request.reason, request.risk_level)
-        requires_user_intervention, user_action_required = (
-            self.determine_user_intervention(request.reason, severity)
-        )
+        (
+            requires_user_intervention,
+            user_action_required,
+        ) = self.determine_user_intervention(request.reason, severity)
 
         escalation_result = EscalationResult(
             workflow_id=request.workflow_id,

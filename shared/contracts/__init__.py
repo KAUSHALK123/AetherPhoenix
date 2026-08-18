@@ -47,6 +47,13 @@ from shared.contracts.feedback import (
     PlannerFeedback,
     ReplanningContext,
 )
+from shared.contracts.memory import (
+    ConversationMemoryEntry,
+    MemoryCategory,
+    MemoryQuery,
+    sanitize_memory_content,
+    sanitize_memory_metadata,
+)
 from shared.contracts.keyboard import (
     KeyboardActionRequest,
     KeyboardActionResult,
@@ -116,7 +123,20 @@ from shared.contracts.task import (
     TaskPriority,
     TaskStatus,
 )
+from shared.contracts.task_history import (
+    TaskHistoryRecord,
+    WorkflowHistoryRecord,
+)
+from shared.contracts.rag import (
+    RAGContext,
+    RAGSourceType,
+    RetrievalQuery,
+    RetrievedContextItem,
+)
 from shared.contracts.tool import Tool, ToolHealth, ToolState
+from shared.contracts.vector import VectorRecord, VectorSearchResult
+
+
 from shared.contracts.workflow import (
     ExecutionMode,
     PlannerOutput,
@@ -136,6 +156,7 @@ __all__ = [
     "ClarificationResult",
     "CodeBlockElement",
     "Conflict",
+    "ConversationMemoryEntry",
     "DependencyType",
     "DocumentElement",
     "DocumentElementType",
@@ -169,6 +190,8 @@ __all__ = [
     "KeyboardActionResult",
     "KeyboardActionType",
     "ListElement",
+    "MemoryCategory",
+    "MemoryQuery",
     "MouseActionRequest",
     "MouseActionResult",
     "MouseActionType",
@@ -186,6 +209,11 @@ __all__ = [
     "PermissionType",
     "PlanMetadata",
     "PlanVersion",
+    # RAG
+    "RAGContext",
+    "RAGSourceType",
+    "RetrievalQuery",
+    "RetrievedContextItem",
     # Feedback
     "PlannerFeedback",
     "PlannerOutput",
@@ -225,6 +253,7 @@ __all__ = [
     "TaskDependency",
     "TaskError",
     "TaskFailureReport",
+    "TaskHistoryRecord",
     "TaskPriority",
     # Task
     "TaskStatus",
@@ -233,7 +262,10 @@ __all__ = [
     "ToolHealth",
     "ToolState",
     "UserRequirement",
+    "VectorRecord",
+    "VectorSearchResult",
     "WorkerExecutionLog",
+    "WorkflowHistoryRecord",
     "WorkflowMetadata",
     # Workflow
     "WorkflowStatus",
