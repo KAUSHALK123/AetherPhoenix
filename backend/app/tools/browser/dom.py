@@ -76,7 +76,8 @@ class DOMAutomation:
 
         try:
             # We use evaluate to safely pull all attributes and basic properties
-            element_data = await locator.evaluate("""(el) => {
+            element_data = await locator.evaluate(
+                """(el) => {
                     const attrs = {};
                     for (const attr of el.attributes) {
                         attrs[attr.name] = attr.value;
@@ -86,7 +87,8 @@ class DOMAutomation:
                         text: el.innerText || el.textContent || "",
                         attributes: attrs
                     };
-                }""")
+                }"""
+            )
 
             is_visible = await locator.is_visible()
             is_enabled = await locator.is_enabled()
