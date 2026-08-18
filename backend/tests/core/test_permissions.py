@@ -11,6 +11,9 @@ from app.core.events.models import EventType
 from app.core.exceptions import PermissionDeniedException
 from app.core.permissions import PermissionManager
 from app.core.permissions.models import (
+    ExecutionMode,
+)
+from app.core.permissions.models import (
     ExecutionMode as ModelExecutionMode,
 )
 from app.core.permissions.models import (
@@ -129,6 +132,7 @@ def test_enforce_permission_success_and_failure(permission_manager):
 
     assert "denied for workflow" in str(exc_info.value)
     assert exc_info.value.code == "PERMISSION_DENIED"
+
 
 @pytest.mark.asyncio
 async def test_list_permissions_filtering(permission_manager):

@@ -1,12 +1,18 @@
 import asyncio
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
-import uuid
 
 from shared.contracts.permission import (
     PermissionRequest as SharedPermissionRequest,
+)
+from shared.contracts.permission import (
     PermissionStatus as SharedPermissionStatus,
+)
+from shared.contracts.permission import (
     PermissionType as SharedPermissionType,
+)
+from shared.contracts.permission import (
     RiskLevel,
 )
 
@@ -395,14 +401,11 @@ class PermissionManager:
                     or str(req.permission_type)
                 ).upper()
                 if (
-                    (
-                        req_wf == wf_id_str
-                        or req_wf == "None"
-                        or not req_wf
-                        or wf_id_str == "test"
-                    )
-                    and req_perm == perm_str
-                ):
+                    req_wf == wf_id_str
+                    or req_wf == "None"
+                    or not req_wf
+                    or wf_id_str == "test"
+                ) and req_perm == perm_str:
                     status_str = getattr(req.status, "value", str(req.status)).upper()
                     if status_str in ("GRANTED", "APPROVED"):
                         return AwaitableBool(True)

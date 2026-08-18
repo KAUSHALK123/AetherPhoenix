@@ -1,6 +1,9 @@
 from shared.contracts.tool import Tool, ToolHealth, ToolState
 
-from app.tools.ppt.generator import PPTGenerator
+try:
+    from app.tools.ppt.generator import PPTGenerator
+except ImportError:
+    PPTGenerator = None
 
 # Tool Contract Metadata for Registration
 ppt_tool_metadata = Tool(
