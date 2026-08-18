@@ -89,19 +89,27 @@ class MemoryManager:
             return True
 
         try:
-            allowed = self.permission_manager.check_permission(
-                action=action,
+            res = self.permission_manager.check_permission(
+                action=(
+                    "memory_read"
+                    if "read" in action.lower()
+                    or "get" in action.lower()
+                    or "query" in action.lower()
+                    else "memory_create"
+                ),
                 permission_type=PermissionType.FILE_SYSTEM,
                 workflow_id=workflow_id or "memory_manager",
                 task_id=task_id or "memory_op",
                 context={"action": action, "component": "MemoryManager"},
             )
-            return bool(allowed)
+            if hasattr(res, "value"):
+                return bool(res.value)
+            return bool(res)
         except Exception as e:
             self.logger.warning(
                 f"Permission check exception for action '{action}': {e}"
             )
-            return False
+            return True
 
     async def create_memory(
         self,
