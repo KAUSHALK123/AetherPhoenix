@@ -23,7 +23,7 @@ from app.memory.vector_db import reset_vector_db_service
 
 @pytest.fixture
 def clean_context_retrieval_service():
-    """Provides a fresh ContextRetrievalService with clean underlying memory stores."""
+    """Provides a fresh ContextRetrievalService with clean memory stores."""
     vector_db = reset_vector_db_service()
     conv_mem = ConversationMemoryService()
     task_hist = TaskHistoryService()
@@ -42,7 +42,7 @@ def clean_context_retrieval_service():
 
 @pytest.mark.asyncio
 async def test_empty_memory_retrieval(clean_context_retrieval_service):
-    """Verifies retrieval against an empty memory database returns structured empty context."""
+    """Verifies retrieval against empty database returns structured empty context."""
     req = ContextRetrievalRequest(
         user_request="What is the preferred slide presentation theme?",
         agent_type=AgentType.PLANNER,
@@ -57,11 +57,14 @@ async def test_empty_memory_retrieval(clean_context_retrieval_service):
 
 @pytest.mark.asyncio
 async def test_relevant_context_retrieval(clean_context_retrieval_service):
-    """Verifies relevant context is retrieved and formatted for a valid user request."""
+    """Verifies relevant context is retrieved for a valid user request."""
     m_id = uuid4()
     await clean_context_retrieval_service.rag_pipeline.vector_db.store_memory(
         memory_id=m_id,
-        text="The user prefers slide presentation design preference with dark mode glassmorphism.",
+        text=(
+            "The user prefers slide presentation design preference "
+            "with dark mode glassmorphism."
+        ),
         metadata={"category": MemoryCategory.PREFERENCE.value},
     )
 
@@ -81,7 +84,7 @@ async def test_relevant_context_retrieval(clean_context_retrieval_service):
 
 @pytest.mark.asyncio
 async def test_irrelevant_context_filtering(clean_context_retrieval_service):
-    """Verifies irrelevant results below min_relevance_score threshold are filtered out."""
+    """Verifies irrelevant results below min_relevance_score are filtered."""
     m_id = uuid4()
     await clean_context_retrieval_service.rag_pipeline.vector_db.store_memory(
         memory_id=m_id,
@@ -102,7 +105,7 @@ async def test_irrelevant_context_filtering(clean_context_retrieval_service):
 
 @pytest.mark.asyncio
 async def test_multiple_memories_ranking(clean_context_retrieval_service):
-    """Verifies multiple retrieved items are ranked in descending order of relevance score."""
+    """Verifies retrieved items are ranked in descending relevance score."""
     m1 = uuid4()
     m2 = uuid4()
 
@@ -126,7 +129,7 @@ async def test_multiple_memories_ranking(clean_context_retrieval_service):
 
 @pytest.mark.asyncio
 async def test_context_limit_max_items(clean_context_retrieval_service):
-    """Verifies max_items strictly caps the maximum number of returned context items."""
+    """Verifies max_items strictly caps maximum returned context items."""
     for i in range(5):
         await clean_context_retrieval_service.rag_pipeline.vector_db.store_memory(
             uuid4(), f"Automated test dataset instruction item index {i}"
@@ -144,7 +147,7 @@ async def test_context_limit_max_items(clean_context_retrieval_service):
 
 @pytest.mark.asyncio
 async def test_workflow_specific_retrieval(clean_context_retrieval_service):
-    """Verifies previous related tasks from the same workflow are retrieved into context."""
+    """Verifies related tasks from same workflow are retrieved into context."""
     w_id = uuid4()
     t1 = Task(
         workflow_id=w_id,
@@ -201,7 +204,7 @@ async def test_missing_workflow_graceful_handling(clean_context_retrieval_servic
 
 @pytest.mark.asyncio
 async def test_retrieval_failure_handling(clean_context_retrieval_service):
-    """Verifies unexpected errors during retrieval are caught and return a safe error response."""
+    """Verifies errors during retrieval return a safe error response."""
     mock_pipeline = AsyncMock()
     mock_pipeline.retrieve.side_effect = RuntimeError("RAG Pipeline backend crashed")
 

@@ -1,5 +1,4 @@
 import time
-from typing import Any
 
 from shared.contracts.context_retrieval import (
     AgentType,
@@ -93,7 +92,8 @@ class ContextRetrievalService:
         query_text = self.construct_query(request)
 
         self.logger.info(
-            f"Context Retrieval requested for agent '{request.agent_type}' with query: '{query_text}'",
+            f"Context Retrieval requested for agent '{request.agent_type}' "
+            f"with query: '{query_text}'",
             extra_context={
                 "agent_type": str(request.agent_type),
                 "workflow_id": request.workflow_id,
@@ -109,7 +109,7 @@ class ContextRetrievalService:
             source_types = request.source_types
             rag_query = RetrievalQuery(
                 query_text=query_text,
-                top_k=request.max_items * 3,  # Fetch candidate pool for post-filtering & agent tuning
+                top_k=request.max_items * 3,  # Candidate pool for post-filtering
                 min_score=request.min_relevance_score,
                 session_id=request.session_id,
                 category=None,
@@ -122,7 +122,9 @@ class ContextRetrievalService:
             filtered_count = 0
 
             # 2. Workflow-specific Task History Retrieval
-            if request.include_previous_tasks and (request.workflow_id or request.task_name):
+            if request.include_previous_tasks and (
+                request.workflow_id or request.task_name
+            ):
                 existing_ids = {
                     item.source_id for item in candidate_items if item.source_id
                 }
@@ -137,7 +139,9 @@ class ContextRetrievalService:
 
                 workflow_task_records = []
                 if w_id:
-                    workflow_task_records = self.task_history.get_workflow_task_records(w_id)
+                    workflow_task_records = (
+                        self.task_history.get_workflow_task_records(w_id)
+                    )
                 else:
                     workflow_task_records = self.task_history.filter_history(
                         limit=request.max_items
@@ -159,7 +163,11 @@ class ContextRetrievalService:
                         f"Previous Task '{tr.task_name}' (Status: {tr.status.value}). "
                         f"Agent: {tr.assigned_agent}. Output: {output_str}"
                     )
-                    score = 0.95 if tr.status.value == "completed" else (0.8 if tr.status.value == "failed" else 0.6)
+                    score = (
+                        0.95
+                        if tr.status.value == "completed"
+                        else (0.8 if tr.status.value == "failed" else 0.6)
+                    )
 
                     item = RetrievedContextItem(
                         content=sanitize_memory_content(content_str),
@@ -205,14 +213,27 @@ class ContextRetrievalService:
                 item_cat = item.metadata.get("category", "")
 
                 if agent_str == AgentType.PLANNER.value:
-                    if item_cat in (MemoryCategory.PREFERENCE.value, MemoryCategory.PROJECT_CONTEXT.value):
+                    if item_cat in (
+                        MemoryCategory.PREFERENCE.value,
+                        MemoryCategory.PROJECT_CONTEXT.value,
+                    ):
                         adjusted_score = min(1.0, adjusted_score * 1.2)
                 elif agent_str == AgentType.WORKER.value:
-                    if item_cat in (MemoryCategory.INSTRUCTION.value, MemoryCategory.DECISION.value) or item.source_type == RAGSourceType.TASK_HISTORY:
+                    if (
+                        item_cat
+                        in (
+                            MemoryCategory.INSTRUCTION.value,
+                            MemoryCategory.DECISION.value,
+                        )
+                        or item.source_type == RAGSourceType.TASK_HISTORY
+                    ):
                         adjusted_score = min(1.0, adjusted_score * 1.15)
                 elif agent_str == AgentType.HEALING.value:
                     status_meta = item.metadata.get("status", "")
-                    if status_meta in ("failed", "healing") or item.source_type == RAGSourceType.TASK_HISTORY:
+                    if (
+                        status_meta in ("failed", "healing")
+                        or item.source_type == RAGSourceType.TASK_HISTORY
+                    ):
                         adjusted_score = min(1.0, adjusted_score * 1.3)
 
                 if adjusted_score >= request.min_relevance_score:
@@ -264,7 +285,8 @@ class ContextRetrievalService:
             )
 
             self.logger.info(
-                f"Context Retrieval completed for agent '{agent_str}': returned {len(final_items)} items in {execution_time_ms:.1f}ms",
+                f"Context Retrieval completed for agent '{agent_str}': "
+                f"returned {len(final_items)} items in {execution_time_ms:.1f}ms",
                 extra_context={
                     "total_retrieved": len(final_items),
                     "filtered_count": filtered_count,
@@ -276,7 +298,8 @@ class ContextRetrievalService:
         except Exception as exc:
             execution_time_ms = (time.time() - start_time) * 1000.0
             self.logger.error(
-                f"Context Retrieval failed gracefully for query '{query_text}': {str(exc)}",
+                f"Context Retrieval failed gracefully for query '{query_text}': "
+                f"{str(exc)}",
                 exc_info=True,
             )
             return ContextRetrievalResponse(
