@@ -1,3 +1,8 @@
+from app.memory.context_retrieval import (
+    ContextRetrievalService,
+    get_context_retrieval_service,
+    reset_context_retrieval_service,
+)
 from app.memory.rag_pipeline import (
     RAGContextBuilder,
     RAGPipelineService,
@@ -21,6 +26,9 @@ from app.memory.vector_db import (
 )
 
 __all__ = [
+    "ContextRetrievalService",
+    "get_context_retrieval_service",
+    "reset_context_retrieval_service",
     "TaskHistoryService",
     "get_task_history_service",
     "reset_task_history_service",
