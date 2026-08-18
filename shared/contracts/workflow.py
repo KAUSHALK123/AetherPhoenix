@@ -93,5 +93,7 @@ class SharedWorkflowState(BaseModel):
     events: list[RuntimeEvent] = Field(default_factory=list)
     feedback: PlannerFeedback | None = Field(
         None,
-        description="Execution/healing structured feedback generated during workflow failures.",
+        description=(
+            "Execution/healing structured feedback generated during workflow failures."
+        ),
     )

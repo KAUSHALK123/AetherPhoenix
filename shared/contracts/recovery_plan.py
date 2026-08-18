@@ -56,7 +56,9 @@ class RecoveryAction(BaseModel):
     action_id: UUID = Field(default_factory=uuid4)
     action_type: str = Field(
         ...,
-        description="Action classification tag (e.g., VERIFY_DIR, CREATE_DIR, RETRY_TASK)",
+        description=(
+            "Action classification tag (e.g., VERIFY_DIR, CREATE_DIR, RETRY_TASK)"
+        ),
     )
     description: str = Field(
         ..., description="Detailed description of the recovery step"

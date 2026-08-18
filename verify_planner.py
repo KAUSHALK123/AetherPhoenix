@@ -1,14 +1,16 @@
+import json
 import os
 import sys
-import json
 from uuid import uuid4
 
 # Add both to sys.path
 sys.path.insert(0, os.path.abspath('backend'))
 sys.path.insert(0, os.path.abspath('.'))
 
-from app.agents.planner.agent import PlannerAgent
 from shared.contracts.planner import PlannerRequest
+
+from app.agents.planner.agent import PlannerAgent
+
 
 def test_planner(goal: str, clarification: str = None):
     print(f"\n--- Testing Goal: '{goal}' ---")
@@ -45,4 +47,10 @@ def test_planner(goal: str, clarification: str = None):
         
 if __name__ == "__main__":
     test_planner("Create a Presentation on cars")
-    test_planner("organize my files", clarification="Create a powershell script to organize my files into folders based on extensions.")
+    test_planner(
+        "organize my files",
+        clarification=(
+            "Create a powershell script to organize my files into folders"
+            " based on extensions."
+        ),
+    )
