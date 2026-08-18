@@ -2,6 +2,11 @@
 
 from shared.contracts.artifact import Artifact, ArtifactType
 from shared.contracts.capability import Capability
+from shared.contracts.context_retrieval import (
+    AgentType,
+    ContextRetrievalRequest,
+    ContextRetrievalResponse,
+)
 from shared.contracts.desktop import (
     MouseActionRequest,
     MouseActionResult,
@@ -153,6 +158,9 @@ __all__ = [
     # Capability
     "Capability",
     "CapabilityFailureInfo",
+    "AgentType",
+    "ContextRetrievalRequest",
+    "ContextRetrievalResponse",
     "ClarificationResult",
     "CodeBlockElement",
     "Conflict",
