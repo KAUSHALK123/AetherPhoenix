@@ -40,7 +40,8 @@ def get_db() -> Generator[Session, None, None]:
 
 def init_db() -> None:
     """Initialize database engine and verify connectivity."""
-    from app.database.base import Base
     import app.models.memory  # noqa: F401
+    from app.database.base import Base
 
     Base.metadata.create_all(bind=engine)
+

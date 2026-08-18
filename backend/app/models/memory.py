@@ -2,11 +2,11 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
+from shared.contracts.memory import ConversationMemoryEntry, MemoryCategory
 from sqlalchemy import DateTime, Float, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
-from shared.contracts.memory import ConversationMemoryEntry, MemoryCategory
 
 
 class ConversationMemoryModel(Base):
