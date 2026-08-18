@@ -119,7 +119,7 @@ async def test_worker_pipeline_end_to_end_success(integration_environment):
     env["permission_manager"].check_permission.assert_called_once_with(
         action="Execute tool browser_automation",
         permission_type=PermissionType.BROWSER_ACCESS,
-        context={"task_id": str(task.task_id)},
+        context={"task_id": str(task.task_id), "workflow_id": str(task.workflow_id)},
     )
 
     # 3. Execution Logs captured in result

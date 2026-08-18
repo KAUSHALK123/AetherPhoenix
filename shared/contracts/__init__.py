@@ -127,6 +127,12 @@ from shared.contracts.task_history import (
     TaskHistoryRecord,
     WorkflowHistoryRecord,
 )
+from shared.contracts.rag import (
+    RAGContext,
+    RAGSourceType,
+    RetrievalQuery,
+    RetrievedContextItem,
+)
 from shared.contracts.tool import Tool, ToolHealth, ToolState
 from shared.contracts.vector import VectorRecord, VectorSearchResult
 
@@ -203,6 +209,11 @@ __all__ = [
     "PermissionType",
     "PlanMetadata",
     "PlanVersion",
+    # RAG
+    "RAGContext",
+    "RAGSourceType",
+    "RetrievalQuery",
+    "RetrievedContextItem",
     # Feedback
     "PlannerFeedback",
     "PlannerOutput",

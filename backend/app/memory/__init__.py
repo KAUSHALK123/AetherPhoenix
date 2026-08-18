@@ -1,3 +1,9 @@
+from app.memory.rag_pipeline import (
+    RAGContextBuilder,
+    RAGPipelineService,
+    get_rag_pipeline,
+    reset_rag_pipeline,
+)
 from app.memory.task_history import (
     TaskHistoryService,
     get_task_history_service,
@@ -26,4 +32,8 @@ __all__ = [
     "VectorDatabaseService",
     "get_vector_db_service",
     "reset_vector_db_service",
+    "RAGPipelineService",
+    "RAGContextBuilder",
+    "get_rag_pipeline",
+    "reset_rag_pipeline",
 ]
