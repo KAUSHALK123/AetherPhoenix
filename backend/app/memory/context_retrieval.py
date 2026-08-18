@@ -109,7 +109,7 @@ class ContextRetrievalService:
             source_types = request.source_types
             rag_query = RetrievalQuery(
                 query_text=query_text,
-                top_k=request.max_items * 3,  # Candidate pool for post-filtering
+                top_k=request.max_items * 3,
                 min_score=request.min_relevance_score,
                 session_id=request.session_id,
                 category=None,
@@ -139,8 +139,8 @@ class ContextRetrievalService:
 
                 workflow_task_records = []
                 if w_id:
-                    workflow_task_records = (
-                        self.task_history.get_workflow_task_records(w_id)
+                    workflow_task_records = self.task_history.get_workflow_task_records(
+                        w_id
                     )
                 else:
                     workflow_task_records = self.task_history.filter_history(
@@ -298,8 +298,7 @@ class ContextRetrievalService:
         except Exception as exc:
             execution_time_ms = (time.time() - start_time) * 1000.0
             self.logger.error(
-                f"Context Retrieval failed gracefully for query '{query_text}': "
-                f"{str(exc)}",
+                f"Context Retrieval failed for query '{query_text}': {str(exc)}",
                 exc_info=True,
             )
             return ContextRetrievalResponse(

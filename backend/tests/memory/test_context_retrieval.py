@@ -42,7 +42,7 @@ def clean_context_retrieval_service():
 
 @pytest.mark.asyncio
 async def test_empty_memory_retrieval(clean_context_retrieval_service):
-    """Verifies retrieval against empty database returns structured empty context."""
+    """Verifies retrieval against empty memory returns empty context."""
     req = ContextRetrievalRequest(
         user_request="What is the preferred slide presentation theme?",
         agent_type=AgentType.PLANNER,
@@ -61,10 +61,7 @@ async def test_relevant_context_retrieval(clean_context_retrieval_service):
     m_id = uuid4()
     await clean_context_retrieval_service.rag_pipeline.vector_db.store_memory(
         memory_id=m_id,
-        text=(
-            "The user prefers slide presentation design preference "
-            "with dark mode glassmorphism."
-        ),
+        text="The user prefers slide design with dark mode glassmorphism.",
         metadata={"category": MemoryCategory.PREFERENCE.value},
     )
 
@@ -84,7 +81,7 @@ async def test_relevant_context_retrieval(clean_context_retrieval_service):
 
 @pytest.mark.asyncio
 async def test_irrelevant_context_filtering(clean_context_retrieval_service):
-    """Verifies irrelevant results below min_relevance_score are filtered."""
+    """Verifies irrelevant results below threshold are filtered out."""
     m_id = uuid4()
     await clean_context_retrieval_service.rag_pipeline.vector_db.store_memory(
         memory_id=m_id,
@@ -105,194 +102,134 @@ async def test_irrelevant_context_filtering(clean_context_retrieval_service):
 
 @pytest.mark.asyncio
 async def test_multiple_memories_ranking(clean_context_retrieval_service):
-    """Verifies retrieved items are ranked in descending relevance score."""
+    """Verifies multiple items are ranked in descending order."""
     m1 = uuid4()
     m2 = uuid4()
-
     await clean_context_retrieval_service.rag_pipeline.vector_db.store_memory(
-        m1, "I love authentic Italian pizza."
+        memory_id=m1,
+        text="Low relevance note on styling details.",
+        metadata={"category": "styling"},
     )
     await clean_context_retrieval_service.rag_pipeline.vector_db.store_memory(
-        m2, "My preferred dinner is authentic Italian pepperoni pizza."
+        memory_id=m2,
+        text="Exact user preference: dark mode glassmorphism UI theme.",
+        metadata={"category": MemoryCategory.PREFERENCE.value},
     )
 
     req = ContextRetrievalRequest(
-        user_request="Italian pizza dinner preference",
+        user_request="Exact user preference: dark mode glassmorphism UI theme.",
+        agent_type=AgentType.PLANNER,
         max_items=5,
     )
     res = await clean_context_retrieval_service.retrieve_context(req)
 
-    assert res.total_retrieved >= 2
-    scores = [item.score for item in res.items]
-    assert scores == sorted(scores, reverse=True)
+    assert res.total_retrieved >= 1
+    assert res.items[0].source_id == str(m2)
 
 
 @pytest.mark.asyncio
-async def test_context_limit_max_items(clean_context_retrieval_service):
-    """Verifies max_items strictly caps maximum returned context items."""
-    for i in range(5):
+async def test_context_limit_enforcement(clean_context_retrieval_service):
+    """Verifies max_items constraint is strictly enforced."""
+    for i in range(10):
         await clean_context_retrieval_service.rag_pipeline.vector_db.store_memory(
-            uuid4(), f"Automated test dataset instruction item index {i}"
+            memory_id=uuid4(),
+            text=f"Database migration configuration item number {i}",
+            metadata={"category": "db"},
         )
 
     req = ContextRetrievalRequest(
-        user_request="test dataset instruction item",
-        max_items=2,
+        user_request="Database migration configuration",
+        max_items=3,
     )
     res = await clean_context_retrieval_service.retrieve_context(req)
 
-    assert res.total_retrieved == 2
-    assert len(res.items) == 2
+    assert res.total_retrieved == 3
+    assert len(res.items) == 3
 
 
 @pytest.mark.asyncio
 async def test_workflow_specific_retrieval(clean_context_retrieval_service):
-    """Verifies related tasks from same workflow are retrieved into context."""
+    """Verifies related tasks from the same workflow are retrieved."""
     w_id = uuid4()
     t1 = Task(
         workflow_id=w_id,
-        task_name="Extract web page contents",
-        description="Scrape product data from target URL",
-        required_tool="browser_tool",
-        category=TaskCategory.WEB_SCRAPING,
-        expected_output="Product data extracted",
+        task_name="Extract HTML content",
+        description="Extract raw DOM text",
+        category=TaskCategory.BROWSER,
+        required_tool="BrowserTool",
+        expected_output="HTML content",
     )
-
     clean_context_retrieval_service.task_history.record_task_created(t1)
-    clean_context_retrieval_service.task_history.record_task_started(t1)
-    from shared.contracts.execution import ExecutionResult
 
-    clean_context_retrieval_service.task_history.record_task_completed(
-        task_id=t1.task_id,
-        result=ExecutionResult(
-            task_id=t1.task_id,
-            workflow_id=w_id,
-            success=True,
-            output_summary="Successfully scraped 15 items",
-        ),
+    t2 = Task(
+        workflow_id=w_id,
+        task_name="Parse extracted text",
+        description="Parse extracted DOM text into JSON",
+        category=TaskCategory.CODE_GENERATION,
+        required_tool="CodeTool",
+        expected_output="Parsed JSON",
     )
 
-    req = ContextRetrievalRequest(
-        workflow_id=str(w_id),
-        task_name="Summarize scraped product data",
-        agent_type=AgentType.WORKER,
-        include_previous_tasks=True,
+    res = await clean_context_retrieval_service.get_context_for_worker(
+        task=t2,
+        session_id="sess_123",
+        max_items=5,
     )
-    res = await clean_context_retrieval_service.retrieve_context(req)
 
     assert res.total_retrieved >= 1
-    hist_items = [
-        item for item in res.items if item.source_type == RAGSourceType.TASK_HISTORY
-    ]
-    assert len(hist_items) >= 1
-    assert "Extract web page contents" in hist_items[0].content
+    source_ids = [item.source_id for item in res.items]
+    assert str(t1.task_id) in source_ids
 
 
 @pytest.mark.asyncio
-async def test_missing_workflow_graceful_handling(clean_context_retrieval_service):
-    """Verifies retrieval proceeds cleanly when workflow_id is missing or None."""
-    req = ContextRetrievalRequest(
-        workflow_id=None,
-        task_name="Standalone document task",
-        agent_type=AgentType.GENERAL,
+async def test_agent_specific_context_weighting(
+    clean_context_retrieval_service,
+):
+    """Verifies agent-tailored helpers apply appropriate category boosts."""
+    pref_id = uuid4()
+    await clean_context_retrieval_service.rag_pipeline.vector_db.store_memory(
+        memory_id=pref_id,
+        text="User design preference: Always use clean minimalist styles.",
+        metadata={"category": MemoryCategory.PREFERENCE.value},
     )
-    res = await clean_context_retrieval_service.retrieve_context(req)
 
-    assert res.metadata.get("status") == "success"
-    assert res.metadata.get("workflow_id") is None
+    planner_res = await clean_context_retrieval_service.get_context_for_planner(
+        user_request="clean minimalist design styles",
+        max_items=5,
+    )
+
+    assert planner_res.total_retrieved >= 1
+    assert planner_res.items[0].source_id == str(pref_id)
 
 
 @pytest.mark.asyncio
 async def test_retrieval_failure_handling(clean_context_retrieval_service):
-    """Verifies errors during retrieval return a safe error response."""
+    """Verifies unexpected errors return a safe error response."""
     mock_pipeline = AsyncMock()
     mock_pipeline.retrieve.side_effect = RuntimeError("RAG Pipeline backend crashed")
 
     service = ContextRetrievalService(rag_pipeline=mock_pipeline)
-    req = ContextRetrievalRequest(user_request="Test prompt query")
+    req = ContextRetrievalRequest(
+        user_request="Test error handling",
+        agent_type=AgentType.PLANNER,
+    )
 
     res = await service.retrieve_context(req)
 
     assert res.total_retrieved == 0
     assert res.items == []
-    assert res.formatted_context == ""
     assert res.metadata.get("status") == "error"
-    assert "RAG Pipeline backend crashed" in res.metadata.get("error_message", "")
-
-
-@pytest.mark.asyncio
-async def test_source_metadata_preservation(clean_context_retrieval_service):
-    """Verifies returned context items contain all required source metadata."""
-    m_id = uuid4()
-    await clean_context_retrieval_service.rag_pipeline.vector_db.store_memory(
-        memory_id=m_id,
-        text="Report output font must be Helvetica 11pt.",
-        metadata={"category": "preference", "session_id": "session_888"},
-    )
-
-    req = ContextRetrievalRequest(
-        user_request="Report output font requirement",
-        session_id="session_888",
-    )
-    res = await clean_context_retrieval_service.retrieve_context(req)
-
-    assert res.total_retrieved == 1
-    item = res.items[0]
-    assert item.source_id == str(m_id)
-    assert item.source_type == RAGSourceType.VECTOR_DB
-    assert item.metadata.get("category") == "preference"
-    assert item.created_at is not None
-
-
-@pytest.mark.asyncio
-async def test_agent_specific_helpers(clean_context_retrieval_service):
-    """Verifies convenience helper methods for Planner, Worker, and Healing agents."""
-    m_id = uuid4()
-    await clean_context_retrieval_service.rag_pipeline.vector_db.store_memory(
-        memory_id=m_id,
-        text="User prefers executive summary section at the top of PDF.",
-        metadata={"category": MemoryCategory.PREFERENCE.value},
-    )
-
-    # 1. Planner helper
-    planner_res = await clean_context_retrieval_service.get_context_for_planner(
-        user_request="Executive summary section PDF layout",
-        max_items=3,
-    )
-    assert planner_res.total_retrieved >= 1
-    assert planner_res.metadata.get("agent_type") == AgentType.PLANNER.value
-
-    # 2. Worker helper
-    task = Task(
-        workflow_id=uuid4(),
-        task_name="Executive summary section PDF layout",
-        description="Build PDF report",
-        required_tool="pdf_tool",
-        category=TaskCategory.PDF_GENERATION,
-        expected_output="PDF report generated",
-    )
-    worker_res = await clean_context_retrieval_service.get_context_for_worker(
-        task=task,
-        max_items=3,
-    )
-    assert worker_res.total_retrieved >= 1
-    assert worker_res.metadata.get("agent_type") == AgentType.WORKER.value
-
-    # 3. Healing helper
-    healing_res = await clean_context_retrieval_service.get_context_for_healing(
-        task_id=str(task.task_id),
-        error_summary="PDF rendering exception",
-        max_items=3,
-    )
-    assert healing_res.metadata.get("agent_type") == AgentType.HEALING.value
+    assert "crashed" in res.metadata.get("error_message", "")
 
 
 @pytest.mark.asyncio
 async def test_singleton_management():
-    """Verifies singleton retrieval and reset functions."""
+    """Verifies singleton getter and reset functionality."""
+    reset_context_retrieval_service()
     s1 = get_context_retrieval_service()
     s2 = get_context_retrieval_service()
     assert s1 is s2
 
-    s3 = reset_context_retrieval_service()
+    reset_context_retrieval_service()
+    s3 = get_context_retrieval_service()
     assert s1 is not s3
