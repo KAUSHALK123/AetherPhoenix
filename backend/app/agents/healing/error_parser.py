@@ -119,9 +119,12 @@ class ErrorParser:
             )
 
         # 1. Extract message, code, stack trace, and initial context metadata
-        extracted_msg, extracted_code, extracted_stack, extracted_ctx = (
-            self._extract_metadata(raw_error)
-        )
+        (
+            extracted_msg,
+            extracted_code,
+            extracted_stack,
+            extracted_ctx,
+        ) = self._extract_metadata(raw_error)
 
         merged_context = {**extracted_ctx, **caller_context}
         if extracted_stack and "stack_trace" not in merged_context:

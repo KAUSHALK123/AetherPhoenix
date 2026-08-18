@@ -34,9 +34,7 @@ def clean_pipeline():
 @pytest.mark.asyncio
 async def test_empty_knowledge_base(clean_pipeline):
     """Verifies retrieval against empty knowledge base returns empty context."""
-    res = await clean_pipeline.retrieve(
-        "What is the preferred dark mode color theme?"
-    )
+    res = await clean_pipeline.retrieve("What is the preferred dark mode color theme?")
     assert res.total_retrieved == 0
     assert res.items == []
     assert res.formatted_context == ""
@@ -105,9 +103,7 @@ async def test_multiple_matching_memories_ranking(clean_pipeline):
         m3, "Electric vehicles run on high capacity lithium-ion battery packs."
     )
 
-    res = await clean_pipeline.retrieve(
-        query="Italian pizza dinner food", top_k=5
-    )
+    res = await clean_pipeline.retrieve(query="Italian pizza dinner food", top_k=5)
     assert res.total_retrieved >= 2
     scores = [item.score for item in res.items]
     assert scores == sorted(scores, reverse=True)
@@ -155,9 +151,7 @@ async def test_context_formatting():
         metadata={"category": "preference"},
     )
 
-    formatted = RAGContextBuilder.build_formatted_context(
-        [item1, item2], query="test"
-    )
+    formatted = RAGContextBuilder.build_formatted_context([item1, item2], query="test")
     assert "### Relevant Context (Retrieved Knowledge)" in formatted
     assert "Context Item 1 (Source: conversation_memory | Score: 0.920" in formatted
     assert "User instruction: Always format output as JSON." in formatted
@@ -203,16 +197,11 @@ async def test_agent_context_injection_worker(clean_pipeline):
         expected_output="PDF document generated.",
     )
 
-    enriched_task = await clean_pipeline.enrich_worker_task(
-        task=task, min_score=-1.0
-    )
+    enriched_task = await clean_pipeline.enrich_worker_task(task=task, min_score=-1.0)
 
     assert "rag_context" in enriched_task.inputs
     assert "retrieved_knowledge" in enriched_task.inputs
-    assert (
-        "Quarterly Financial Analysis"
-        in enriched_task.inputs["retrieved_knowledge"]
-    )
+    assert "Quarterly Financial Analysis" in enriched_task.inputs["retrieved_knowledge"]
 
 
 @pytest.mark.asyncio

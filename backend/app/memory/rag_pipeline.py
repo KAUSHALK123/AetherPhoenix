@@ -29,9 +29,7 @@ class RAGContextBuilder:
     """
 
     @staticmethod
-    def build_formatted_context(
-        items: list[RetrievedContextItem], query: str
-    ) -> str:
+    def build_formatted_context(items: list[RetrievedContextItem], query: str) -> str:
         """
         Formats ranked context items into a clean Markdown block ready
         for agent prompt injection.
