@@ -1,11 +1,22 @@
 import time
 import uuid
-from typing import Optional
+from typing import Any, Dict, Optional
+from uuid import UUID
 
-from playwright.async_api import Browser, Page, Playwright, async_playwright
+try:
+    from playwright.async_api import Browser, Page, Playwright, async_playwright
+except ImportError:
+    Browser = Any  # type: ignore
+    Page = Any  # type: ignore
+    Playwright = Any  # type: ignore
+    async_playwright = None
+
 from shared.contracts.browser import BrowserResult, BrowserSession, BrowserState
+from shared.contracts.permission import PermissionType
 
+from app.core.exceptions import PermissionDeniedException
 from app.core.logging.logger import get_logger
+from app.core.permissions.manager import PermissionManager, get_permission_manager
 
 logger = get_logger(__name__)
 
@@ -17,21 +28,80 @@ class BrowserActionError(Exception):
 class BrowserController:
     """
     Core controller providing a controlled abstraction over browser automation.
-    Manages Playwright sessions safely.
+    Manages Playwright sessions safely with integrated Safe Execution Mode validation.
     """
 
-    def __init__(self):
+    def __init__(self, permission_manager: Optional[PermissionManager] = None):
         self._playwright: Optional[Playwright] = None
         self._browser: Optional[Browser] = None
         self._page: Optional[Page] = None
         self._session: Optional[BrowserSession] = None
+        self._permission_manager = permission_manager
+
+    @property
+    def permission_manager(self) -> Optional[PermissionManager]:
+        if self._permission_manager is None:
+            try:
+                self._permission_manager = get_permission_manager()
+            except Exception:
+                pass
+        return self._permission_manager
 
     @property
     def session(self) -> Optional[BrowserSession]:
         return self._session
 
-    async def start_session(self) -> BrowserResult:
+    async def _check_permission(
+        self,
+        action: str,
+        context: Optional[Dict[str, Any]] = None,
+        workflow_id: Optional[UUID | str] = None,
+        task_id: Optional[UUID | str] = None,
+    ) -> None:
+        """Enforces Safe Execution Mode and permissions for browser automation."""
+        pm = self.permission_manager
+        if not pm:
+            return
+
+        ctx = context or {}
+        if workflow_id:
+            ctx["workflow_id"] = str(workflow_id)
+        if task_id:
+            ctx["task_id"] = str(task_id)
+
+        res = pm.check_permission(
+            action=f"BrowserAction: {action}",
+            permission_type=PermissionType.BROWSER_ACCESS,
+            context=ctx,
+            workflow_id=workflow_id,
+            task_id=task_id,
+        )
+
+        if hasattr(res, "__await__"):
+            is_approved = await res
+        else:
+            is_approved = bool(res)
+
+        if not is_approved:
+            logger.warning(
+                f"Safe execution mode rejected or denied browser action: {action}"
+            )
+            raise PermissionDeniedException(
+                f"Permission or safe policy denied for browser action '{action}'."
+            )
+
+    async def start_session(
+        self,
+        workflow_id: Optional[UUID | str] = None,
+        task_id: Optional[UUID | str] = None,
+    ) -> BrowserResult:
         """Starts a headless Playwright Chromium instance."""
+        await self._check_permission(
+            action="start_session",
+            workflow_id=workflow_id,
+            task_id=task_id,
+        )
+
         if self._browser is not None:
             logger.warning("Browser session already running.")
             return BrowserResult(success=False, error="Session already running")
@@ -55,8 +125,18 @@ class BrowserController:
             self._session = None
             raise BrowserActionError("Failed to start browser") from e
 
-    async def close_session(self) -> BrowserResult:
+    async def close_session(
+        self,
+        workflow_id: Optional[UUID | str] = None,
+        task_id: Optional[UUID | str] = None,
+    ) -> BrowserResult:
         """Gracefully closes the browser session."""
+        await self._check_permission(
+            action="close_session",
+            workflow_id=workflow_id,
+            task_id=task_id,
+        )
+
         logger.info("Closing browser session...")
         try:
             if self._browser:
@@ -76,8 +156,21 @@ class BrowserController:
             logger.error(f"Failed to close browser session: {e}")
             raise BrowserActionError("Failed to close browser") from e
 
-    async def navigate(self, url: str, timeout_ms: float = 30000.0) -> BrowserResult:
+    async def navigate(
+        self,
+        url: str,
+        timeout_ms: float = 30000.0,
+        workflow_id: Optional[UUID | str] = None,
+        task_id: Optional[UUID | str] = None,
+    ) -> BrowserResult:
         """Navigates to a specific URL."""
+        await self._check_permission(
+            action="navigate",
+            context={"url": url, "timeout_ms": timeout_ms},
+            workflow_id=workflow_id,
+            task_id=task_id,
+        )
+
         if not self._page or not self._session:
             raise BrowserActionError(
                 "Browser session not started. Call start_session() first."
@@ -97,8 +190,20 @@ class BrowserController:
             logger.error(f"Navigation to {url} failed: {str(e)}")
             return BrowserResult(success=False, error=str(e))
 
-    async def extract_content(self, include_html: bool = False) -> BrowserResult:
+    async def extract_content(
+        self,
+        include_html: bool = False,
+        workflow_id: Optional[UUID | str] = None,
+        task_id: Optional[UUID | str] = None,
+    ) -> BrowserResult:
         """Extracts text or HTML content from the current page."""
+        await self._check_permission(
+            action="extract_content",
+            context={"include_html": include_html},
+            workflow_id=workflow_id,
+            task_id=task_id,
+        )
+
         if not self._page:
             raise BrowserActionError("Browser session not started.")
 
@@ -119,10 +224,24 @@ class BrowserController:
         action: str,
         value: Optional[str] = None,
         timeout_ms: float = 10000.0,
+        workflow_id: Optional[UUID | str] = None,
+        task_id: Optional[UUID | str] = None,
     ) -> BrowserResult:
         """
         Abstractions for basic page interactions (click, fill).
         """
+        await self._check_permission(
+            action="interact",
+            context={
+                "selector": selector,
+                "interaction_action": action,
+                "value": value,
+                "timeout_ms": timeout_ms,
+            },
+            workflow_id=workflow_id,
+            task_id=task_id,
+        )
+
         if not self._page:
             raise BrowserActionError("Browser session not started.")
 
@@ -149,8 +268,21 @@ class BrowserController:
         clip: Optional[dict] = None,
         image_type: str = "png",
         quality: Optional[int] = None,
+        workflow_id: Optional[UUID | str] = None,
+        task_id: Optional[UUID | str] = None,
     ) -> BrowserResult:
         """Captures a screenshot of the current page."""
+        await self._check_permission(
+            action="capture_screenshot",
+            context={
+                "output_path": output_path,
+                "full_page": full_page,
+                "image_type": image_type,
+            },
+            workflow_id=workflow_id,
+            task_id=task_id,
+        )
+
         if not self._page:
             raise BrowserActionError("Browser session not started.")
 
