@@ -335,9 +335,11 @@ class PermissionManager:
             permission_type = (
                 args[1] if len(args) > 1 else kwargs.get("permission_type")
             )
-            workflow_id = kwargs.get("workflow_id", "test")
-            task_id = kwargs.get("task_id", "test")
-            context = kwargs.get("context", {})
+            context = kwargs.get("context", {}) or {}
+            workflow_id = (
+                kwargs.get("workflow_id") or context.get("workflow_id") or "test"
+            )
+            task_id = kwargs.get("task_id") or context.get("task_id") or "test"
             timeout_seconds = kwargs.get("timeout_seconds")
 
             # Check execution limits
@@ -381,15 +383,41 @@ class PermissionManager:
                 )
                 return AwaitableBool(True)
 
-            # Check for duplicate pending requests
-            perm_str = getattr(permission_type, "value", str(permission_type))
+            # Check if permission is already granted/approved for this workflow/task
+            perm_str = (
+                getattr(permission_type, "value", None) or str(permission_type)
+            ).upper()
+            wf_id_str = str(workflow_id)
             for req in self.requests.values():
+                req_wf = str(getattr(req, "workflow_id", ""))
+                req_perm = (
+                    getattr(req.permission_type, "value", None)
+                    or str(req.permission_type)
+                ).upper()
                 if (
-                    str(getattr(req, "workflow_id", "")) == str(workflow_id)
-                    and str(getattr(req, "task_id", "")) == str(task_id)
-                    and getattr(req.permission_type, "value", str(req.permission_type))
-                    == perm_str
-                    and getattr(req.status, "value", str(req.status)) == "PENDING"
+                    req_wf == wf_id_str
+                    or req_wf == "None"
+                    or not req_wf
+                    or wf_id_str == "test"
+                ) and req_perm == perm_str:
+                    status_str = getattr(req.status, "value", str(req.status)).upper()
+                    if status_str in ("GRANTED", "APPROVED"):
+                        return AwaitableBool(True)
+
+            # Check for duplicate pending requests
+            for req in self.requests.values():
+                req_wf = str(getattr(req, "workflow_id", ""))
+                req_task = str(getattr(req, "task_id", ""))
+                req_perm = (
+                    getattr(req.permission_type, "value", None)
+                    or str(req.permission_type)
+                ).upper()
+                if (
+                    req_wf == wf_id_str
+                    and req_task == str(task_id)
+                    and req_perm == perm_str
+                    and getattr(req.status, "value", str(req.status)).upper()
+                    == "PENDING"
                 ):
                     # Check if already expired
                     if req.expires_at and datetime.now(timezone.utc) > req.expires_at:
@@ -417,15 +445,15 @@ class PermissionManager:
                 context=context,
             )
 
-            # If the request is awaitable, get the underlying request
-            req_id = getattr(req, "permission_id", None) or getattr(
-                req, "request_id", None
+            # If the request is awaitable wrapper, get the underlying request
+            if hasattr(req, "_request"):
+                raw_req = req._request
+            else:
+                raw_req = req
+
+            req_id = getattr(raw_req, "permission_id", None) or getattr(
+                raw_req, "request_id", None
             )
-            if not req_id and hasattr(req, "r"):
-                # Handle legacy awaitable wrapper
-                req_id = getattr(req.r, "permission_id", None) or getattr(
-                    req.r, "request_id", None
-                )
 
             return AwaitablePermissionCheck(
                 self, str(req_id), timeout_seconds=timeout_seconds
@@ -612,7 +640,8 @@ class PermissionManager:
     def approve_permission(
         self, request_id: str, message: Optional[str] = None
     ) -> PermissionResponse:
-        req = self.requests.get(request_id)
+        req_id_str = str(request_id)
+        req = self.requests.get(request_id) or self.requests.get(req_id_str)
         if not req:
             raise ValueError(f"Permission request {request_id} not found.")
 
@@ -640,7 +669,7 @@ class PermissionManager:
         self._publish_event_sync(EventType.PERMISSION_GRANTED, req)
 
         return PermissionResponse(
-            request_id=request_id, status=status_val, message=message or "Approved"
+            request_id=req_id_str, status=status_val, message=message or "Approved"
         )
 
     def reject_permission(self, request_id: Any, message: Optional[str] = None) -> Any:

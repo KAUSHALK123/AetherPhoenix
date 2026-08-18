@@ -102,10 +102,20 @@ class PlannerAgent:
         )
         cap_reg.register(
             Capability(
-                name="python_executor",
-                description="Executes python",
-                category=TaskCategory.PYTHON,
-                required_tools=["python"],
+                name="browser_automation",
+                description="Controls web browser navigation, interaction and scraping",
+                category=TaskCategory.BROWSER,
+                required_tools=["browser_automation"],
+            )
+        )
+        cap_reg.register(
+            Capability(
+                name="desktop_automation",
+                description=(
+                    "Controls desktop applications, mouse, keyboard, and windows"
+                ),
+                category=TaskCategory.DESKTOP,
+                required_tools=["desktop_automation"],
             )
         )
 

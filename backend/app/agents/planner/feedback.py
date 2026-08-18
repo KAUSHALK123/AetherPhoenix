@@ -1,6 +1,8 @@
 import logging
 import re
+from datetime import datetime, timezone
 from typing import Optional
+from uuid import uuid4
 
 from shared.contracts.execution import FailureType, HealingResult, TaskFailureReport
 from shared.contracts.feedback import (
@@ -85,23 +87,22 @@ class PlannerFeedbackLoop:
 
         healing_summary = None
         if healing_result:
-            outcome = "SUCCESS" if healing_result.success else "FAILED"
-            if not healing_result.success:
+            is_success = getattr(healing_result, "success", False)
+            outcome = "SUCCESS" if is_success else "FAILED"
+            if not is_success:
                 outcome = "UNRECOVERABLE"
 
+            rec_strategy = getattr(healing_result, "recovery_strategy", None)
+            rec_id = getattr(healing_result, "recovery_id", None) or uuid4()
             healing_summary = HealingSummary(
-                recovery_id=healing_result.recovery_id,
-                attempts=healing_result.attempt_number,
-                strategies_attempted=(
-                    [healing_result.recovery_strategy]
-                    if healing_result.recovery_strategy
-                    else []
-                ),
-                successful_strategy=(
-                    healing_result.recovery_strategy if healing_result.success else None
-                ),
+                recovery_id=rec_id,
+                attempts=getattr(healing_result, "attempt_number", 1),
+                strategies_attempted=[rec_strategy] if rec_strategy else [],
+                successful_strategy=(rec_strategy if is_success else None),
                 outcome=outcome,
-                timestamp=healing_result.timestamp,
+                timestamp=getattr(
+                    healing_result, "timestamp", datetime.now(timezone.utc)
+                ),
             )
 
         capability_failure = None

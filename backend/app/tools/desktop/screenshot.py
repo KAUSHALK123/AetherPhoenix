@@ -1,6 +1,9 @@
 from typing import Optional, Tuple
 
-import pyautogui
+try:
+    import pyautogui
+except (ImportError, Exception):
+    pyautogui = None
 from PIL import Image
 
 from app.core.logging.logger import get_logger
