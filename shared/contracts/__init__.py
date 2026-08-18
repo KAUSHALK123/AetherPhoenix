@@ -53,6 +53,7 @@ from shared.contracts.memory import (
     MemoryQuery,
     sanitize_memory_content,
     sanitize_memory_metadata,
+)
 from shared.contracts.keyboard import (
     KeyboardActionRequest,
     KeyboardActionResult,
