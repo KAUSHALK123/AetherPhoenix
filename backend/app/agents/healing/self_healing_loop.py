@@ -212,7 +212,7 @@ class SelfHealingLoop(BaseAgent):
 
         if not can_retry:
             logger.warning(
-                f"RetryEngine blocked recovery attempt for task {task_id}: " f"{reason}"
+                f"RetryEngine blocked recovery attempt for task {task_id}: {reason}"
             )
             self.current_state = (
                 HealingState.EXHAUSTED

@@ -150,7 +150,7 @@ class RetryEngine:
 
         # 1. Per-task retry limit.
         if task.retry_count >= limit_retries:
-            msg = f"Task {task.task_id} reached max retry limit " f"of {limit_retries}."
+            msg = f"Task {task.task_id} reached max retry limit of {limit_retries}."
             logger.info(msg)
             return False, msg
 
@@ -186,7 +186,7 @@ class RetryEngine:
 
         # 4. Root-cause recoverability.
         if not is_recoverable:
-            msg = f"Root cause '{root_cause_category}' " "is non-recoverable."
+            msg = f"Root cause '{root_cause_category}' is non-recoverable."
             logger.info(msg)
             return False, msg
 
@@ -278,7 +278,7 @@ class RetryEngine:
             dep_task = state.tasks.get(dep_id)
 
             if not dep_task:
-                msg = f"Dependency task {dep_id} not found " "in workflow state."
+                msg = f"Dependency task {dep_id} not found in workflow state."
                 logger.info(msg)
 
                 return (
@@ -336,8 +336,7 @@ class RetryEngine:
 
                 if not granted_reqs:
                     msg = (
-                        f"Required permission '{perm_str}' "
-                        "is not granted for workflow."
+                        f"Required permission '{perm_str}' is not granted for workflow."
                     )
                     logger.info(msg)
 
@@ -349,7 +348,7 @@ class RetryEngine:
 
             except ValueError:
                 logger.warning(
-                    f"Task {task.task_id} has invalid permission " f"string: {perm_str}"
+                    f"Task {task.task_id} has invalid permission string: {perm_str}"
                 )
 
                 msg = f"Invalid permission specification: {perm_str}"
@@ -362,7 +361,7 @@ class RetryEngine:
 
         # 6. Recovery-plan retryability.
         if recovery_plan and not recovery_plan.is_retryable:
-            msg = "Recovery plan explicitly marks failure " "as non-retryable."
+            msg = "Recovery plan explicitly marks failure as non-retryable."
             logger.info(msg)
 
             return (
@@ -374,9 +373,7 @@ class RetryEngine:
         # 7. Error retryability.
         if error:
             if not error.is_recoverable:
-                msg = (
-                    f"Error {error.error_code} is explicitly " "marked non-recoverable."
-                )
+                msg = f"Error {error.error_code} is explicitly marked non-recoverable."
                 logger.info(msg)
 
                 return (
@@ -388,7 +385,7 @@ class RetryEngine:
             err_code = error.error_code.upper() if error.error_code else ""
 
             if err_code in NON_RETRYABLE_ERROR_CODES:
-                msg = f"Error code '{err_code}' is classified " "as non-retryable."
+                msg = f"Error code '{err_code}' is classified as non-retryable."
                 logger.info(msg)
 
                 return (
@@ -476,7 +473,7 @@ class RetryEngine:
         task = state.tasks.get(request.task_id)
 
         if not task:
-            msg = f"Task {request.task_id} not found " "in workflow state."
+            msg = f"Task {request.task_id} not found in workflow state."
             logger.error(msg)
 
             return RetryResult(
@@ -788,7 +785,7 @@ class RetryEngine:
                 root_cause_category = str(root_cause)
 
         logger.info(
-            "RetryEngine executing recovery for task %s " "(Attempt #%s)",
+            "RetryEngine executing recovery for task %s (Attempt #%s)",
             task.task_id,
             attempt_number,
         )
@@ -879,7 +876,7 @@ class RetryEngine:
 
             if replacement_tasks:
                 logger.info(
-                    "Submitting %s replacement tasks " "to WorkflowEngine.",
+                    "Submitting %s replacement tasks to WorkflowEngine.",
                     len(replacement_tasks),
                 )
 
@@ -901,7 +898,7 @@ class RetryEngine:
                 task.retry_count += 1
 
                 logger.info(
-                    "Re-enqueueing task %s " "(New retry count: %s)",
+                    "Re-enqueueing task %s (New retry count: %s)",
                     task.task_id,
                     task.retry_count,
                 )

@@ -54,6 +54,7 @@ class DesktopTool(Tool):
         )
         if permission_manager is None:
             from app.core.permissions import get_permission_manager
+
             permission_manager = get_permission_manager()
         self._permission_manager = permission_manager
         self._controller = controller or DesktopController(

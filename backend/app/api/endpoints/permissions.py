@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Any, List, Optional
+
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
@@ -23,19 +24,21 @@ class PermissionRequestAPIModel(BaseModel):
 
 
 def map_request_to_api_model(req: Any) -> PermissionRequestAPIModel:
-    req_id = str(getattr(req, "permission_id", None) or getattr(req, "request_id", None))
+    req_id = str(
+        getattr(req, "permission_id", None) or getattr(req, "request_id", None)
+    )
     wf_id = str(getattr(req, "workflow_id", ""))
     t_id = str(req.task_id) if getattr(req, "task_id", None) else None
-    
+
     perm_type = getattr(req.permission_type, "value", str(req.permission_type))
     reason = getattr(req, "reason", "")
     risk_obj = getattr(req, "risk_level", "MEDIUM")
     risk_level = getattr(risk_obj, "value", str(risk_obj))
     status = getattr(req.status, "value", str(req.status))
-    
+
     requested_at = getattr(req, "requested_at", None)
     expires_at = getattr(req, "expires_at", None)
-    
+
     return PermissionRequestAPIModel(
         request_id=req_id,
         workflow_id=wf_id,
@@ -90,11 +93,13 @@ async def approve_permission(request_id: str, message: Optional[str] = None):
         req = permission_manager.requests.get(request_id)
         if not req:
             raise HTTPException(status_code=404, detail="Request not found")
-        
+
         status_str = getattr(req.status, "value", str(req.status))
         if status_str == "EXPIRED":
-            raise HTTPException(status_code=400, detail="Permission request has expired")
-            
+            raise HTTPException(
+                status_code=400, detail="Permission request has expired"
+            )
+
         res = permission_manager.approve_permission(request_id, message)
         return res
     except HTTPException:
@@ -114,18 +119,20 @@ async def reject_permission(request_id: str, message: Optional[str] = None):
         req = permission_manager.requests.get(request_id)
         if not req:
             raise HTTPException(status_code=404, detail="Request not found")
-            
+
         status_str = getattr(req.status, "value", str(req.status))
         if status_str == "EXPIRED":
-            raise HTTPException(status_code=400, detail="Permission request has expired")
-            
+            raise HTTPException(
+                status_code=400, detail="Permission request has expired"
+            )
+
         res = permission_manager.reject_permission(request_id, message)
-        
+
         if not isinstance(res, PermissionResponse):
             res = PermissionResponse(
                 request_id=request_id,
                 status=PermissionStatus.REJECTED,
-                message=message or "Rejected"
+                message=message or "Rejected",
             )
         return res
     except HTTPException:

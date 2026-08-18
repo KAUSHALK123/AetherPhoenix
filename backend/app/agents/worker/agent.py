@@ -31,6 +31,7 @@ class WorkerAgent(BaseAgent):
         self.tool_registry = tool_registry
         if permission_manager is None:
             from app.core.permissions import get_permission_manager
+
             self.permission_manager = get_permission_manager()
         else:
             self.permission_manager = permission_manager

@@ -1,6 +1,6 @@
-import uuid
 import asyncio
-from datetime import datetime, timezone, timedelta
+import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
@@ -19,7 +19,12 @@ logger = get_logger(__name__)
 
 
 class AwaitablePermissionCheck:
-    def __init__(self, manager: "PermissionManager", request_id: str, timeout_seconds: float = None):
+    def __init__(
+        self,
+        manager: "PermissionManager",
+        request_id: str,
+        timeout_seconds: float = None,
+    ):
         self.manager = manager
         self.request_id = request_id
         if timeout_seconds is None:
@@ -49,7 +54,7 @@ class AwaitablePermissionCheck:
                 if not req:
                     logger.error(f"Request {self.request_id} not found in check")
                     return False
-                
+
                 status_str = getattr(req.status, "value", str(req.status))
                 if status_str in ("GRANTED", "APPROVED"):
                     return True
@@ -59,28 +64,43 @@ class AwaitablePermissionCheck:
                 # Handle expiration / timeout
                 elapsed = asyncio.get_event_loop().time() - start_time
                 if elapsed >= self.timeout_seconds:
-                    logger.warning(f"Permission request {self.request_id} timed out after {self.timeout_seconds}s")
-                    
+                    logger.warning(
+                        f"Permission request {self.request_id} timed out "
+                        f"after {self.timeout_seconds}s"
+                    )
+
                     if hasattr(req, "permission_id"):
-                        from shared.contracts.permission import PermissionStatus as SharedPermissionStatus
+                        from shared.contracts.permission import (
+                            PermissionStatus as SharedPermissionStatus,
+                        )
+
                         req.status = SharedPermissionStatus.EXPIRED
                     else:
                         req.status = PermissionStatus.EXPIRED
-                    
+
                     # Emit reject/expire event
                     if self.manager.event_bus:
                         from app.core.events.models import Event, EventType
+
                         try:
                             event = Event(
                                 event_type=EventType.PERMISSION_REJECTED,
                                 workflow_id=str(req.workflow_id),
-                                task_id=str(req.task_id) if getattr(req, "task_id", None) else None,
+                                task_id=str(req.task_id)
+                                if getattr(req, "task_id", None)
+                                else None,
                                 source_component="PermissionManager",
                                 payload={
-                                    "permission_id": str(getattr(req, "permission_id", self.request_id)),
-                                    "permission_type": getattr(req.permission_type, "value", str(req.permission_type)),
+                                    "permission_id": str(
+                                        getattr(req, "permission_id", self.request_id)
+                                    ),
+                                    "permission_type": getattr(
+                                        req.permission_type,
+                                        "value",
+                                        str(req.permission_type),
+                                    ),
                                     "reason": "Request timed out",
-                                }
+                                },
                             )
                             await self.manager.event_bus.publish(event)
                         except Exception as e:
@@ -188,13 +208,16 @@ class PermissionManager:
     def _publish_event_sync(self, event_type: str, req: Any):
         if not self.event_bus:
             return
-        
-        req_id = str(getattr(req, "permission_id", None) or getattr(req, "request_id", None))
+
+        req_id = str(
+            getattr(req, "permission_id", None) or getattr(req, "request_id", None)
+        )
         perm_type = getattr(req.permission_type, "value", str(req.permission_type))
         wf_id = str(getattr(req, "workflow_id", ""))
         t_id = str(req.task_id) if getattr(req, "task_id", None) else None
 
         from app.core.events.models import Event
+
         event = Event(
             event_type=event_type,
             workflow_id=wf_id,
@@ -205,7 +228,7 @@ class PermissionManager:
                 "permission_type": perm_type,
             },
         )
-        
+
         try:
             loop = asyncio.get_running_loop()
             if loop.is_running():
@@ -226,7 +249,9 @@ class PermissionManager:
             is_legacy = False
         elif len(args) >= 1:
             first_arg = args[0]
-            is_perm_enum = isinstance(first_arg, (PermissionType, SharedPermissionType)) or (
+            is_perm_enum = isinstance(
+                first_arg, (PermissionType, SharedPermissionType)
+            ) or (
                 hasattr(first_arg, "value")
                 and first_arg.__class__.__name__ == "PermissionType"
             )
@@ -267,19 +292,30 @@ class PermissionManager:
                 if (
                     str(getattr(req, "workflow_id", "")) == str(workflow_id)
                     and str(getattr(req, "task_id", "")) == str(task_id)
-                    and getattr(req.permission_type, "value", str(req.permission_type)) == perm_str
+                    and getattr(req.permission_type, "value", str(req.permission_type))
+                    == perm_str
                     and getattr(req.status, "value", str(req.status)) == "PENDING"
                 ):
                     # Check if already expired
                     if req.expires_at and datetime.now(timezone.utc) > req.expires_at:
                         if hasattr(req, "permission_id"):
-                            from shared.contracts.permission import PermissionStatus as SharedPermissionStatus
+                            from shared.contracts.permission import (
+                                PermissionStatus as SharedPermissionStatus,
+                            )
+
                             req.status = SharedPermissionStatus.EXPIRED
                         else:
                             req.status = PermissionStatus.EXPIRED
                         continue
-                    logger.info(f"Duplicate pending permission request found: {getattr(req, 'permission_id', getattr(req, 'request_id', ''))}")
-                    return AwaitablePermissionCheck(self, getattr(req, "permission_id", None) or getattr(req, "request_id", None))
+                    dup_id = getattr(
+                        req, "permission_id", getattr(req, "request_id", "")
+                    )
+                    logger.info(f"Duplicate pending permission request found: {dup_id}")
+                    return AwaitablePermissionCheck(
+                        self,
+                        getattr(req, "permission_id", None)
+                        or getattr(req, "request_id", None),
+                    )
 
             req = self.request_permission(
                 workflow_id=workflow_id,
@@ -288,13 +324,17 @@ class PermissionManager:
                 reason=f"Action: {action}",
                 context=context,
             )
-            
+
             # If the request is awaitable, get the underlying request
-            req_id = getattr(req, "permission_id", None) or getattr(req, "request_id", None)
+            req_id = getattr(req, "permission_id", None) or getattr(
+                req, "request_id", None
+            )
             if not req_id and hasattr(req, "r"):
                 # Handle legacy awaitable wrapper
-                req_id = getattr(req.r, "permission_id", None) or getattr(req.r, "request_id", None)
-            
+                req_id = getattr(req.r, "permission_id", None) or getattr(
+                    req.r, "request_id", None
+                )
+
             return AwaitablePermissionCheck(self, str(req_id))
 
     def request_permission(
@@ -343,15 +383,22 @@ class PermissionManager:
             for req in self.requests.values():
                 if (
                     str(getattr(req, "workflow_id", "")) == str(workflow_id)
-                    and getattr(req.permission_type, "value", str(req.permission_type)) == perm_str
+                    and getattr(req.permission_type, "value", str(req.permission_type))
+                    == perm_str
                     and getattr(req.status, "value", str(req.status)) == "PENDING"
                 ):
                     # Check if already expired
                     if req.expires_at and datetime.now(timezone.utc) > req.expires_at:
-                        from shared.contracts.permission import PermissionStatus as SharedPermissionStatus
+                        from shared.contracts.permission import (
+                            PermissionStatus as SharedPermissionStatus,
+                        )
+
                         req.status = SharedPermissionStatus.EXPIRED
                         continue
-                    logger.info(f"Duplicate pending permission request found (legacy): {req.permission_id}")
+                    logger.info(
+                        "Duplicate pending permission request found (legacy): "
+                        f"{req.permission_id}"
+                    )
                     return make_awaitable(req, manager=self, is_legacy=True)
 
             from shared.contracts.permission import (
@@ -380,7 +427,10 @@ class PermissionManager:
             self.requests[req.permission_id] = req
             self.requests[str(req.permission_id)] = req
 
-            logger.info(f"Permission requested (legacy): {permission_type} for workflow {workflow_id} (Expires: {expires_at})")
+            logger.info(
+                f"Permission requested (legacy): {permission_type} "
+                f"for workflow {workflow_id} (Expires: {expires_at})"
+            )
 
             return make_awaitable(req, manager=self, is_legacy=True)
         else:
@@ -397,22 +447,29 @@ class PermissionManager:
                 if (
                     str(getattr(req, "workflow_id", "")) == str(workflow_id)
                     and str(getattr(req, "task_id", "")) == str(task_id)
-                    and getattr(req.permission_type, "value", str(req.permission_type)) == perm_str
+                    and getattr(req.permission_type, "value", str(req.permission_type))
+                    == perm_str
                     and getattr(req.status, "value", str(req.status)) == "PENDING"
                 ):
                     # Check if already expired
                     if req.expires_at and datetime.now(timezone.utc) > req.expires_at:
                         if hasattr(req, "permission_id"):
-                            from shared.contracts.permission import PermissionStatus as SharedPermissionStatus
+                            from shared.contracts.permission import (
+                                PermissionStatus as SharedPermissionStatus,
+                            )
+
                             req.status = SharedPermissionStatus.EXPIRED
                         else:
                             req.status = PermissionStatus.EXPIRED
                         continue
-                    logger.info(f"Duplicate pending permission request found: {getattr(req, 'permission_id', getattr(req, 'request_id', ''))}")
+                    dup_id = getattr(
+                        req, "permission_id", getattr(req, "request_id", "")
+                    )
+                    logger.info(f"Duplicate pending permission request found: {dup_id}")
                     return make_awaitable(req)
 
             request_id = str(uuid.uuid4())
-            
+
             # Calculate expiration time
             try:
                 timeout_s = float(settings.PERMISSION_TIMEOUT_SECONDS)
@@ -432,7 +489,10 @@ class PermissionManager:
             )
             self.requests[request_id] = req
 
-            logger.info(f"Permission requested: {permission_type} for workflow {workflow_id} (Expires: {expires_at})")
+            logger.info(
+                f"Permission requested: {permission_type} "
+                f"for workflow {workflow_id} (Expires: {expires_at})"
+            )
 
             # Auto-approve based on mode
             if not PermissionPolicy.requires_approval(permission_type, self.mode):
@@ -506,8 +566,11 @@ class PermissionManager:
                 pass
             status_val = PermissionStatus.APPROVED
 
-        logger.info(f"Permission request {request_id} approved: {message or 'Approved'}")
+        logger.info(
+            f"Permission request {request_id} approved: {message or 'Approved'}"
+        )
         from app.core.events.models import EventType
+
         self._publish_event_sync(EventType.PERMISSION_GRANTED, req)
 
         return PermissionResponse(
@@ -532,8 +595,12 @@ class PermissionManager:
             except Exception:
                 pass
 
-            logger.info(f"Permission request {request_id} rejected (legacy): {message or 'Rejected'}")
+            logger.info(
+                f"Permission request {request_id} rejected (legacy): "
+                f"{message or 'Rejected'}"
+            )
             from app.core.events.models import EventType
+
             self._publish_event_sync(EventType.PERMISSION_REJECTED, req)
 
             async def _async_side_effects():
@@ -557,8 +624,11 @@ class PermissionManager:
             except Exception:
                 pass
 
-            logger.info(f"Permission request {request_id} rejected: {message or 'Rejected'}")
+            logger.info(
+                f"Permission request {request_id} rejected: {message or 'Rejected'}"
+            )
             from app.core.events.models import EventType
+
             self._publish_event_sync(EventType.PERMISSION_REJECTED, req)
 
             return PermissionResponse(
@@ -588,6 +658,7 @@ class PermissionManager:
             logger.info(f"Permission request {permission_id} granted legacy async")
             if self.event_bus:
                 from app.core.events.models import Event, EventType
+
                 await self.event_bus.publish(
                     Event(
                         event_type=EventType.PERMISSION_GRANTED,
@@ -630,6 +701,7 @@ class PermissionManager:
             logger.warning(f"Permission request {permission_id} rejected legacy async")
             if self.event_bus:
                 from app.core.events.models import Event, EventType
+
                 await self.event_bus.publish(
                     Event(
                         event_type=EventType.PERMISSION_REJECTED,
@@ -776,5 +848,6 @@ def get_permission_manager() -> PermissionManager:
     global _permission_manager_instance
     if _permission_manager_instance is None:
         from app.core.events.bus import get_event_bus
+
         _permission_manager_instance = PermissionManager(event_bus=get_event_bus())
     return _permission_manager_instance

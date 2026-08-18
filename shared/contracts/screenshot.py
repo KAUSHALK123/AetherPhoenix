@@ -66,7 +66,9 @@ class ScreenshotRequest(BaseModel):
     )
     output_path: Optional[str] = Field(
         default=None,
-        description="Optional custom destination path; if omitted, managed temp storage is used",
+        description=(
+            "Optional custom destination path; if omitted, managed temp storage is used"
+        ),
     )
     full_page: bool = Field(
         default=False,

@@ -100,6 +100,13 @@ from shared.contracts.risk import (
     RiskAnalysisResult,
     RiskAssessment,
 )
+from shared.contracts.screenshot import (
+    CaptureRegion,
+    CaptureSource,
+    ImageFormat,
+    ScreenshotRequest,
+    ScreenshotResult,
+)
 from shared.contracts.task import (
     DependencyType,
     RollbackInfo,
@@ -108,13 +115,6 @@ from shared.contracts.task import (
     TaskDependency,
     TaskPriority,
     TaskStatus,
-)
-from shared.contracts.screenshot import (
-    CaptureRegion,
-    CaptureSource,
-    ImageFormat,
-    ScreenshotRequest,
-    ScreenshotResult,
 )
 from shared.contracts.tool import Tool, ToolHealth, ToolState
 from shared.contracts.workflow import (

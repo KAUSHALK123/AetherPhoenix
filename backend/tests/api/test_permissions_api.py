@@ -1,8 +1,8 @@
-import pytest
 from fastapi.testclient import TestClient
-from app.main import app
+
 from app.core.permissions.manager import get_permission_manager
-from app.core.permissions.models import PermissionType, PermissionStatus
+from app.core.permissions.models import PermissionStatus, PermissionType
+from app.main import app
 
 client = TestClient(app)
 permission_manager = get_permission_manager()

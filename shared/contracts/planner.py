@@ -130,7 +130,9 @@ class PlannerRequest(BaseModel):
     )
     feedback: PlannerFeedback | None = Field(
         None,
-        description="Optional structured execution/healing feedback from the previous runs.",
+        description=(
+            "Optional structured execution/healing feedback from the previous runs."
+        ),
     )
 
 

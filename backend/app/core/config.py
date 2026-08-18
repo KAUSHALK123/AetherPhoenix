@@ -134,7 +134,11 @@ class RuntimeSettings(BaseSettings):
             raise ValueError(f"MAX_WORKERS must be at least 1, got {v}")
         return v
 
-    @field_validator("EXECUTION_TIMEOUT_SECONDS", "PERMISSION_TIMEOUT_SECONDS", "HEARTBEAT_INTERVAL_SECONDS")
+    @field_validator(
+        "EXECUTION_TIMEOUT_SECONDS",
+        "PERMISSION_TIMEOUT_SECONDS",
+        "HEARTBEAT_INTERVAL_SECONDS",
+    )
     @classmethod
     def validate_positive_seconds(cls, v: int) -> int:
         """Validate timeout and interval duration values."""

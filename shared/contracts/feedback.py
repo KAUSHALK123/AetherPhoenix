@@ -70,6 +70,7 @@ class PlannerFeedback(BaseModel):
             and not self.capability_failure
         ):
             raise ValueError(
-                "Feedback must contain at least a failure summary, healing summary, or capability failure info."
+                "Feedback must contain at least a failure summary, "
+                "healing summary, or capability failure info."
             )
         return self

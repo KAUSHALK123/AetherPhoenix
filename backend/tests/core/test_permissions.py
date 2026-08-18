@@ -1,5 +1,6 @@
 """Unit tests for PermissionManager core runtime component."""
 
+import asyncio
 from uuid import uuid4
 
 import pytest
@@ -276,23 +277,23 @@ def test_invalid_request_id():
         manager.reject_permission("invalid-id")
 
 
-import asyncio
-
 def test_duplicate_request_returns_same_request():
     from app.core.permissions.models import PermissionType
+
     manager = PermissionManager(mode=ExecutionMode.SAFE)
     req1 = manager.request_permission("wf-1", "t-1", PermissionType.FILE_READ, "read")
     req2 = manager.request_permission("wf-1", "t-1", PermissionType.FILE_READ, "read")
-    
+
     assert req1.request_id == req2.request_id
 
 
 @pytest.mark.asyncio
 async def test_permission_timeout_expires():
     from app.core.permissions.models import PermissionType
+
     manager = PermissionManager(mode=ExecutionMode.SAFE)
     req = manager.request_permission("wf-1", "t-1", PermissionType.FILE_READ, "read")
-    
+
     check = manager.check_permission(
         action="test action",
         permission_type=PermissionType.FILE_READ,
@@ -300,7 +301,7 @@ async def test_permission_timeout_expires():
         task_id="t-1",
         timeout_seconds=0.01,
     )
-    
+
     is_approved = await check
     assert is_approved is False
     assert req.status == PermissionStatus.EXPIRED
@@ -309,8 +310,9 @@ async def test_permission_timeout_expires():
 @pytest.mark.asyncio
 async def test_awaitable_permission_check_blocking():
     from app.core.permissions.models import PermissionType
+
     manager = PermissionManager(mode=ExecutionMode.SAFE)
-    
+
     check = manager.check_permission(
         action="test action",
         permission_type=PermissionType.FILE_READ,
@@ -318,14 +320,14 @@ async def test_awaitable_permission_check_blocking():
         task_id="t-1",
         timeout_seconds=5.0,
     )
-    
+
     async def approve_soon():
         await asyncio.sleep(0.1)
         pending = manager.get_pending_requests("wf-1")
         if pending:
             manager.approve_permission(pending[0].request_id)
-            
+
     asyncio.create_task(approve_soon())
-    
+
     is_approved = await check
     assert is_approved is True
