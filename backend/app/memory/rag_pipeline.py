@@ -1,4 +1,3 @@
-import logging
 import time
 from typing import Any
 
@@ -34,7 +33,8 @@ class RAGContextBuilder:
         items: list[RetrievedContextItem], query: str
     ) -> str:
         """
-        Formats ranked context items into a clean Markdown block ready for agent prompt injection.
+        Formats ranked context items into a clean Markdown block ready
+        for agent prompt injection.
         """
         if not items:
             return ""
@@ -63,7 +63,8 @@ class RAGContextBuilder:
             meta_str = f" | Metadata: [{', '.join(meta_parts)}]" if meta_parts else ""
 
             blocks.append(
-                f"#### Context Item {idx} (Source: {source_str} | Score: {score_str}{sid_str}{meta_str})\n"
+                f"#### Context Item {idx} (Source: {source_str} | "
+                f"Score: {score_str}{sid_str}{meta_str})\n"
                 f"{item.content.strip()}\n"
             )
 
@@ -121,12 +122,15 @@ class RAGPipelineService:
                         "execution_time_ms": 0.0,
                     },
                 )
+            cat_val = (
+                category.value if isinstance(category, MemoryCategory) else category
+            )
             query_obj = RetrievalQuery(
                 query_text=query,
                 top_k=top_k,
                 min_score=min_score,
                 session_id=session_id,
-                category=category.value if isinstance(category, MemoryCategory) else category,
+                category=cat_val,
                 source_types=source_types,
                 metadata_filter=metadata_filter or {},
             )
@@ -152,9 +156,11 @@ class RAGPipelineService:
             filter_meta = dict(query_obj.metadata_filter or {})
             sources_searched.append(RAGSourceType.VECTOR_DB.value)
 
+            # Retrieve wider candidate pool before ranking
+            candidate_top_k = query_obj.top_k * 2
             vector_results = await self.vector_db.search_similar(
                 query_text=query_obj.query_text,
-                top_k=query_obj.top_k * 2,  # Retrieve wider candidate pool before ranking
+                top_k=candidate_top_k,
                 filter_metadata=filter_meta if filter_meta else None,
                 min_score=query_obj.min_score,
             )
@@ -229,7 +235,8 @@ class RAGPipelineService:
                         continue
                     content_str = (
                         f"Task '{tr.task_name}' (Status: {tr.status.value}). "
-                        f"Agent: {tr.assigned_agent}. Output: {tr.output_summary or 'N/A'}"
+                        f"Agent: {tr.assigned_agent}. "
+                        f"Output: {tr.output_summary or 'N/A'}"
                     )
                     item = RetrievedContextItem(
                         content=sanitize_memory_content(content_str),
@@ -286,8 +293,8 @@ class RAGPipelineService:
             )
 
             self.logger.info(
-                f"RAG Pipeline retrieval finished: found {len(final_ranked_items)} items "
-                f"in {execution_time_ms:.1f}ms",
+                f"RAG Pipeline retrieval finished: found "
+                f"{len(final_ranked_items)} items in {execution_time_ms:.1f}ms",
                 extra_context={
                     "total_retrieved": len(final_ranked_items),
                     "execution_time_ms": round(execution_time_ms, 2),

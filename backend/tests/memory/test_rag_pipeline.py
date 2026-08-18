@@ -1,9 +1,7 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
-
-from shared.contracts.memory import MemoryCategory
 from shared.contracts.planner import PlannerRequest
 from shared.contracts.rag import RAGSourceType, RetrievalQuery
 from shared.contracts.task import Task, TaskCategory
@@ -16,12 +14,12 @@ from app.memory.rag_pipeline import (
     reset_rag_pipeline,
 )
 from app.memory.task_history import TaskHistoryService
-from app.memory.vector_db import VectorDatabaseService, reset_vector_db_service
+from app.memory.vector_db import reset_vector_db_service
 
 
 @pytest.fixture
 def clean_pipeline():
-    """Provides a fresh RAGPipelineService instance with clean memory backends."""
+    """Provides a fresh RAGPipelineService instance with clean backends."""
     vector_db = reset_vector_db_service()
     conv_mem = ConversationMemoryService()
     task_hist = TaskHistoryService()
@@ -35,8 +33,10 @@ def clean_pipeline():
 
 @pytest.mark.asyncio
 async def test_empty_knowledge_base(clean_pipeline):
-    """Verifies retrieval against an empty knowledge base returns clean empty RAGContext."""
-    res = await clean_pipeline.retrieve("What is the preferred dark mode color theme?")
+    """Verifies retrieval against empty knowledge base returns empty context."""
+    res = await clean_pipeline.retrieve(
+        "What is the preferred dark mode color theme?"
+    )
     assert res.total_retrieved == 0
     assert res.items == []
     assert res.formatted_context == ""
@@ -45,11 +45,14 @@ async def test_empty_knowledge_base(clean_pipeline):
 
 @pytest.mark.asyncio
 async def test_relevant_query_retrieval(clean_pipeline):
-    """Verifies relevant information can be stored and retrieved using a semantic query."""
+    """Verifies storing and retrieving relevant information via semantic query."""
     m1 = uuid4()
     await clean_pipeline.vector_db.store_memory(
         memory_id=m1,
-        text="The user prefers slide presentations with a dark mode glassmorphism theme.",
+        text=(
+            "The user prefers slide presentations with a dark mode "
+            "glassmorphism theme."
+        ),
         metadata={"category": "preference", "session_id": "session_101"},
     )
 
@@ -67,7 +70,7 @@ async def test_relevant_query_retrieval(clean_pipeline):
 
 @pytest.mark.asyncio
 async def test_irrelevant_query_and_min_score_filtering(clean_pipeline):
-    """Verifies low-relevance or irrelevant results are filtered by min_score threshold."""
+    """Verifies irrelevant results are filtered out by min_score threshold."""
     m1 = uuid4()
     await clean_pipeline.vector_db.store_memory(
         memory_id=m1,
@@ -87,7 +90,7 @@ async def test_irrelevant_query_and_min_score_filtering(clean_pipeline):
 
 @pytest.mark.asyncio
 async def test_multiple_matching_memories_ranking(clean_pipeline):
-    """Verifies ranking multiple matching memories in descending order of similarity score."""
+    """Verifies ranking multiple memories in descending order of score."""
     m1 = uuid4()
     m2 = uuid4()
     m3 = uuid4()
@@ -102,9 +105,10 @@ async def test_multiple_matching_memories_ranking(clean_pipeline):
         m3, "Electric vehicles run on high capacity lithium-ion battery packs."
     )
 
-    res = await clean_pipeline.retrieve(query="Italian pizza dinner food", top_k=5)
+    res = await clean_pipeline.retrieve(
+        query="Italian pizza dinner food", top_k=5
+    )
     assert res.total_retrieved >= 2
-    # Ensure items are ordered by score descending
     scores = [item.score for item in res.items]
     assert scores == sorted(scores, reverse=True)
 
@@ -114,8 +118,9 @@ async def test_retrieval_with_retrieval_query_object(clean_pipeline):
     """Verifies execution using a structured RetrievalQuery contract object."""
     m1 = uuid4()
     await clean_pipeline.vector_db.store_memory(
-        m1, "Project uses PostgreSQL database in production environment.",
-        metadata={"domain": "database"}
+        m1,
+        "Project uses PostgreSQL database in production environment.",
+        metadata={"domain": "database"},
     )
 
     query_contract = RetrievalQuery(
@@ -150,7 +155,9 @@ async def test_context_formatting():
         metadata={"category": "preference"},
     )
 
-    formatted = RAGContextBuilder.build_formatted_context([item1, item2], query="test")
+    formatted = RAGContextBuilder.build_formatted_context(
+        [item1, item2], query="test"
+    )
     assert "### Relevant Context (Retrieved Knowledge)" in formatted
     assert "Context Item 1 (Source: conversation_memory | Score: 0.920" in formatted
     assert "User instruction: Always format output as JSON." in formatted
@@ -202,14 +209,19 @@ async def test_agent_context_injection_worker(clean_pipeline):
 
     assert "rag_context" in enriched_task.inputs
     assert "retrieved_knowledge" in enriched_task.inputs
-    assert "Quarterly Financial Analysis" in enriched_task.inputs["retrieved_knowledge"]
+    assert (
+        "Quarterly Financial Analysis"
+        in enriched_task.inputs["retrieved_knowledge"]
+    )
 
 
 @pytest.mark.asyncio
 async def test_graceful_retrieval_failure_handling():
-    """Verifies system handles internal backend exceptions gracefully without crashing."""
+    """Verifies internal backend exceptions are handled gracefully."""
     mock_vector_db = AsyncMock()
-    mock_vector_db.search_similar.side_effect = RuntimeError("Database connection failed")
+    mock_vector_db.search_similar.side_effect = RuntimeError(
+        "Database connection failed"
+    )
 
     pipeline = RAGPipelineService(vector_db=mock_vector_db)
     res = await pipeline.retrieve("Test query")
@@ -217,7 +229,8 @@ async def test_graceful_retrieval_failure_handling():
     assert res.total_retrieved == 0
     assert res.items == []
     assert res.retrieval_metadata.get("status") == "error"
-    assert "Database connection failed" in res.retrieval_metadata.get("error_message", "")
+    err_msg = res.retrieval_metadata.get("error_message", "")
+    assert "Database connection failed" in err_msg
 
 
 @pytest.mark.asyncio
