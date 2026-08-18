@@ -1,13 +1,42 @@
+"""
+AetherPhoenix Memory and Knowledge Subsystem.
+
+Provides centralized memory lifecycle management, conversation memory,
+vector database persistence, task history, RAG pipeline, context retrieval,
+and multi-agent memory integration hubs.
+"""
+
 from app.memory.context_retrieval import (
     ContextRetrievalService,
     get_context_retrieval_service,
     reset_context_retrieval_service,
+)
+from app.memory.conversation_memory import (
+    ConversationMemoryService,
+)
+from app.memory.integration_hub import (
+    MemoryIntegrationHub,
+    get_memory_integration_hub,
+    reset_memory_integration_hub,
+)
+from app.memory.manager import (
+    MemoryManager,
+    get_memory_manager,
+    reset_memory_manager,
+)
+from app.memory.planner_integration import (
+    PlannerMemoryContextAdapter,
 )
 from app.memory.rag_pipeline import (
     RAGContextBuilder,
     RAGPipelineService,
     get_rag_pipeline,
     reset_rag_pipeline,
+)
+from app.memory.storage import (
+    BaseMemoryStorage,
+    InMemoryMemoryStorage,
+    SQLAlchemyMemoryStorage,
 )
 from app.memory.task_history import (
     TaskHistoryService,
@@ -29,6 +58,21 @@ __all__ = [
     "ContextRetrievalService",
     "get_context_retrieval_service",
     "reset_context_retrieval_service",
+    "ConversationMemoryService",
+    "MemoryIntegrationHub",
+    "get_memory_integration_hub",
+    "reset_memory_integration_hub",
+    "MemoryManager",
+    "get_memory_manager",
+    "reset_memory_manager",
+    "PlannerMemoryContextAdapter",
+    "RAGPipelineService",
+    "RAGContextBuilder",
+    "get_rag_pipeline",
+    "reset_rag_pipeline",
+    "BaseMemoryStorage",
+    "InMemoryMemoryStorage",
+    "SQLAlchemyMemoryStorage",
     "TaskHistoryService",
     "get_task_history_service",
     "reset_task_history_service",
@@ -40,8 +84,4 @@ __all__ = [
     "VectorDatabaseService",
     "get_vector_db_service",
     "reset_vector_db_service",
-    "RAGPipelineService",
-    "RAGContextBuilder",
-    "get_rag_pipeline",
-    "reset_rag_pipeline",
 ]
