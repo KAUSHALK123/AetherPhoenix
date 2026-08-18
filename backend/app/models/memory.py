@@ -70,9 +70,7 @@ class ConversationMemoryModel(Base):
         )
 
     @classmethod
-    def from_contract(
-        cls, entry: ConversationMemoryEntry
-    ) -> "ConversationMemoryModel":
+    def from_contract(cls, entry: ConversationMemoryEntry) -> "ConversationMemoryModel":
         """Converts shared contract model to ORM model."""
         metadata_str = json.dumps(entry.metadata) if entry.metadata else "{}"
         return cls(
@@ -81,9 +79,11 @@ class ConversationMemoryModel(Base):
             role=entry.role,
             content=entry.content,
             relevance_score=entry.relevance_score,
-            category=entry.category.value
-            if isinstance(entry.category, MemoryCategory)
-            else str(entry.category),
+            category=(
+                entry.category.value
+                if isinstance(entry.category, MemoryCategory)
+                else str(entry.category)
+            ),
             metadata_json=metadata_str,
             created_at=entry.created_at,
             updated_at=entry.updated_at,

@@ -38,15 +38,14 @@ class PlannerChatInterface:
 
         enriched_request = request
         if self.memory_adapter:
-            enriched_request = (
-                self.memory_adapter.attach_memory_to_planner_request(request)
+            enriched_request = self.memory_adapter.attach_memory_to_planner_request(
+                request
             )
 
         session = self.session_manager.get_or_create_session(
             enriched_request.session_id
         )
         session.add_request(enriched_request)
-
 
         # Note: Do NOT implement planning logic here as per constraints.
         # This will later forward to Intent Analyzer -> Context Analyzer, etc.
