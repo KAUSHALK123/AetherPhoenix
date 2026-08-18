@@ -3,6 +3,19 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
+from shared.contracts.permission import (
+    PermissionRequest as SharedPermissionRequest,
+)
+from shared.contracts.permission import (
+    PermissionStatus as SharedPermissionStatus,
+)
+from shared.contracts.permission import (
+    PermissionType as SharedPermissionType,
+)
+from shared.contracts.permission import (
+    RiskLevel,
+)
+
 from app.core.config import settings
 from app.core.logging import get_logger
 
@@ -13,7 +26,7 @@ from .models import (
     PermissionStatus,
     PermissionType,
 )
-from .policies import PermissionPolicy
+from .policies import PermissionPolicy, PolicyDecision, SafeExecutionPolicy
 
 logger = get_logger(__name__)
 
@@ -70,10 +83,6 @@ class AwaitablePermissionCheck:
                     )
 
                     if hasattr(req, "permission_id"):
-                        from shared.contracts.permission import (
-                            PermissionStatus as SharedPermissionStatus,
-                        )
-
                         req.status = SharedPermissionStatus.EXPIRED
                     else:
                         req.status = PermissionStatus.EXPIRED
@@ -157,7 +166,7 @@ class AwaitableRequestWrapper:
                         )
                     )
 
-                if self._manager.auto_approve_low_risk and risk_val == "LOW":
+                if self._manager.auto_approve_low_risk and risk_val in ("LOW", "SAFE"):
                     await self._manager.grant_permission(self.permission_id)
             return self._request
 
@@ -190,22 +199,65 @@ class AwaitableBool:
 
 
 class PermissionManager:
+    """
+    Core security coordinator implementing Safe Execution Mode policies,
+    action risk evaluations, permission approval lifecycles, and audit logging.
+    """
+
     def __init__(
         self,
         mode: ExecutionMode = ExecutionMode.SAFE,
         event_bus: Optional[Any] = None,
         auto_approve_low_risk: bool = True,
+        max_actions_per_task: int = 100,
         *args,
         **kwargs,
     ):
         self.mode = mode
         self.event_bus = event_bus
         self.auto_approve_low_risk = auto_approve_low_risk
+        self.max_actions_per_task = max_actions_per_task
         self.requests: Dict[str, Any] = {}
         self._permissions = self.requests
+        self._action_counts: Dict[str, int] = {}
 
-    def set_mode(self, mode: ExecutionMode):
-        self.mode = mode
+    def set_mode(self, mode: ExecutionMode | str):
+        if isinstance(mode, str):
+            self.mode = ExecutionMode(mode)
+        else:
+            self.mode = mode
+
+    def evaluate_action(
+        self,
+        action: str,
+        context: Optional[Dict[str, Any]] = None,
+        permission_type: Optional[PermissionType] = None,
+    ) -> PolicyDecision:
+        """
+        Evaluates an action against the Safe Execution Policy.
+        """
+        return SafeExecutionPolicy.evaluate(
+            action=action,
+            mode=self.mode,
+            context=context,
+            permission_type=permission_type,
+        )
+
+    def record_action_execution(self, task_id: Optional[str]) -> bool:
+        """
+        Tracks execution limits per task. Returns False if execution limit exceeded.
+        """
+        if not task_id:
+            return True
+        curr = self._action_counts.get(str(task_id), 0) + 1
+        self._action_counts[str(task_id)] = curr
+        if curr > self.max_actions_per_task:
+            logger.warning(
+                f"Execution limit exceeded for task {task_id}: "
+                f"{curr} > {self.max_actions_per_task}"
+            )
+            return False
+        return True
 
     def _publish_event_sync(self, event_type: str, req: Any):
         if not self.event_bus:
@@ -240,12 +292,11 @@ class PermissionManager:
 
     def check_permission(self, *args, **kwargs) -> Any:
         """
-        Dual signature check.
+        Dual signature check with Safe Execution Policy integration.
         Legacy: check_permission(self, permission_type, workflow_id)
-        New: check_permission(self, action, permission_type)
+        New: check_permission(self, action, permission_type, workflow_id,
+                              task_id, context)
         """
-        from shared.contracts.permission import PermissionType as SharedPermissionType
-
         is_legacy = True
         if "action" in kwargs:
             is_legacy = False
@@ -287,6 +338,48 @@ class PermissionManager:
             workflow_id = kwargs.get("workflow_id", "test")
             task_id = kwargs.get("task_id", "test")
             context = kwargs.get("context", {})
+            timeout_seconds = kwargs.get("timeout_seconds")
+
+            # Check execution limits
+            if task_id and not self.record_action_execution(task_id):
+                logger.error(f"Action '{action}' blocked: execution limit exceeded")
+                return AwaitableBool(False)
+
+            # Evaluate against Safe Execution Policy
+            decision = self.evaluate_action(action, context, permission_type)
+            if not decision.allowed:
+                logger.warning(
+                    f"Action '{action}' blocked by policy: {decision.reason}"
+                )
+                if self.event_bus:
+                    from app.core.events.models import Event, EventType
+
+                    event = Event(
+                        event_type=EventType.PERMISSION_REJECTED,
+                        workflow_id=str(workflow_id),
+                        task_id=str(task_id) if task_id else None,
+                        source_component="PermissionManager",
+                        payload={
+                            "action": action,
+                            "reason": decision.reason,
+                            "risk_level": decision.risk_level.value,
+                            "blocked": True,
+                        },
+                    )
+                    try:
+                        loop = asyncio.get_running_loop()
+                        if loop.is_running():
+                            loop.create_task(self.event_bus.publish(event))
+                    except RuntimeError:
+                        pass
+                return AwaitableBool(False)
+
+            # In Safe/Assisted mode, if low risk, allow immediately
+            if not decision.requires_approval:
+                logger.debug(
+                    f"Action '{action}' allowed (Risk: {decision.risk_level.value})"
+                )
+                return AwaitableBool(True)
 
             # Check for duplicate pending requests
             perm_str = getattr(permission_type, "value", str(permission_type))
@@ -301,10 +394,6 @@ class PermissionManager:
                     # Check if already expired
                     if req.expires_at and datetime.now(timezone.utc) > req.expires_at:
                         if hasattr(req, "permission_id"):
-                            from shared.contracts.permission import (
-                                PermissionStatus as SharedPermissionStatus,
-                            )
-
                             req.status = SharedPermissionStatus.EXPIRED
                         else:
                             req.status = PermissionStatus.EXPIRED
@@ -317,6 +406,7 @@ class PermissionManager:
                         self,
                         getattr(req, "permission_id", None)
                         or getattr(req, "request_id", None),
+                        timeout_seconds=timeout_seconds,
                     )
 
             req = self.request_permission(
@@ -337,7 +427,9 @@ class PermissionManager:
                     req.r, "request_id", None
                 )
 
-            return AwaitablePermissionCheck(self, str(req_id))
+            return AwaitablePermissionCheck(
+                self, str(req_id), timeout_seconds=timeout_seconds
+            )
 
     def request_permission(
         self,
@@ -346,15 +438,12 @@ class PermissionManager:
         **kwargs,
     ) -> Any:
         """
-        Dual signature request.
+        Dual signature request with policy risk evaluation.
         Legacy: request_permission(self, workflow_id, permission_type, reason,
                                    risk_level=RiskLevel.MEDIUM, task_id=None)
         New: request_permission(self, workflow_id, task_id, permission_type,
                                 reason, context=None)
         """
-        from shared.contracts.permission import PermissionType as SharedPermissionType
-        from shared.contracts.permission import RiskLevel as SharedRiskLevel
-
         is_legacy = False
         if len(args) >= 1:
             first_arg = args[0]
@@ -374,9 +463,7 @@ class PermissionManager:
             )
             reason = args[1] if len(args) > 1 else kwargs.get("reason")
             risk_level = (
-                args[2]
-                if len(args) > 2
-                else kwargs.get("risk_level", SharedRiskLevel.MEDIUM)
+                args[2] if len(args) > 2 else kwargs.get("risk_level", RiskLevel.MEDIUM)
             )
             task_id = args[3] if len(args) > 3 else kwargs.get("task_id")
 
@@ -391,10 +478,6 @@ class PermissionManager:
                 ):
                     # Check if already expired
                     if req.expires_at and datetime.now(timezone.utc) > req.expires_at:
-                        from shared.contracts.permission import (
-                            PermissionStatus as SharedPermissionStatus,
-                        )
-
                         req.status = SharedPermissionStatus.EXPIRED
                         continue
                     logger.info(
@@ -402,13 +485,6 @@ class PermissionManager:
                         f"{req.permission_id}"
                     )
                     return make_awaitable(req, manager=self, is_legacy=True)
-
-            from shared.contracts.permission import (
-                PermissionRequest as SharedPermissionRequest,
-            )
-            from shared.contracts.permission import (
-                PermissionStatus as SharedPermissionStatus,
-            )
 
             # Calculate expiration time
             try:
@@ -456,10 +532,6 @@ class PermissionManager:
                     # Check if already expired
                     if req.expires_at and datetime.now(timezone.utc) > req.expires_at:
                         if hasattr(req, "permission_id"):
-                            from shared.contracts.permission import (
-                                PermissionStatus as SharedPermissionStatus,
-                            )
-
                             req.status = SharedPermissionStatus.EXPIRED
                         else:
                             req.status = PermissionStatus.EXPIRED
@@ -516,10 +588,6 @@ class PermissionManager:
 
         # Handle shared model
         if hasattr(req, "permission_id"):
-            from shared.contracts.permission import (
-                PermissionStatus as SharedPermissionStatus,
-            )
-
             # Policy-based check using string conversion
             perm_str = getattr(req.permission_type, "value", str(req.permission_type))
             try:
@@ -550,10 +618,6 @@ class PermissionManager:
 
         # Update status depending on request model type
         if hasattr(req, "permission_id"):
-            from shared.contracts.permission import (
-                PermissionStatus as SharedPermissionStatus,
-            )
-
             req.status = SharedPermissionStatus.GRANTED
             try:
                 req.responded_at = datetime.now(timezone.utc)
@@ -587,10 +651,6 @@ class PermissionManager:
 
         # Update status depending on request model type
         if hasattr(req, "permission_id"):
-            from shared.contracts.permission import (
-                PermissionStatus as SharedPermissionStatus,
-            )
-
             req.status = SharedPermissionStatus.REJECTED
             try:
                 req.responded_at = datetime.now(timezone.utc)
@@ -608,7 +668,7 @@ class PermissionManager:
             async def _async_side_effects():
                 return req
 
-            class AwaitableRequestWrapper:
+            class AwaitableLegacyReject:
                 def __init__(self, r):
                     self.r = r
 
@@ -618,7 +678,7 @@ class PermissionManager:
                 def __await__(self):
                     return _async_side_effects().__await__()
 
-            return AwaitableRequestWrapper(req)
+            return AwaitableLegacyReject(req)
         else:
             req.status = PermissionStatus.REJECTED
             try:
@@ -647,10 +707,6 @@ class PermissionManager:
             raise KeyError(f"Permission request {permission_id} not found.")
 
         if hasattr(request, "permission_id"):
-            from shared.contracts.permission import (
-                PermissionStatus as SharedPermissionStatus,
-            )
-
             request.status = SharedPermissionStatus.GRANTED
             try:
                 request.responded_at = datetime.now(timezone.utc)
@@ -690,10 +746,6 @@ class PermissionManager:
             raise KeyError(f"Permission request {permission_id} not found.")
 
         if hasattr(request, "permission_id"):
-            from shared.contracts.permission import (
-                PermissionStatus as SharedPermissionStatus,
-            )
-
             request.status = SharedPermissionStatus.REJECTED
             try:
                 request.responded_at = datetime.now(timezone.utc)
@@ -725,7 +777,6 @@ class PermissionManager:
 
         return request
 
-    # Keep async reject_permission mapping for legacy calls that await it
     async def reject_permission_async(self, permission_id: Any) -> Any:
         return await self.reject_permission_legacy(permission_id)
 

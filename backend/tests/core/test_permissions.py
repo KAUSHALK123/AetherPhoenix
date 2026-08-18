@@ -124,22 +124,16 @@ def test_enforce_permission_success_and_failure(permission_manager):
     assert exc_info.value.code == "PERMISSION_DENIED"
 
 
-def test_list_permissions_filtering(permission_manager):
+@pytest.mark.asyncio
+async def test_list_permissions_filtering(permission_manager):
     w1 = uuid4()
     w2 = uuid4()
 
-    # Add items synchronously for list testing
-    import asyncio
-
-    asyncio.run(
-        permission_manager.request_permission(
-            w1, PermissionType.BROWSER_ACCESS, "testing", RiskLevel.MEDIUM
-        )
+    await permission_manager.request_permission(
+        w1, PermissionType.BROWSER_ACCESS, "testing", RiskLevel.MEDIUM
     )
-    asyncio.run(
-        permission_manager.request_permission(
-            w2, PermissionType.INTERNET, "testing", RiskLevel.LOW
-        )
+    await permission_manager.request_permission(
+        w2, PermissionType.INTERNET, "testing", RiskLevel.LOW
     )
 
     w1_perms = permission_manager.list_permissions(workflow_id=w1)
