@@ -43,13 +43,13 @@ export const DesktopNav: React.FC<DesktopNavProps> = ({ isChatPage = false }) =>
           />
         )}
 
-        {/* Drawer Overlay Menu (Glassmorphic to show ocean background behind it with 50px rounded corners on the pull-out edge) */}
+        {/* Drawer Overlay Menu (Identical ultra-transparent glassmorphism to match center cards) */}
         <div
-          className={`fixed left-0 top-0 h-full w-80 bg-slate-950/80 backdrop-blur-2xl border-r border-slate-800/80 rounded-r-[50px] p-6 flex flex-col gap-6 z-50 shadow-2xl transition-transform duration-300 ease-in-out ${
+          className={`fixed left-0 top-0 h-full w-80 glass-card rounded-r-[50px] p-6 flex flex-col gap-6 z-50 transition-transform duration-300 ease-in-out ${
             isOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          <div className="flex items-center justify-between pb-5 border-b border-slate-800/80">
+          <div className="flex items-center justify-between pb-5 border-b border-white/10">
             <Link
               to="/"
               onClick={() => setIsOpen(false)}
@@ -59,19 +59,19 @@ export const DesktopNav: React.FC<DesktopNavProps> = ({ isChatPage = false }) =>
                 <img src="/logo.png" alt="Logo" className="w-9 h-9 object-contain drop-shadow" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-white group-hover:text-indigo-300 transition-colors">AetherPhoenix</h2>
-                <p className="text-[10px] font-mono text-indigo-400">Desktop Suite</p>
+                <h2 className="text-base font-bold text-white group-hover:text-cyan-200 transition-colors drop-shadow">AetherPhoenix</h2>
+                <p className="text-[10px] font-mono text-cyan-300 drop-shadow">Desktop Suite</p>
               </div>
             </Link>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="p-2 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-lg">close</span>
             </button>
           </div>
 
-          <div className="space-y-1.5 flex-1">
+          <div className="space-y-2 flex-1">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
@@ -80,18 +80,18 @@ export const DesktopNav: React.FC<DesktopNavProps> = ({ isChatPage = false }) =>
                 className={({ isActive }) =>
                   `flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-medium transition-all ${
                     isActive
-                      ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 shadow-inner'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                      ? 'bg-white/20 text-white border border-white/30 shadow-inner backdrop-blur-md font-semibold'
+                      : 'text-slate-200 hover:text-white hover:bg-white/10'
                   }`
                 }
               >
-                <span className="material-symbols-outlined text-xl">{item.icon}</span>
-                <span>{item.label}</span>
+                <span className="material-symbols-outlined text-xl drop-shadow">{item.icon}</span>
+                <span className="drop-shadow">{item.label}</span>
               </NavLink>
             ))}
           </div>
 
-          <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500 font-mono">
+          <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-300 font-mono drop-shadow">
             <span>v1.0.0-Beta</span>
           </div>
         </div>
