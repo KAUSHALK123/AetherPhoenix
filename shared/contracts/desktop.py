@@ -73,9 +73,7 @@ class MouseActionRequest(BaseModel):
         le=60.0,
         description="Execution timeout in seconds",
     )
-    workflow_id: UUID | None = Field(
-        default=None, description="Associated workflow ID"
-    )
+    workflow_id: UUID | None = Field(default=None, description="Associated workflow ID")
     task_id: UUID | None = Field(default=None, description="Associated task ID")
 
 

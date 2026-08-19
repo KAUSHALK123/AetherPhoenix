@@ -120,6 +120,7 @@ async def test_screenshot_worker_agent_integration(tmp_path, mock_img):
     class MockPermissionManager:
         async def check_permission(self, *args, **kwargs) -> bool:
             return True
+
         def validate_permission(self, *args, **kwargs) -> bool:
             return True
 

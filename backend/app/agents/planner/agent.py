@@ -175,6 +175,7 @@ class PlannerAgent:
 
         # Build conversation context if session exists
         from app.planner.session import get_session_manager
+
         session = get_session_manager().get_session(session_id)
         conversation_history = session.get_history_dicts() if session else []
 

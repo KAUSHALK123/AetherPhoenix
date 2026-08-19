@@ -34,6 +34,4 @@ class BrowserResult(BaseModel):
     data: dict[str, Any] | None = Field(
         None, description="Data extracted or returned by the operation"
     )
-    error: str | None = Field(
-        None, description="Error message if the operation failed"
-    )
+    error: str | None = Field(None, description="Error message if the operation failed")
