@@ -1,5 +1,8 @@
 import logging
+from typing import Any, Dict, List, Optional
+from uuid import UUID
 
+from shared.contracts.feedback import PlannerFeedback
 from shared.contracts.planner import (
     PlanMetadata,
     PlannerOutput,
@@ -26,7 +29,7 @@ class PlannerAgent:
     Integrates modules from Sprint 2 to transform user requests into execution plans.
     """
 
-    def __init__(self):
+    def __init__(self, event_bus: Optional[Any] = None):
         self.requirement_analyzer = RequirementAnalyzer()
         self.clarification_engine = ClarificationEngine()
 
@@ -122,6 +125,70 @@ class PlannerAgent:
         self.capability_engine = CapabilityDiscoveryEngine(registry=cap_reg)
         self.parallel_engine = ParallelTaskAnalyzer()
         self.active_sessions: dict[str, str] = {}
+        self.latest_replanning_responses: Dict[str, PlannerResponse] = {}
+
+        # Subscribe to EventBus replanning events
+        from app.core.events.bus import get_event_bus
+        from app.core.events.models import EventType as ModelEventType
+
+        self.event_bus = event_bus or get_event_bus()
+        if self.event_bus:
+            self.event_bus.subscribe(
+                ModelEventType.REPLANNING_TRIGGERED,
+                self.handle_replanning_event,
+            )
+            self.event_bus.subscribe(
+                "ReplanningTriggered",
+                self.handle_replanning_event,
+            )
+            self.event_bus.subscribe(
+                "REPLANNING_TRIGGERED",
+                self.handle_replanning_event,
+            )
+
+    async def handle_replanning_event(self, event: Any) -> Optional[PlannerResponse]:
+        """
+        Handles REPLANNING_TRIGGERED events from the EventBus,
+        reconstructs planning context and generates an updated plan.
+        """
+        logger.info(f"PlannerAgent received REPLANNING_TRIGGERED event: {getattr(event, 'id', event)}")
+        payload = getattr(event, "payload", {}) or {}
+        workflow_id = getattr(event, "workflow_id", None) or payload.get("workflow_id")
+        session_id = payload.get("session_id") or (str(workflow_id) if workflow_id else "replanning-session")
+        goal = payload.get("goal") or payload.get("trigger_reason") or "Replanning execution"
+
+        feedback_data = payload.get("feedback")
+        feedback = None
+        if feedback_data and isinstance(feedback_data, dict):
+            try:
+                feedback = PlannerFeedback.model_validate(feedback_data)
+            except Exception as e:
+                logger.warning(f"Failed to parse feedback in replanning event: {e}")
+
+        # Build conversation context if session exists
+        from app.planner.session import get_session_manager
+        session = get_session_manager().get_session(session_id)
+        conversation_history = session.get_history_dicts() if session else []
+
+        request = PlannerRequest(
+            session_id=session_id,
+            message=goal,
+            context={
+                "workflow_id": str(workflow_id) if workflow_id else None,
+                "conversation_history": conversation_history,
+                "is_replanning": True,
+                "trigger_reason": payload.get("trigger_reason"),
+            },
+            feedback=feedback,
+        )
+
+        response = self.process_request(request)
+        logger.info(f"PlannerAgent successfully generated replanning response: status={response.status}")
+
+        if workflow_id:
+            self.latest_replanning_responses[str(workflow_id)] = response
+
+        return response
 
     def process_request(self, request: PlannerRequest) -> PlannerResponse:
         """

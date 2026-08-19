@@ -6,12 +6,30 @@ export const LandingPage: React.FC = () => {
 
   const [dragOffsetY, setDragOffsetY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [showDrawer, setShowDrawer] = useState(false);
+  
+  const [activeNav, setActiveNav] = useState('home');
+  
   const startYRef = useRef<number>(0);
   const hasDraggedRef = useRef<boolean>(false);
 
   const handleLaunch = useCallback(() => {
     navigate('/chat');
   }, [navigate]);
+
+  const handleNavChange = (option: string, pathOrUrl: string, isExternal: boolean = false) => {
+    setActiveNav(option);
+    if (isExternal) {
+      setTimeout(() => {
+        window.open(pathOrUrl, '_blank');
+        setActiveNav('home');
+      }, 250);
+    } else {
+      setTimeout(() => {
+        navigate(pathOrUrl);
+      }, 250);
+    }
+  };
 
   const handleTouchStart = (e: React.TouchEvent) => {
     startYRef.current = e.touches[0].clientY;
@@ -78,6 +96,22 @@ export const LandingPage: React.FC = () => {
     };
   }, [isDragging, dragOffsetY, handleLaunch]);
 
+  // Scroll to bottom listener to show/hide the pull-up drawer
+  useEffect(() => {
+    const handleScroll = () => {
+      const isAtBottom =
+        window.innerHeight + window.scrollY >=
+        document.documentElement.scrollHeight - 120;
+      setShowDrawer(isAtBottom);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    // Verify initially if document height is smaller than screen
+    handleScroll();
+
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const handleClick = () => {
     if (!hasDraggedRef.current) {
       handleLaunch();
@@ -85,237 +119,338 @@ export const LandingPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-background text-on-surface font-body min-h-screen flex flex-col pb-20 md:pb-0 pt-16">
-      {/* TopAppBar */}
-      <header className="fixed top-0 w-full z-50 bg-surface-deep/80 backdrop-blur-md border-b border-outline-variant/30 flex justify-between items-center px-6 md:px-10 h-16 mx-auto">
+    <div className="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white pb-24">
+      {/* Top Navigation Bar */}
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/95 border-b border-slate-200/80 px-6 h-16 flex items-center justify-between shadow-sm shadow-slate-100/10">
         <div
           onClick={() => navigate('/')}
-          className="flex items-center gap-3 cursor-pointer active:opacity-70"
+          className="flex items-center gap-3 cursor-pointer group flex-1"
         >
-          <img
-            alt="AetherPhoenix Logo"
-            className="w-8 h-8 object-contain rounded drop-shadow"
-            src="/logo.png"
-          />
-          <h1 className="text-xl font-bold text-white tracking-tight">AetherPhoenix</h1>
-        </div>
-        <div
-          onClick={() => navigate('/chat')}
-          className="flex items-center cursor-pointer active:opacity-70 hover:bg-surface-container-low transition-colors rounded-full p-1"
-        >
-          <div className="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center border border-outline-variant overflow-hidden">
-            <span className="material-symbols-outlined text-on-surface-variant text-[20px]">person</span>
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 p-[1px] shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+            <div className="w-full h-full bg-white rounded-[11px] flex items-center justify-center overflow-hidden">
+              <img
+                src="/logo.png"
+                alt="AetherPhoenix Logo"
+                className="w-6 h-6 object-contain pointer-events-none drop-shadow"
+              />
+            </div>
           </div>
+          <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+            AetherPhoenix
+          </span>
+        </div>
+
+        {/* Center Navigation Links (Styled Sliding Radio Group - Dead Center Centered) */}
+        <div className="hidden md:flex nav-radio-group">
+          <div className="nav-slider" />
+          
+          <div className="nav-radio-option">
+            <input
+              type="radio"
+              id="nav-home"
+              name="nav-group"
+              checked={activeNav === 'home'}
+              onChange={() => handleNavChange('home', '/')}
+            />
+            <label htmlFor="nav-home" className="nav-radio-label">
+              Home
+            </label>
+          </div>
+
+          <div className="nav-radio-option">
+            <input
+              type="radio"
+              id="nav-architecture"
+              name="nav-group"
+              checked={activeNav === 'architecture'}
+              onChange={() => handleNavChange('architecture', 'https://github.com/KAUSHALK123/AetherPhoenix/tree/develop/PRD/03_SYSTEM_ARCHITECTURE', true)}
+            />
+            <label htmlFor="nav-architecture" className="nav-radio-label">
+              Architecture
+            </label>
+          </div>
+
+          <div className="nav-radio-option">
+            <input
+              type="radio"
+              id="nav-docs"
+              name="nav-group"
+              checked={activeNav === 'docs'}
+              onChange={() => handleNavChange('docs', '/plan')}
+            />
+            <label htmlFor="nav-docs" className="nav-radio-label">
+              Docs
+            </label>
+          </div>
+
+          <div className="nav-radio-option">
+            <input
+              type="radio"
+              id="nav-github"
+              name="nav-group"
+              checked={activeNav === 'github'}
+              onChange={() => handleNavChange('github', 'https://github.com/KAUSHALK123/AetherPhoenix', true)}
+            />
+            <label htmlFor="nav-github" className="nav-radio-label">
+              GitHub
+            </label>
+          </div>
+        </div>
+
+        {/* Right Profile Section */}
+        <div className="flex items-center justify-end gap-3 flex-1">
+          <button
+            onClick={() => navigate('/settings')}
+            className="w-9 h-9 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center hover:border-slate-300 hover:bg-slate-100 transition-colors"
+          >
+            <span className="material-symbols-outlined text-slate-600 text-xl">person</span>
+          </button>
         </div>
       </header>
 
-      {/* Main Layout Grid */}
-      <div className="flex flex-1 w-full max-w-6xl mx-auto px-4 md:px-8 py-8 gap-8 flex-col">
-        {/* Hero Section */}
-        <section className="flex flex-col items-center text-center gap-6 py-16 border-b border-outline-variant/30 mb-8 w-full relative bg-cover bg-center rounded-3xl bg-surface-container/20 overflow-hidden">
-          <div className="flex flex-col items-center gap-4 max-w-[800px] mx-auto relative z-20 px-4">
-            <span className="text-xs uppercase tracking-widest font-extrabold text-accent-electric px-3 py-1 bg-primary/10 rounded-full border border-primary/20">
-              Open Source • Runs on your machine
-            </span>
-            <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-white leading-tight font-serif italic">
-              The AI that <span className="text-primary italic font-serif">really</span>{' '}
-              <span className="block not-italic font-sans font-extrabold tracking-normal">does things.</span>
-            </h1>
-            <p className="text-lg md:text-xl text-on-surface-variant max-w-[600px] font-medium leading-relaxed">
-              Organizes your inbox, sends emails, manages your calendar, checks you in for flights. All from WhatsApp, Telegram, or any chat app you already use.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4 mt-4">
-              <button
-                onClick={() => navigate('/chat')}
-                className="px-8 py-3 bg-primary text-white rounded-xl font-bold hover:bg-accent-electric transition-all active:scale-95 shadow-[0_0_20px_rgba(168,85,247,0.4)] flex items-center gap-2"
-              >
-                Get started
-                <span className="material-symbols-outlined text-lg">arrow_forward</span>
-              </button>
-              <button
-                onClick={() => navigate('/plan')}
-                className="px-8 py-3 border border-outline-variant text-white rounded-xl font-semibold hover:bg-surface-container-low transition-all active:scale-95"
-              >
-                Read the docs
-              </button>
-            </div>
+      {/* Hero Banner */}
+      <section className="relative overflow-hidden border-b border-slate-800/60 bg-gradient-to-b from-indigo-950/20 via-slate-950 to-slate-950 py-16 px-6">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(99,102,241,0.15),transparent_50%)]"></div>
+        <div className="max-w-4xl mx-auto text-center relative z-10 space-y-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium backdrop-blur-md">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+            Open Source • Runs Locally
           </div>
-        </section>
 
-        {/* Content Section */}
-        <div className="flex flex-1 gap-8 w-full flex-col xl:flex-row">
-          <main className="flex-1 min-w-0 flex flex-col gap-10">
-            {/* System Capabilities */}
-            <section className="flex flex-col gap-3">
-              <h2 className="text-xs text-on-surface-muted uppercase tracking-widest font-bold mb-1">
+          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
+            The AI that{' '}
+            <span className="bg-gradient-to-r from-indigo-400 via-violet-300 to-purple-400 bg-clip-text text-transparent italic">
+              actually
+            </span>{' '}
+            gets things done.
+          </h1>
+
+          <p className="text-slate-400 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
+            Automate workflows, analyze complex research, execute CLI commands, and generate structured artifacts
+            seamlessly from your terminal or chat apps.
+          </p>
+
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => navigate('/chat')}
+              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium text-sm transition-all shadow-lg shadow-indigo-600/25 active:scale-95"
+            >
+              Get Started
+            </button>
+            <button
+              onClick={() => navigate('/plan')}
+              className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl font-medium text-sm transition-all active:scale-95"
+            >
+              Read Documentation
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Main Content Layout */}
+      <div className="max-w-7xl mx-auto px-6 py-10 w-full flex-1">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Main Feed */}
+          <main className="lg:col-span-3 space-y-10">
+            {/* System Capabilities Chips */}
+            <section className="space-y-3">
+              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 System Capabilities
               </h2>
-              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-                {[
-                  { icon: 'language', label: 'Browser Automation' },
-                  { icon: 'desktop_windows', label: 'Desktop Control' },
-                  { icon: 'terminal', label: 'CLI Executor' },
-                  { icon: 'public', label: 'Web Research' },
-                ].map((cap, i) => (
-                  <button
-                    key={i}
-                    onClick={() => navigate('/chat')}
-                    className="flex items-center gap-2.5 px-4 py-2.5 bg-surface-container-low border border-outline-variant/40 rounded-full hover:border-primary hover:shadow-[0_4px_16px_rgba(168,85,247,0.15)] transition-all whitespace-nowrap text-white text-sm cursor-pointer group"
-                  >
-                    <span className="material-symbols-outlined text-primary text-[18px] group-hover:scale-110 transition-transform">
-                      {cap.icon}
-                    </span>
-                    {cap.label}
-                  </button>
-                ))}
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                <button
+                  onClick={() => navigate('/chat')}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-300 transition-all whitespace-nowrap group"
+                >
+                  <span className="material-symbols-outlined text-indigo-400 text-lg group-hover:scale-110 transition-transform">
+                    language
+                  </span>{' '}
+                  Browser Automation
+                </button>
+                <button
+                  onClick={() => navigate('/chat')}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-300 transition-all whitespace-nowrap group"
+                >
+                  <span className="material-symbols-outlined text-indigo-400 text-lg group-hover:scale-110 transition-transform">
+                    desktop_windows
+                  </span>{' '}
+                  Desktop Control
+                </button>
+                <button
+                  onClick={() => navigate('/chat')}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-300 transition-all whitespace-nowrap group"
+                >
+                  <span className="material-symbols-outlined text-indigo-400 text-lg group-hover:scale-110 transition-transform">
+                    terminal
+                  </span>{' '}
+                  CLI Executor
+                </button>
+                <button
+                  onClick={() => navigate('/chat')}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-300 transition-all whitespace-nowrap group"
+                >
+                  <span className="material-symbols-outlined text-indigo-400 text-lg group-hover:scale-110 transition-transform">
+                    travel_explore
+                  </span>{' '}
+                  Web Research
+                </button>
               </div>
             </section>
 
-            {/* Generated Artifacts */}
-            <section className="flex flex-col gap-4">
-              <div className="flex justify-between items-center mb-1">
-                <h2 className="text-2xl font-bold text-white tracking-tight">Generated Artifacts</h2>
-                <div className="flex gap-1">
-                  <button className="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors">
-                    <span className="material-symbols-outlined text-[20px]">filter_list</span>
+            {/* Artifacts Grid */}
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-white tracking-tight">Generated Artifacts</h2>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => navigate('/artifacts')}
+                    className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-900 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-xl">filter_list</span>
                   </button>
-                  <button className="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors">
-                    <span className="material-symbols-outlined text-[20px]">grid_view</span>
+                  <button
+                    onClick={() => navigate('/artifacts')}
+                    className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-900 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-xl">grid_view</span>
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* Artifact Card 1: PPTX */}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {/* Card 1 */}
                 <div
                   onClick={() => navigate('/artifacts')}
-                  className="group bg-surface-container-low border border-outline-variant/40 rounded-2xl overflow-hidden flex flex-col hover:border-primary transition-all cursor-pointer shadow-sm hover:shadow-[0_4px_20px_rgba(168,85,247,0.2)]"
+                  className="group bg-slate-900/50 hover:bg-slate-900 border border-slate-800/80 hover:border-indigo-500/50 rounded-2xl p-4 transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-4"
                 >
-                  <div className="h-32 bg-surface-container relative overflow-hidden border-b border-outline-variant/30 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[48px] text-accent-electric opacity-40 group-hover:scale-110 transition-transform duration-500">
-                      co_present
-                    </span>
-                    <div className="absolute top-3 right-3 bg-surface-deep/90 rounded-md px-2 py-0.5 flex items-center gap-1 shadow-sm border border-outline-variant/50">
-                      <span className="material-symbols-outlined text-[14px] text-primary">co_present</span>
-                      <span className="text-xs font-bold text-primary">PPTX</span>
-                    </div>
-                  </div>
-                  <div className="p-4 flex flex-col gap-2 flex-1">
-                    <h3 className="text-base font-bold text-white line-clamp-1">Q3 AI Strategy Overview</h3>
-                    <p className="text-xs text-on-surface-muted line-clamp-2">
-                      Comprehensive breakdown of Q3 generative AI integration plans across core product lines.
-                    </p>
-                    <div className="mt-auto pt-2 flex justify-between items-center text-on-surface-muted text-xs">
-                      <span>Today, 10:42 AM</span>
-                      <span className="material-symbols-outlined text-[16px] hover:text-primary transition-colors">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-semibold tracking-wide uppercase">
+                        PPTX
+                      </span>
+                      <span className="material-symbols-outlined text-slate-500 group-hover:text-slate-300 text-lg transition-colors">
                         more_horiz
                       </span>
                     </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors line-clamp-1">
+                        Q3 AI Strategy Overview
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                        Comprehensive breakdown of Q3 generative AI integration plans across core product lines.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-slate-500 font-medium pt-2 border-t border-slate-800/60">
+                    Updated today, 10:42 AM
                   </div>
                 </div>
 
-                {/* Artifact Card 2: PDF */}
+                {/* Card 2 */}
                 <div
                   onClick={() => navigate('/artifacts')}
-                  className="group bg-surface-container-low border border-outline-variant/40 rounded-2xl overflow-hidden flex flex-col hover:border-primary transition-all cursor-pointer shadow-sm hover:shadow-[0_4px_20px_rgba(168,85,247,0.2)]"
+                  className="group bg-slate-900/50 hover:bg-slate-900 border border-slate-800/80 hover:border-indigo-500/50 rounded-2xl p-4 transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-4"
                 >
-                  <div className="h-32 bg-surface-container relative overflow-hidden border-b border-outline-variant/30 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[48px] text-primary opacity-40 group-hover:scale-110 transition-transform duration-500">
-                      picture_as_pdf
-                    </span>
-                    <div className="absolute top-3 right-3 bg-surface-deep/90 rounded-md px-2 py-0.5 flex items-center gap-1 shadow-sm border border-outline-variant/50">
-                      <span className="material-symbols-outlined text-[14px] text-primary">picture_as_pdf</span>
-                      <span className="text-xs font-bold text-primary">PDF</span>
-                    </div>
-                  </div>
-                  <div className="p-4 flex flex-col gap-2 flex-1">
-                    <h3 className="text-base font-bold text-white line-clamp-1">Market Analysis Report</h3>
-                    <p className="text-xs text-on-surface-muted line-clamp-2">
-                      Detailed synthetic research combining 15 distinct competitor web scraping runs.
-                    </p>
-                    <div className="mt-auto pt-2 flex justify-between items-center text-on-surface-muted text-xs">
-                      <span>Yesterday</span>
-                      <span className="material-symbols-outlined text-[16px] hover:text-primary transition-colors">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-semibold tracking-wide uppercase">
+                        PDF
+                      </span>
+                      <span className="material-symbols-outlined text-slate-500 group-hover:text-slate-300 text-lg transition-colors">
                         more_horiz
                       </span>
                     </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors line-clamp-1">
+                        Market Analysis Report
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                        Detailed research document combining 15 distinct competitor web scraping runs.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-slate-500 font-medium pt-2 border-t border-slate-800/60">
+                    Updated yesterday
                   </div>
                 </div>
 
-                {/* Artifact Card 3: CSV */}
+                {/* Card 3 */}
                 <div
                   onClick={() => navigate('/artifacts')}
-                  className="group bg-surface-container-low border border-outline-variant/40 rounded-2xl overflow-hidden flex flex-col hover:border-primary transition-all cursor-pointer shadow-sm hover:shadow-[0_4px_20px_rgba(168,85,247,0.2)]"
+                  className="group bg-slate-900/50 hover:bg-slate-900 border border-slate-800/80 hover:border-indigo-500/50 rounded-2xl p-4 transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-4"
                 >
-                  <div className="h-32 bg-surface-container relative overflow-hidden border-b border-outline-variant/30 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[48px] text-accent-electric opacity-40 group-hover:scale-110 transition-transform duration-500">
-                      table_chart
-                    </span>
-                    <div className="absolute top-3 right-3 bg-surface-deep/90 rounded-md px-2 py-0.5 flex items-center gap-1 shadow-sm border border-outline-variant/50">
-                      <span className="material-symbols-outlined text-[14px] text-primary">table_chart</span>
-                      <span className="text-xs font-bold text-primary">CSV</span>
-                    </div>
-                  </div>
-                  <div className="p-4 flex flex-col gap-2 flex-1">
-                    <h3 className="text-base font-bold text-white line-clamp-1">User Engagement Metrics</h3>
-                    <p className="text-xs text-on-surface-muted line-clamp-2">
-                      Cleaned and formatted extract of telemetry data for the past 30 days.
-                    </p>
-                    <div className="mt-auto pt-2 flex justify-between items-center text-on-surface-muted text-xs">
-                      <span>Oct 12, 2023</span>
-                      <span className="material-symbols-outlined text-[16px] hover:text-primary transition-colors">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold tracking-wide uppercase">
+                        CSV
+                      </span>
+                      <span className="material-symbols-outlined text-slate-500 group-hover:text-slate-300 text-lg transition-colors">
                         more_horiz
                       </span>
                     </div>
+                    <div>
+                      <h3 className="font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors line-clamp-1">
+                        User Engagement Metrics
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                        Cleaned and formatted extract of telemetry data for the past 30 days.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-[11px] text-slate-500 font-medium pt-2 border-t border-slate-800/60">
+                    Updated Oct 12
                   </div>
                 </div>
               </div>
             </section>
           </main>
 
-          {/* Context Memory Aside */}
-          <aside className="xl:flex flex-col w-full xl:w-[320px] bg-surface-container-low border border-outline-variant/40 rounded-2xl p-6 shadow-sm h-fit sticky top-[88px]">
-            <div className="flex items-center gap-2 mb-6 border-b border-outline-variant/30 pb-4">
-              <span className="material-symbols-outlined text-primary text-[20px]">history</span>
-              <h3 className="text-lg font-bold text-white">Context Memory</h3>
+          {/* Sidebar */}
+          <aside className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 h-fit space-y-5">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-800">
+              <span className="material-symbols-outlined text-indigo-400 text-xl">history</span>
+              <h3 className="font-semibold text-sm text-slate-200">Context Memory</h3>
             </div>
-            <div className="flex flex-col gap-6 relative before:absolute before:inset-y-0 before:left-[11px] before:w-px before:bg-outline-variant/40">
-              <div className="flex gap-4 relative">
-                <div className="w-6 h-6 rounded-full bg-surface-deep border-2 border-primary flex items-center justify-center z-10 shrink-0 mt-0.5">
-                  <div className="w-2 h-2 rounded-full bg-primary" />
-                </div>
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs font-bold text-on-surface-muted">Just Now</span>
-                  <p className="text-sm text-white">
-                    Generated <span className="text-primary font-semibold">Q3 AI Strategy</span> presentation.
+
+            <div className="space-y-4 relative before:absolute before:inset-y-0 before:left-2.5 before:w-px before:bg-slate-800">
+              <div className="flex gap-3 relative pl-1">
+                <div className="w-3 h-3 rounded-full bg-indigo-500 ring-4 ring-slate-950 shrink-0 mt-1"></div>
+                <div className="text-xs space-y-0.5">
+                  <span className="text-slate-500 font-medium text-[10px]">Just Now</span>
+                  <p className="text-slate-300 leading-relaxed">
+                    Generated <strong className="text-white font-medium">Q3 AI Strategy</strong> presentation.
                   </p>
                 </div>
               </div>
-              <div className="flex gap-4 relative">
-                <div className="w-6 h-6 rounded-full bg-surface-deep border-2 border-outline-variant flex items-center justify-center z-10 shrink-0 mt-0.5" />
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs font-bold text-on-surface-muted">2 hours ago</span>
-                  <p className="text-sm text-white">
-                    Extracted key metrics into <span className="text-primary font-semibold">CSV</span>.
+
+              <div className="flex gap-3 relative pl-1">
+                <div className="w-3 h-3 rounded-full bg-slate-700 ring-4 ring-slate-950 shrink-0 mt-1"></div>
+                <div className="text-xs space-y-0.5">
+                  <span className="text-slate-500 font-medium text-[10px]">2 hours ago</span>
+                  <p className="text-slate-300 leading-relaxed">
+                    Extracted key metrics into <strong className="text-white font-medium">CSV</strong>.
                   </p>
                 </div>
               </div>
             </div>
+
             <button
-              onClick={() => navigate('/artifacts')}
-              className="mt-6 pt-4 border-t border-outline-variant/30 text-center w-full text-xs font-bold text-on-surface-muted hover:text-primary transition-colors cursor-pointer"
+              onClick={() => navigate('/execution')}
+              className="w-full pt-3 border-t border-slate-800 text-center text-xs text-slate-400 hover:text-indigo-400 transition-colors font-medium cursor-pointer"
             >
-              View Full Logs
+              View Full Execution Logs &rarr;
             </button>
           </aside>
         </div>
-
       </div>
 
-      {/* Full-Width Sticky Pull-Up Drawer */}
+      {/* Full-Width Sticky Pull-Up Drawer - Only shown when scrolled to bottom */}
       <div
-        className="w-full mt-auto sticky bottom-0 left-0 right-0 z-40 select-none transition-transform duration-300 ease-out"
+        className={`w-full fixed bottom-0 left-0 right-0 z-40 select-none transition-transform duration-500 ease-in-out ${
+          showDrawer ? 'translate-y-0 opacity-100' : 'translate-y-[80%] opacity-0 pointer-events-none'
+        }`}
         style={{
-          transform: `translateY(${Math.min(0, dragOffsetY)}px)`,
+          transform: showDrawer ? `translateY(${Math.min(0, dragOffsetY)}px)` : 'translateY(100%)',
         }}
       >
         <div
@@ -324,30 +459,62 @@ export const LandingPage: React.FC = () => {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onClick={handleClick}
-          className={`w-full py-8 px-6 flex flex-col items-center justify-center text-center relative border-t border-outline-variant/40 rounded-t-[50px] bg-gradient-to-b from-[#1c1a24] via-[#14121b] to-[#0D0B14] shadow-[0_-10px_40px_rgba(0,0,0,0.6)] cursor-grab active:cursor-grabbing hover:border-primary/50 transition-colors ${
+          className={`w-full py-8 px-6 flex flex-col items-center justify-center text-center relative border-t border-slate-800/80 rounded-t-[50px] bg-gradient-to-b from-slate-900 to-slate-950 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] cursor-grab active:cursor-grabbing hover:border-indigo-500/50 transition-colors ${
             isDragging ? 'cursor-grabbing' : ''
           }`}
         >
           {/* Subtle Pull-Up Indicator Bar */}
-          <div className="w-12 h-1.5 bg-outline-variant/60 hover:bg-primary/80 rounded-full mb-4 transition-colors animate-pulse" />
+          <div className="w-12 h-1.5 bg-slate-700/60 hover:bg-indigo-500/80 rounded-full mb-4 transition-colors animate-pulse" />
 
           <div className="group flex flex-col items-center gap-3 transition-transform duration-300 hover:scale-105 active:scale-95">
-            <div className="w-20 h-20 rounded-full bg-surface-deep border-2 border-primary/40 flex items-center justify-center shadow-[0_0_30px_rgba(168,85,247,0.3)] group-hover:border-primary group-hover:shadow-[0_0_45px_rgba(168,85,247,0.7)] transition-all">
+            <div className="w-20 h-20 rounded-full bg-slate-950 border-2 border-indigo-500/40 flex items-center justify-center shadow-[0_0_30px_rgba(168,85,247,0.3)] group-hover:border-indigo-500 group-hover:shadow-[0_0_45px_rgba(168,85,247,0.7)] transition-all">
               <img
                 src="/logo.png"
-                alt="AetherPhoenix"
+                alt="AetherPhoenix Logo"
                 className="w-14 h-14 object-contain pointer-events-none drop-shadow"
               />
             </div>
-            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-primary group-hover:text-accent-electric transition-colors">
+            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-indigo-400 group-hover:text-indigo-300 transition-colors">
               <span className="material-symbols-outlined text-sm animate-bounce">keyboard_arrow_up</span>
               <span>LAUNCH AGENT ASSISTANT</span>
               <span className="material-symbols-outlined text-sm animate-bounce">keyboard_arrow_up</span>
             </div>
-            <span className="text-[10px] text-on-surface-muted">Pull up or click to launch</span>
+            <span className="text-[10px] text-slate-500">Pull up or click to launch</span>
           </div>
         </div>
       </div>
+
+      {/* Mobile Navigation Bar */}
+      <nav className="md:hidden sticky bottom-0 w-full backdrop-blur-xl bg-slate-950/90 border-t border-slate-800 px-6 py-2 flex justify-around items-center z-50">
+        <a
+          onClick={() => navigate('/chat')}
+          className="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-200 cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-xl">chat_bubble</span>
+          <span className="text-[10px] font-medium">Chat</span>
+        </a>
+        <a
+          onClick={() => navigate('/plan')}
+          className="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-200 cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-xl">event_note</span>
+          <span className="text-[10px] font-medium">Plan</span>
+        </a>
+        <a
+          onClick={() => navigate('/execution')}
+          className="flex flex-col items-center gap-1 text-slate-500 hover:text-slate-200 cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-xl">terminal</span>
+          <span className="text-[10px] font-medium">Execution</span>
+        </a>
+        <a
+          onClick={() => navigate('/artifacts')}
+          className="flex flex-col items-center gap-1 text-indigo-400 cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-xl">inventory_2</span>
+          <span className="text-[10px] font-medium">Artifacts</span>
+        </a>
+      </nav>
     </div>
   );
 };

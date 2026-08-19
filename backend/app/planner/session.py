@@ -16,6 +16,26 @@ class PlannerSession:
 
     def add_request(self, request: PlannerRequest) -> None:
         self.history.append(request)
+        if hasattr(request, "message"):
+            self.metadata["last_goal"] = request.message
+
+    def add_turn(self, message: str, plan_response: Optional[Any] = None) -> None:
+        self.history.append({"message": message, "plan": plan_response})
+        self.metadata["last_goal"] = message
+
+    def get_history_dicts(self) -> List[Dict[str, Any]]:
+        turns = []
+        for item in self.history:
+            if isinstance(item, dict):
+                turns.append(item)
+            elif hasattr(item, "message"):
+                turns.append({"message": item.message})
+        return turns
+
+    def get_context_summary(self) -> str:
+        if "last_goal" in self.metadata:
+            return f"Previous goal: {self.metadata['last_goal']}"
+        return ""
 
 
 class SessionManager:
@@ -41,3 +61,14 @@ class SessionManager:
             if session:
                 return session
         return self.create_session()
+
+
+_session_manager: Optional[SessionManager] = None
+
+
+def get_session_manager() -> SessionManager:
+    """Singleton getter for SessionManager."""
+    global _session_manager
+    if _session_manager is None:
+        _session_manager = SessionManager()
+    return _session_manager

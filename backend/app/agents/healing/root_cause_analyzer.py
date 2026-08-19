@@ -83,9 +83,13 @@ class RootCauseAnalyzer:
     ]
 
     TOOL_PATTERNS = [
+        re.compile(r"tool.*not\s*found", re.IGNORECASE),
         re.compile(r"tool\s*not\s*found", re.IGNORECASE),
-        re.compile(r"tool\s*disabled", re.IGNORECASE),
+        re.compile(r"tool.*unavailable", re.IGNORECASE),
         re.compile(r"tool\s*unavailable", re.IGNORECASE),
+        re.compile(r"tool.*disabled", re.IGNORECASE),
+        re.compile(r"not\s*found\s*in\s*registry", re.IGNORECASE),
+        re.compile(r"unregistered\s*tool", re.IGNORECASE),
         re.compile(r"capability\s*not\s*supported", re.IGNORECASE),
     ]
 
@@ -127,13 +131,22 @@ class RootCauseAnalyzer:
 
         if parsed_error is not None:
             if not error_message:
-                error_message = getattr(parsed_error, "raw_message", "") or getattr(
-                    parsed_error, "message", ""
+                error_message = (
+                    getattr(parsed_error, "raw_message", "")
+                    or getattr(parsed_error, "message", "")
                 )
             if not failure_type:
-                failure_type = getattr(
-                    parsed_error, "original_failure_type", None
-                ) or getattr(parsed_error, "normalized_code", None)
+                failure_type = (
+                    getattr(parsed_error, "original_failure_type", None)
+                    or getattr(parsed_error, "normalized_code", None)
+                    or getattr(parsed_error, "code", None)
+                )
+                if not failure_type and hasattr(parsed_error, "category"):
+                    cat_val = getattr(
+                        parsed_error.category, "value", str(parsed_error.category)
+                    )
+                    if "TOOL" in cat_val.upper():
+                        failure_type = FailureType.TOOL_UNAVAILABLE
 
         # Resolve IDs
         task_id = (

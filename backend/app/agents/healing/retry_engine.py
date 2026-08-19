@@ -141,6 +141,27 @@ class RetryEngine:
             if hasattr(root_cause, "is_recoverable"):
                 is_recoverable = bool(root_cause.is_recoverable)
 
+        recovery_plan = kwargs.get("recovery_plan")
+        has_replacements = bool(
+            recovery_plan and getattr(recovery_plan, "replacement_tasks", None)
+        )
+
+        # Non-retryable error code detection
+        cat_upper = root_cause_category.upper()
+        sum_upper = root_cause_summary.upper()
+        if not has_replacements and (
+            cat_upper in NON_RETRYABLE_ERROR_CODES
+            or "TOOL_NOT_FOUND" in cat_upper
+            or "TOOL_NOT_FOUND" in sum_upper
+            or "TOOL_UNAVAILABLE" in cat_upper
+            or "TOOL_UNAVAILABLE" in sum_upper
+            or "PERMISSION_DENIED" in cat_upper
+            or "PERMISSION_DENIED" in sum_upper
+        ):
+            msg = f"Root cause '{root_cause_category}' ({root_cause_summary}) is non-retryable."
+            logger.info(msg)
+            return False, msg
+
         limit_retries = (
             max_retries if max_retries is not None else self.default_max_retries
         )
@@ -196,7 +217,7 @@ class RetryEngine:
             return False, msg
 
         # 4. Root-cause recoverability.
-        if not is_recoverable:
+        if not is_recoverable and not has_replacements:
             msg = f"Root cause '{root_cause_category}' is non-recoverable."
             logger.info(msg)
             return False, msg

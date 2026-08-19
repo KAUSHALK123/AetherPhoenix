@@ -8,7 +8,7 @@ from shared.contracts.permission import PermissionType
 from shared.contracts.task import Task, TaskStatus
 from shared.contracts.tool import ToolState
 
-from app.core.exceptions import PermissionDeniedException
+from app.core.exceptions import PermissionDeniedException, ToolNotFoundException
 from app.core.logging.execution_logger import WorkerExecutionLogger
 from app.core.permissions.manager import PermissionManager
 from app.memory.task_history import TaskHistoryService, get_task_history_service
@@ -98,7 +98,7 @@ class WorkerAgent(BaseAgent):
         try:
             # 2. Validation
             if not task.required_tool:
-                raise ValueError("Task is missing 'required_tool'")
+                raise ToolNotFoundException("Task is missing 'required_tool'")
 
             # 3. Tool Resolution
             tool_name = task.required_tool
@@ -106,16 +106,16 @@ class WorkerAgent(BaseAgent):
 
             tool = self.tool_registry.get(tool_name)
             if not tool:
-                raise ValueError(f"Tool '{tool_name}' not found in registry")
+                raise ToolNotFoundException(f"Tool '{tool_name}' not found in registry")
 
             if tool.status != ToolState.READY:
-                raise ValueError(
+                raise ToolNotFoundException(
                     f"Tool '{tool_name}' is not ready (Status: {tool.status.value})"
                 )
 
             adapter = self._adapters.get(tool.adapter)
             if not adapter:
-                raise ValueError(
+                raise ToolNotFoundException(
                     f"Tool adapter '{tool.adapter}' is not registered in WorkerAgent"
                 )
 
@@ -226,6 +226,32 @@ class WorkerAgent(BaseAgent):
             err = TaskError(
                 error_code="PERMISSION_DENIED",
                 error_message=pde.message,
+                is_recoverable=False,
+            )
+            res = ExecutionResult(
+                task_id=task.task_id,
+                workflow_id=task.workflow_id,
+                success=False,
+                logs=logs_captured,
+                error=err,
+                metrics=ExecutionMetrics(execution_time_ms=duration_ms),
+            )
+            self.task_history_service.record_task_failed(
+                task_id=task.task_id, error=err
+            )
+            return res
+        except ToolNotFoundException as tnfe:
+            duration_ms = (time.time() - start_time) * 1000.0
+            exec_logger.log_task_failure(
+                duration_ms=duration_ms,
+                error_code="TOOL_NOT_FOUND",
+                error_message=tnfe.message,
+            )
+            logs_captured.append(f"Task failed: {tnfe.message}")
+            err = TaskError(
+                error_code="TOOL_NOT_FOUND",
+                error_message=tnfe.message,
+                is_recoverable=False,
             )
             res = ExecutionResult(
                 task_id=task.task_id,
@@ -246,7 +272,14 @@ class WorkerAgent(BaseAgent):
             )
             duration_ms = (time.time() - start_time) * 1000.0
 
-            error_code = "EXECUTION_FAILED"
+            msg_lower = str(e).lower()
+            if "not found in registry" in msg_lower or "missing 'required_tool'" in msg_lower:
+                error_code = "TOOL_NOT_FOUND"
+                is_rec = False
+            else:
+                error_code = getattr(e, "code", "EXECUTION_FAILED")
+                is_rec = True
+
             exec_logger.log_task_failure(
                 duration_ms=duration_ms,
                 error_code=error_code,
@@ -257,6 +290,7 @@ class WorkerAgent(BaseAgent):
             err = TaskError(
                 error_code=error_code,
                 error_message=str(e),
+                is_recoverable=is_rec,
             )
             res = ExecutionResult(
                 task_id=task.task_id,

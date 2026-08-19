@@ -197,7 +197,14 @@ class PlannerFeedbackLoop:
                 workflow_id=str(state.metadata.workflow_id),
                 event_type=ModelEventType.REPLANNING_TRIGGERED,
                 source_component="PlannerFeedbackLoop",
-                payload={"trigger_reason": feedback.replanning_context.trigger_reason},
+                payload={
+                    "trigger_reason": feedback.replanning_context.trigger_reason,
+                    "feedback": feedback.model_dump(mode="json"),
+                    "workflow_id": str(state.metadata.workflow_id),
+                    "session_id": str(getattr(state.metadata, "session_id", None) or getattr(state.metadata, "conversation_id", None) or state.metadata.workflow_id),
+                    "goal": state.metadata.goal,
+                    "failed_task_id": str(failure_report.task_id) if failure_report else None,
+                },
             )
             await self.event_bus.publish(replanning_event)
 

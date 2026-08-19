@@ -22,8 +22,11 @@ class MockPermissionManager:
         self.should_approve = should_approve
 
     async def check_permission(
-        self, action: str, permission_type: PermissionType, context=None
+        self, action: str, permission_type: Any = None, context=None, *args, **kwargs
     ) -> bool:
+        return self.should_approve
+
+    def validate_permission(self, *args, **kwargs) -> bool:
         return self.should_approve
 
 
@@ -37,7 +40,8 @@ def mock_mouse_ctrl():
 
 @pytest.fixture
 def desktop_tool(mock_mouse_ctrl):
-    return DesktopTool(mouse_controller=mock_mouse_ctrl)
+    mock_pm = MockPermissionManager(should_approve=True)
+    return DesktopTool(mouse_controller=mock_mouse_ctrl, permission_manager=mock_pm)
 
 
 @pytest.fixture
@@ -137,11 +141,14 @@ def test_register_desktop_tool_registry():
 @patch("app.tools.desktop.mouse.pyautogui.click")
 async def test_worker_agent_integration_with_desktop_tool(mock_click, mock_mouse_ctrl):
     registry = ToolRegistry()
-    worker = WorkerAgent(tool_registry=registry)
+    mock_pm = MockPermissionManager(should_approve=True)
+    worker = WorkerAgent(tool_registry=registry, permission_manager=mock_pm)
     register_desktop_tool(registry, worker_agent=worker)
 
     # Override tool desktop instance for mocking
-    desktop_tool = DesktopTool(mouse_controller=mock_mouse_ctrl)
+    desktop_tool = DesktopTool(
+        mouse_controller=mock_mouse_ctrl, permission_manager=mock_pm
+    )
     worker.register_adapter(
         "desktop_adapter", DesktopToolAdapter(desktop_tool=desktop_tool)
     )
