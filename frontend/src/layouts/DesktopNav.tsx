@@ -17,11 +17,11 @@ export const DesktopNav: React.FC = () => {
         to="/"
         className="px-6 pb-6 mb-6 border-b border-outline-variant/20 flex items-center gap-3 hover:opacity-85 transition-opacity cursor-pointer"
       >
-        <div className="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center border border-outline-variant/40 overflow-hidden">
-          <img src="/logo.png" alt="Logo" className="w-7 h-7 object-contain" />
+        <div className="w-14 h-14 rounded-xl bg-surface-container-highest flex items-center justify-center border border-outline-variant/40 overflow-hidden">
+          <img src="/logo.png" alt="Logo" className="w-10 h-10 object-contain" />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-primary">AetherPhoenix</h2>
+          <h2 className="text-xl font-extrabold text-primary">AetherPhoenix</h2>
           <p className="text-[10px] text-on-surface-muted uppercase tracking-wider">v1.0.0-Beta</p>
         </div>
       </Link>

@@ -121,21 +121,21 @@ export const LandingPage: React.FC = () => {
   return (
     <div className="bg-slate-950 text-slate-100 font-sans antialiased min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white pb-24">
       {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/95 border-b border-slate-200/80 px-6 h-16 flex items-center justify-between shadow-sm shadow-slate-100/10">
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-white/95 border-b border-slate-200/80 px-6 h-20 flex items-center justify-between shadow-sm shadow-slate-100/10">
         <div
           onClick={() => navigate('/')}
           className="flex items-center gap-3 cursor-pointer group flex-1"
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 p-[1px] shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
-            <div className="w-full h-full bg-white rounded-[11px] flex items-center justify-center overflow-hidden">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 p-[1.5px] shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
+            <div className="w-full h-full bg-white rounded-[14px] flex items-center justify-center overflow-hidden">
               <img
                 src="/logo.png"
                 alt="AetherPhoenix Logo"
-                className="w-6 h-6 object-contain pointer-events-none drop-shadow"
+                className="w-10 h-10 object-contain pointer-events-none drop-shadow"
               />
             </div>
           </div>
-          <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+          <span className="font-black text-xl tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
             AetherPhoenix
           </span>
         </div>
@@ -210,8 +210,8 @@ export const LandingPage: React.FC = () => {
 
       {/* Hero Banner (White Theme with soft Mandala Watermark) */}
       <section className="relative overflow-hidden border-b border-slate-200 bg-white py-24 md:py-32 px-6">
-        {/* Background Snowflake Mandala Graphic (As per user uploads) */}
-        <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden opacity-[0.12] pointer-events-none">
+        {/* Background Snowflake Mandala Graphic (As per user uploads - slightly darker watermark) */}
+        <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden opacity-[0.28] pointer-events-none">
           <img
             src="/snowflake.png"
             alt="Snowflake Mandala"
