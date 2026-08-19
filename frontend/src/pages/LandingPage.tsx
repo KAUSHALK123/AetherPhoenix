@@ -208,40 +208,57 @@ export const LandingPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Hero Banner */}
-      <section className="relative overflow-hidden border-b border-slate-800/60 bg-gradient-to-b from-indigo-950/30 via-slate-950 to-slate-950 py-24 md:py-32 px-6">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(99,102,241,0.15),transparent_50%)]"></div>
+      {/* Hero Banner (White Theme with Mandala Watermark and Masked Loader Text) */}
+      <section className="relative overflow-hidden border-b border-slate-200 bg-white py-24 md:py-32 px-6">
+        {/* Background Snowflake Mandala Graphic (As per user uploads) */}
+        <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden opacity-[0.9] pointer-events-none">
+          <img
+            src="/snowflake.png"
+            alt="Snowflake Mandala"
+            className="w-[450px] h-[450px] md:w-[600px] md:h-[600px] object-contain"
+          />
+        </div>
+
+        {/* Loader Text Animation behind Main Text */}
+        <div className="absolute top-[40%] left-[50%] -translate-x-[50%] -translate-y-[50%] z-0 pointer-events-none opacity-[0.15]">
+          <div className="loader-wrapper">
+            <div className="loader"></div>
+            {"AUTOMATION".split("").map((letter, index) => (
+              <span key={index} className="loader-letter">{letter}</span>
+            ))}
+          </div>
+        </div>
+
         <div className="max-w-5xl mx-auto text-center relative z-10 space-y-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium backdrop-blur-md">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
-            Open Source • Runs Locally
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold backdrop-blur-md">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+            Open Source • Runs on your machine
           </div>
 
-          <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight text-white leading-tight">
+          <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight text-slate-900 leading-tight">
             The AI that{' '}
-            <span className="bg-gradient-to-r from-indigo-400 via-violet-300 to-purple-400 bg-clip-text text-transparent italic">
-              actually
+            <span className="bg-gradient-to-r from-indigo-600 via-violet-500 to-indigo-600 bg-clip-text text-transparent italic">
+              really
             </span>{' '}
-            gets things done.
+            does things.
           </h1>
 
-          <p className="text-slate-400 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-            Automate workflows, analyze complex research, execute CLI commands, and generate structured artifacts
-            seamlessly from your terminal or chat apps.
+          <p className="text-slate-600 text-base sm:text-lg max-w-2xl mx-auto font-medium leading-relaxed">
+            Organizes your inbox, sends emails, manages your calendar, checks you in for flights. All from WhatsApp, Telegram, or any chat app you already use.
           </p>
 
           <div className="flex items-center justify-center gap-3 pt-2">
             <button
               onClick={() => navigate('/chat')}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-medium text-sm transition-all shadow-lg shadow-indigo-600/25 active:scale-95"
+              className="px-6 py-2.5 bg-[#2f70d9] hover:bg-blue-600 text-white rounded-xl font-semibold text-sm transition-all shadow-lg shadow-blue-500/25 active:scale-95 cursor-pointer"
             >
-              Get Started
+              Get started
             </button>
             <button
               onClick={() => navigate('/plan')}
-              className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 rounded-xl font-medium text-sm transition-all active:scale-95"
+              className="px-6 py-2.5 bg-transparent hover:bg-slate-50 text-[#2f70d9] border border-blue-200 rounded-xl font-semibold text-sm transition-all active:scale-95 cursor-pointer"
             >
-              Read Documentation
+              Read the docs
             </button>
           </div>
         </div>
