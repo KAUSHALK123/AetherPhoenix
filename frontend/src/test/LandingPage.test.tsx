@@ -44,11 +44,11 @@ describe('LandingPage (Stitch Fidelity)', () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByText(/Browser Automation/i)).toBeInTheDocument();
-    expect(screen.getByText(/Desktop Control/i)).toBeInTheDocument();
-    expect(screen.getByText(/CLI Executor/i)).toBeInTheDocument();
-    expect(screen.getByText(/Web Research/i)).toBeInTheDocument();
-    expect(screen.getByText(/Q3 AI Strategy Overview/i)).toBeInTheDocument();
-    expect(screen.getByText(/Market Analysis Report/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Browser Automation/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/Desktop Control/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/CLI Executor/i)[0]).toBeInTheDocument();
+    expect(screen.getAllByText(/Web Research/i)[0]).toBeInTheDocument();
+    expect(screen.getByText(/EV_Comprehensive_Presentation.pptx/i)).toBeInTheDocument();
+    expect(screen.getByText(/Market_Analysis_Report.pdf/i)).toBeInTheDocument();
   });
 });

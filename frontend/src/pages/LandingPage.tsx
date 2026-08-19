@@ -96,19 +96,16 @@ export const LandingPage: React.FC = () => {
     };
   }, [isDragging, dragOffsetY, handleLaunch]);
 
-  // Scroll to bottom listener to show/hide the pull-up drawer
+  // Scroll to bottom listener to show/hide the pull-up drawer (only at the very end)
   useEffect(() => {
     const handleScroll = () => {
       const isAtBottom =
         window.innerHeight + window.scrollY >=
-        document.documentElement.scrollHeight - 120;
+        document.documentElement.scrollHeight - 40;
       setShowDrawer(isAtBottom);
     };
 
     window.addEventListener('scroll', handleScroll);
-    // Verify initially if document height is smaller than screen
-    handleScroll();
-
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -254,11 +251,11 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Main Content Layout (Increased Sizing to 2xl & Padding) */}
-      <div className="max-w-screen-2xl mx-auto px-6 md:px-10 py-16 w-full flex-1">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      {/* Main Content Layout (Full Width Grid without Context Memory) */}
+      <div className="max-w-7xl mx-auto px-6 md:px-10 py-16 w-full flex-1">
+        <div className="space-y-12">
           {/* Main Feed */}
-          <main className="lg:col-span-3 space-y-10">
+          <main className="space-y-12">
             {/* System Capabilities Chips */}
             <section className="space-y-3">
               <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -267,7 +264,7 @@ export const LandingPage: React.FC = () => {
               <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                 <button
                   onClick={() => navigate('/chat')}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-300 transition-all whitespace-nowrap group"
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-300 transition-all whitespace-nowrap group cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-indigo-400 text-lg group-hover:scale-110 transition-transform">
                     language
@@ -276,7 +273,7 @@ export const LandingPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => navigate('/chat')}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-300 transition-all whitespace-nowrap group"
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-300 transition-all whitespace-nowrap group cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-indigo-400 text-lg group-hover:scale-110 transition-transform">
                     desktop_windows
@@ -285,7 +282,7 @@ export const LandingPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => navigate('/chat')}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-300 transition-all whitespace-nowrap group"
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-300 transition-all whitespace-nowrap group cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-indigo-400 text-lg group-hover:scale-110 transition-transform">
                     terminal
@@ -294,18 +291,36 @@ export const LandingPage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => navigate('/chat')}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-300 transition-all whitespace-nowrap group"
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-300 transition-all whitespace-nowrap group cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-indigo-400 text-lg group-hover:scale-110 transition-transform">
                     travel_explore
                   </span>{' '}
                   Web Research
                 </button>
+                <button
+                  onClick={() => navigate('/chat')}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-300 transition-all whitespace-nowrap group cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-indigo-400 text-lg group-hover:scale-110 transition-transform">
+                    co_present
+                  </span>{' '}
+                  PowerPoint Generator
+                </button>
+                <button
+                  onClick={() => navigate('/chat')}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-xl text-xs font-medium text-slate-300 transition-all whitespace-nowrap group cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-indigo-400 text-lg group-hover:scale-110 transition-transform">
+                    picture_as_pdf
+                  </span>{' '}
+                  PDF Generator
+                </button>
               </div>
             </section>
 
-            {/* PINWHEEL FEATURE GRID SECTION (Full Cover Images with Smooth Scale & Hover Lift) */}
-            <section className="space-y-4 pt-4">
+            {/* PINWHEEL FEATURE GRID SECTION (Full Cover Bright Images) */}
+            <section className="space-y-4 pt-2">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-bold text-white tracking-tight">Project Capabilities & Features</h2>
@@ -315,28 +330,28 @@ export const LandingPage: React.FC = () => {
               </div>
 
               {/* Pinwheel Layout Container */}
-              <div className="grid grid-cols-1 md:grid-cols-3 md:grid-rows-3 gap-4 auto-rows-[220px]">
+              <div className="grid grid-cols-1 md:grid-cols-3 md:grid-rows-3 gap-5 auto-rows-[230px] w-full">
                 
                 {/* Item 1: Left Vertical Card (Planner Engine) */}
                 <div 
                   onClick={() => navigate('/chat')}
                   className="md:row-span-2 group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-2 hover:border-indigo-500/60 hover:shadow-2xl hover:shadow-indigo-500/20 cursor-pointer"
                 >
-                  {/* Full Cover Image Background */}
+                  {/* Full Cover Bright Image Background */}
                   <div className="absolute inset-0 z-0 overflow-hidden">
-                    <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop" alt="Planner Architecture" className="w-full h-full object-cover opacity-40 group-hover:opacity-75 group-hover:scale-110 transition-all duration-500 ease-out" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/30"></div>
+                    <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop" alt="Planner Architecture" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500 ease-out" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950/20"></div>
                   </div>
 
                   {/* Card Content Overlay */}
                   <div className="relative z-10 flex items-center justify-between">
-                    <span className="px-2.5 py-1 rounded-md bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">PLANNER ENGINE</span>
-                    <span className="material-symbols-outlined text-slate-400 group-hover:text-indigo-400 group-hover:scale-110 transition-all">account_tree</span>
+                    <span className="px-2.5 py-1 rounded-md bg-indigo-500/30 border border-indigo-500/40 text-indigo-200 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">PLANNER ENGINE</span>
+                    <span className="material-symbols-outlined text-slate-300 group-hover:text-indigo-400 group-hover:scale-110 transition-all">account_tree</span>
                   </div>
 
                   <div className="relative z-10 space-y-1.5">
                     <h3 className="text-lg font-bold text-white group-hover:text-indigo-300 transition-colors">Hierarchical Goal Planner</h3>
-                    <p className="text-xs text-slate-300 leading-relaxed">Decomposes user prompts into structured execution plans with dependencies, execution contracts, and permissions.</p>
+                    <p className="text-xs text-slate-200 leading-relaxed font-medium">Decomposes user prompts into structured execution plans with dependencies, execution contracts, and permissions.</p>
                   </div>
                 </div>
 
@@ -345,21 +360,21 @@ export const LandingPage: React.FC = () => {
                   onClick={() => navigate('/execution')}
                   className="md:col-span-2 group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-2 hover:border-cyan-500/60 hover:shadow-2xl hover:shadow-cyan-500/20 cursor-pointer"
                 >
-                  {/* Full Cover Image Background */}
+                  {/* Full Cover Bright Image Background */}
                   <div className="absolute inset-0 z-0 overflow-hidden">
-                    <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop" alt="Worker Telemetry" className="w-full h-full object-cover opacity-40 group-hover:opacity-75 group-hover:scale-110 transition-all duration-500 ease-out" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/30"></div>
+                    <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop" alt="Worker Telemetry" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500 ease-out" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950/20"></div>
                   </div>
 
                   {/* Card Content Overlay */}
                   <div className="relative z-10 flex items-center justify-between">
-                    <span className="px-2.5 py-1 rounded-md bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">WORKER EXECUTION ENGINE</span>
-                    <span className="material-symbols-outlined text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all">terminal</span>
+                    <span className="px-2.5 py-1 rounded-md bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">WORKER EXECUTION ENGINE</span>
+                    <span className="material-symbols-outlined text-slate-300 group-hover:text-cyan-400 group-hover:scale-110 transition-all">terminal</span>
                   </div>
 
                   <div className="relative z-10 space-y-1.5 max-w-lg">
                     <h3 className="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors">Multi-Tool Execution System</h3>
-                    <p className="text-xs text-slate-300 leading-relaxed">Performs real task execution across browser automation, desktop control, web research, PDF parsing, and custom PPTX slides generation.</p>
+                    <p className="text-xs text-slate-200 leading-relaxed font-medium">Performs real task execution across browser automation, desktop control, web research, PDF parsing, and custom PPTX slides generation.</p>
                   </div>
                 </div>
 
@@ -368,21 +383,21 @@ export const LandingPage: React.FC = () => {
                   onClick={() => navigate('/plan')}
                   className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-5 flex flex-col justify-between transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] hover:border-rose-500/60 hover:shadow-2xl hover:shadow-rose-500/20 cursor-pointer"
                 >
-                  {/* Full Cover Image Background */}
+                  {/* Full Cover Bright Image Background */}
                   <div className="absolute inset-0 z-0 overflow-hidden">
-                    <img src="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=800&auto=format&fit=crop" alt="RAG Memory" className="w-full h-full object-cover opacity-40 group-hover:opacity-75 group-hover:scale-110 transition-all duration-500 ease-out" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/20"></div>
+                    <img src="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=800&auto=format&fit=crop" alt="RAG Memory" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500 ease-out" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950/20"></div>
                   </div>
 
                   {/* Card Content Overlay */}
                   <div className="relative z-10 flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded bg-rose-500/20 border border-rose-500/30 text-rose-300 text-[9px] font-semibold font-mono backdrop-blur-md">PERSISTENT MEMORY</span>
-                    <span className="material-symbols-outlined text-slate-400 group-hover:text-rose-400 group-hover:scale-110 transition-all">neurology</span>
+                    <span className="px-2 py-0.5 rounded bg-rose-500/30 border border-rose-500/40 text-rose-200 text-[9px] font-semibold font-mono backdrop-blur-md">PERSISTENT MEMORY</span>
+                    <span className="material-symbols-outlined text-slate-300 group-hover:text-rose-400 group-hover:scale-110 transition-all">neurology</span>
                   </div>
 
                   <div className="relative z-10 space-y-1">
                     <h3 className="text-sm font-bold text-white group-hover:text-rose-300 transition-colors">RAG Semantic Agent</h3>
-                    <p className="text-[11px] text-slate-300 font-mono">Vector Search + LLM</p>
+                    <p className="text-[11px] text-slate-200 font-mono">Vector Search + LLM</p>
                   </div>
                 </div>
 
@@ -391,21 +406,21 @@ export const LandingPage: React.FC = () => {
                   onClick={() => navigate('/execution')}
                   className="md:row-span-2 group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-2 hover:border-purple-500/60 hover:shadow-2xl hover:shadow-purple-500/20 cursor-pointer"
                 >
-                  {/* Full Cover Image Background */}
+                  {/* Full Cover Bright Image Background */}
                   <div className="absolute inset-0 z-0 overflow-hidden">
-                    <img src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=800&auto=format&fit=crop" alt="Supervisor View" className="w-full h-full object-cover opacity-40 group-hover:opacity-75 group-hover:scale-110 transition-all duration-500 ease-out" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/30"></div>
+                    <img src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=800&auto=format&fit=crop" alt="Supervisor View" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500 ease-out" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950/20"></div>
                   </div>
 
                   {/* Card Content Overlay */}
                   <div className="relative z-10 flex items-center justify-between">
-                    <span className="px-2.5 py-1 rounded-md bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">SUPERVISOR ENGINE</span>
-                    <span className="material-symbols-outlined text-slate-400 group-hover:text-purple-400 group-hover:scale-110 transition-all">visibility</span>
+                    <span className="px-2.5 py-1 rounded-md bg-purple-500/30 border border-purple-500/40 text-purple-200 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">SUPERVISOR ENGINE</span>
+                    <span className="material-symbols-outlined text-slate-300 group-hover:text-purple-400 group-hover:scale-110 transition-all">visibility</span>
                   </div>
 
                   <div className="relative z-10 space-y-1.5">
                     <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">Real-time Pipeline Supervisor</h3>
-                    <p className="text-xs text-slate-300 leading-relaxed">Monitors the running state, tracks task progress, validates results, and dispatches state updates across the EventBus.</p>
+                    <p className="text-xs text-slate-200 leading-relaxed font-medium">Monitors the running state, tracks task progress, validates results, and dispatches state updates across the EventBus.</p>
                   </div>
                 </div>
 
@@ -414,21 +429,21 @@ export const LandingPage: React.FC = () => {
                   onClick={() => navigate('/plan')}
                   className="md:col-span-2 group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-2 hover:border-emerald-500/60 hover:shadow-2xl hover:shadow-emerald-500/20 cursor-pointer"
                 >
-                  {/* Full Cover Image Background */}
+                  {/* Full Cover Bright Image Background */}
                   <div className="absolute inset-0 z-0 overflow-hidden">
-                    <img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop" alt="Self-Healing Architecture" className="w-full h-full object-cover opacity-40 group-hover:opacity-75 group-hover:scale-110 transition-all duration-500 ease-out" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/30"></div>
+                    <img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop" alt="Self-Healing Architecture" className="w-full h-full object-cover opacity-90 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500 ease-out" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950/20"></div>
                   </div>
 
                   {/* Card Content Overlay */}
                   <div className="relative z-10 flex items-center justify-between">
-                    <span className="px-2.5 py-1 rounded-md bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">HEALING CONTROLLER</span>
-                    <span className="material-symbols-outlined text-slate-400 group-hover:text-emerald-400 group-hover:scale-110 transition-all">healing</span>
+                    <span className="px-2.5 py-1 rounded-md bg-emerald-500/30 border border-emerald-500/40 text-emerald-200 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">HEALING CONTROLLER</span>
+                    <span className="material-symbols-outlined text-slate-300 group-hover:text-emerald-400 group-hover:scale-110 transition-all">healing</span>
                   </div>
 
                   <div className="relative z-10 space-y-1.5 max-w-lg">
                     <h3 className="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">Resilient Self-Healing Engine</h3>
-                    <p className="text-xs text-slate-300 leading-relaxed">Synthesizes root-cause analyses for runtime failures and executes autonomous healing strategies to repair broken tasks without user intervention.</p>
+                    <p className="text-xs text-slate-200 leading-relaxed font-medium">Synthesizes root-cause analyses for runtime failures and executes autonomous healing strategies to repair broken tasks without user intervention.</p>
                   </div>
                 </div>
 
@@ -436,19 +451,19 @@ export const LandingPage: React.FC = () => {
             </section>
 
             {/* Artifacts Grid */}
-            <section className="space-y-4">
+            <section className="space-y-4 pt-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-white tracking-tight">Generated Artifacts</h2>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => navigate('/artifacts')}
-                    className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-900 transition-colors"
+                    className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-900 transition-colors cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-xl">filter_list</span>
                   </button>
                   <button
                     onClick={() => navigate('/artifacts')}
-                    className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-900 transition-colors"
+                    className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-900 transition-colors cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-xl">grid_view</span>
                   </button>
@@ -459,11 +474,11 @@ export const LandingPage: React.FC = () => {
                 {/* Card 1 */}
                 <div
                   onClick={() => navigate('/artifacts')}
-                  className="group bg-slate-900/50 hover:bg-slate-900 border border-slate-800/80 hover:border-indigo-500/50 rounded-2xl p-4 transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-4"
+                  className="group bg-slate-900/50 hover:bg-slate-900 border border-slate-800/80 hover:border-indigo-500/50 rounded-2xl p-5 transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-4"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-semibold tracking-wide uppercase">
+                      <span className="px-2.5 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] font-semibold tracking-wide uppercase font-mono">
                         PPTX
                       </span>
                       <span className="material-symbols-outlined text-slate-500 group-hover:text-slate-300 text-lg transition-colors">
@@ -472,26 +487,26 @@ export const LandingPage: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors line-clamp-1">
-                        Q3 AI Strategy Overview
+                        EV_Comprehensive_Presentation.pptx
                       </h3>
                       <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
-                        Comprehensive breakdown of Q3 generative AI integration plans across core product lines.
+                        Comprehensive 5-slide breakdown of Electric Vehicles market dynamics and battery tech.
                       </p>
                     </div>
                   </div>
-                  <div className="text-[11px] text-slate-500 font-medium pt-2 border-t border-slate-800/60">
-                    Updated today, 10:42 AM
+                  <div className="text-[11px] text-slate-500 font-medium pt-2 border-t border-slate-800/60 font-mono">
+                    5 slides • 41 KB • Updated today
                   </div>
                 </div>
 
                 {/* Card 2 */}
                 <div
                   onClick={() => navigate('/artifacts')}
-                  className="group bg-slate-900/50 hover:bg-slate-900 border border-slate-800/80 hover:border-indigo-500/50 rounded-2xl p-4 transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-4"
+                  className="group bg-slate-900/50 hover:bg-slate-900 border border-slate-800/80 hover:border-indigo-500/50 rounded-2xl p-5 transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-4"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-semibold tracking-wide uppercase">
+                      <span className="px-2.5 py-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-semibold tracking-wide uppercase font-mono">
                         PDF
                       </span>
                       <span className="material-symbols-outlined text-slate-500 group-hover:text-slate-300 text-lg transition-colors">
@@ -500,26 +515,26 @@ export const LandingPage: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors line-clamp-1">
-                        Market Analysis Report
+                        Market_Analysis_Report.pdf
                       </h3>
                       <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
                         Detailed research document combining 15 distinct competitor web scraping runs.
                       </p>
                     </div>
                   </div>
-                  <div className="text-[11px] text-slate-500 font-medium pt-2 border-t border-slate-800/60">
-                    Updated yesterday
+                  <div className="text-[11px] text-slate-500 font-medium pt-2 border-t border-slate-800/60 font-mono">
+                    8 pages • 240 KB • Updated yesterday
                   </div>
                 </div>
 
                 {/* Card 3 */}
                 <div
                   onClick={() => navigate('/artifacts')}
-                  className="group bg-slate-900/50 hover:bg-slate-900 border border-slate-800/80 hover:border-indigo-500/50 rounded-2xl p-4 transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-4"
+                  className="group bg-slate-900/50 hover:bg-slate-900 border border-slate-800/80 hover:border-indigo-500/50 rounded-2xl p-5 transition-all duration-300 cursor-pointer flex flex-col justify-between space-y-4"
                 >
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold tracking-wide uppercase">
+                      <span className="px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-semibold tracking-wide uppercase font-mono">
                         CSV
                       </span>
                       <span className="material-symbols-outlined text-slate-500 group-hover:text-slate-300 text-lg transition-colors">
@@ -528,57 +543,20 @@ export const LandingPage: React.FC = () => {
                     </div>
                     <div>
                       <h3 className="font-semibold text-slate-100 group-hover:text-indigo-300 transition-colors line-clamp-1">
-                        User Engagement Metrics
+                        Telemetry_Extraction_Log.csv
                       </h3>
                       <p className="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">
                         Cleaned and formatted extract of telemetry data for the past 30 days.
                       </p>
                     </div>
                   </div>
-                  <div className="text-[11px] text-slate-500 font-medium pt-2 border-t border-slate-800/60">
-                    Updated Oct 12
+                  <div className="text-[11px] text-slate-500 font-medium pt-2 border-t border-slate-800/60 font-mono">
+                    142 rows • 38 KB • Updated Oct 12
                   </div>
                 </div>
               </div>
             </section>
           </main>
-
-          {/* Sidebar */}
-          <aside className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 h-fit space-y-5">
-            <div className="flex items-center gap-2 pb-3 border-b border-slate-800">
-              <span className="material-symbols-outlined text-indigo-400 text-xl">history</span>
-              <h3 className="font-semibold text-sm text-slate-200">Context Memory</h3>
-            </div>
-
-            <div className="space-y-4 relative before:absolute before:inset-y-0 before:left-2.5 before:w-px before:bg-slate-800">
-              <div className="flex gap-3 relative pl-1">
-                <div className="w-3 h-3 rounded-full bg-indigo-500 ring-4 ring-slate-950 shrink-0 mt-1"></div>
-                <div className="text-xs space-y-0.5">
-                  <span className="text-slate-500 font-medium text-[10px]">Just Now</span>
-                  <p className="text-slate-300 leading-relaxed">
-                    Generated <strong className="text-white font-medium">Q3 AI Strategy</strong> presentation.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex gap-3 relative pl-1">
-                <div className="w-3 h-3 rounded-full bg-slate-700 ring-4 ring-slate-950 shrink-0 mt-1"></div>
-                <div className="text-xs space-y-0.5">
-                  <span className="text-slate-500 font-medium text-[10px]">2 hours ago</span>
-                  <p className="text-slate-300 leading-relaxed">
-                    Extracted key metrics into <strong className="text-white font-medium">CSV</strong>.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => navigate('/execution')}
-              className="w-full pt-3 border-t border-slate-800 text-center text-xs text-slate-400 hover:text-indigo-400 transition-colors font-medium cursor-pointer"
-            >
-              View Full Execution Logs &rarr;
-            </button>
-          </aside>
         </div>
       </div>
 
@@ -597,27 +575,27 @@ export const LandingPage: React.FC = () => {
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onClick={handleClick}
-          className={`w-full py-8 px-6 flex flex-col items-center justify-center text-center relative border-t border-slate-800/80 rounded-t-[50px] bg-gradient-to-b from-slate-900 to-slate-950 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] cursor-grab active:cursor-grabbing hover:border-indigo-500/50 transition-colors ${
+          className={`w-full py-5 px-6 flex flex-col items-center justify-center text-center relative border-t border-slate-800/80 rounded-t-[40px] bg-gradient-to-b from-slate-900 to-slate-950 shadow-[0_-10px_40px_rgba(0,0,0,0.6)] cursor-grab active:cursor-grabbing hover:border-indigo-500/50 transition-colors ${
             isDragging ? 'cursor-grabbing' : ''
           }`}
         >
           {/* Subtle Pull-Up Indicator Bar */}
-          <div className="w-12 h-1.5 bg-slate-700/60 hover:bg-indigo-500/80 rounded-full mb-4 transition-colors animate-pulse" />
+          <div className="w-10 h-1 bg-slate-700/60 hover:bg-indigo-500/80 rounded-full mb-3 transition-colors animate-pulse" />
 
-          <div className="group flex flex-col items-center gap-3 transition-transform duration-300 hover:scale-105 active:scale-95">
-            <div className="w-20 h-20 rounded-full bg-slate-950 border-2 border-indigo-500/40 flex items-center justify-center shadow-[0_0_30px_rgba(168,85,247,0.3)] group-hover:border-indigo-500 group-hover:shadow-[0_0_45px_rgba(168,85,247,0.7)] transition-all">
+          <div className="group flex flex-col items-center gap-2 transition-transform duration-300 hover:scale-105 active:scale-95">
+            <div className="w-14 h-14 rounded-full bg-slate-950 border-2 border-indigo-500/40 flex items-center justify-center shadow-[0_0_25px_rgba(168,85,247,0.3)] group-hover:border-indigo-500 group-hover:shadow-[0_0_35px_rgba(168,85,247,0.7)] transition-all">
               <img
                 src="/logo.png"
                 alt="AetherPhoenix Logo"
-                className="w-14 h-14 object-contain pointer-events-none drop-shadow"
+                className="w-10 h-10 object-contain pointer-events-none drop-shadow"
               />
             </div>
-            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-indigo-400 group-hover:text-indigo-300 transition-colors">
-              <span className="material-symbols-outlined text-sm animate-bounce">keyboard_arrow_up</span>
+            <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-indigo-400 group-hover:text-indigo-300 transition-colors">
+              <span className="material-symbols-outlined text-xs animate-bounce">keyboard_arrow_up</span>
               <span>LAUNCH AGENT ASSISTANT</span>
-              <span className="material-symbols-outlined text-sm animate-bounce">keyboard_arrow_up</span>
+              <span className="material-symbols-outlined text-xs animate-bounce">keyboard_arrow_up</span>
             </div>
-            <span className="text-[10px] text-slate-500">Pull up or click to launch</span>
+            <span className="text-[9px] text-slate-500">Pull up or click to launch</span>
           </div>
         </div>
       </div>

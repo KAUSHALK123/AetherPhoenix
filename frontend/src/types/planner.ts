@@ -1,3 +1,7 @@
+import type { PermissionRequest } from './permission';
+import type { ArtifactItem } from './artifact';
+import type { WorkflowState } from './workflow';
+
 export type MessageRole = 'user' | 'planner' | 'system';
 
 export type PlannerStatus =
@@ -7,6 +11,7 @@ export type PlannerStatus =
   | 'clarifying'
   | 'ready'
   | 'waiting_for_approval'
+  | 'permission_required'
   | 'executing'
   | 'completed'
   | 'error';
@@ -18,6 +23,10 @@ export interface Message {
   status?: PlannerStatus;
   timestamp: string;
   planData?: PlannerPlan;
+  options?: string[];
+  permissionData?: PermissionRequest;
+  artifactData?: ArtifactItem;
+  workflowData?: Partial<WorkflowState>;
 }
 
 export interface PlannerTask {

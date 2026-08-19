@@ -1,16 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useChatStore } from '../store/chatStore';
+import { ClarificationPopcard } from '../components/chat/ClarificationPopcard';
+import { PlanPopcard } from '../components/chat/PlanPopcard';
+import { PermissionPopcard } from '../components/chat/PermissionPopcard';
+import { ArtifactPopcard } from '../components/chat/ArtifactPopcard';
+import { WorkflowStatusPopcard } from '../components/chat/WorkflowStatusPopcard';
 
 export const ChatPage: React.FC = () => {
-  const navigate = useNavigate();
   const messages = useChatStore((state) => state.messages);
   const loading = useChatStore((state) => state.loading);
-  const activePlan = useChatStore((state) => state.activePlan);
   const sendMessage = useChatStore((state) => state.sendMessage);
+  const submitClarification = useChatStore((state) => state.submitClarification);
+  const executePlan = useChatStore((state) => state.executePlan);
+  const approvePermission = useChatStore((state) => state.approvePermissionInChat);
+  const rejectPermission = useChatStore((state) => state.rejectPermissionInChat);
 
   const [inputVal, setInputVal] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -21,263 +30,243 @@ export const ChatPage: React.FC = () => {
     if (!text || loading) return;
 
     setInputVal('');
+    setSelectedFile(null);
     await sendMessage(text);
   };
 
-  const chips = [
-    'Compose a song',
-    'Brainstorm Ideas',
-    'Learn something new',
-    'Take a quiz',
-    'Get advice',
-    'Practice a language',
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  // Real backend capabilities discovered from CapabilityDiscoveryEngine and ToolRegistry
+  const realCapabilities = [
+    { label: 'Create PowerPoint Presentation', query: 'Create a PowerPoint presentation about electric vehicles with 5 slides' },
+    { label: 'Generate PDF Research Report', query: 'Generate a comprehensive PDF market research report on AI automation' },
+    { label: 'Search the Web & Scrape', query: 'Search the web for top renewable energy innovations in 2026' },
+    { label: 'Local File Organizer', query: 'Organize files in the downloads directory by file type and date' },
+    { label: 'Run PowerShell Command', query: 'List active system processes and resource usage via PowerShell' },
+    { label: 'Browser Automation Task', query: 'Open browser and navigate to documentation page for verification' },
   ];
 
   return (
-    <div
-      className="flex-1 relative flex flex-col justify-between overflow-hidden min-h-screen bg-cover bg-center"
-      style={{
-        backgroundImage: `radial-gradient(circle at center, rgba(15, 23, 42, 0.65), rgba(2, 6, 23, 0.95)), url('https://images.unsplash.com/photo-1518837695005-2083093ee35b?q=80&w=2070&auto=format&fit=crop')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-      }}
-    >
-      {messages.length === 0 ? (
-        /* Copilot-style Chat UI Empty State */
-        <div className="max-w-4xl mx-auto w-full px-6 pt-16 pb-20 flex-1 flex flex-col items-center justify-center space-y-8 z-10">
-          {/* Greeting */}
-          <h1 className="text-3xl sm:text-4xl font-semibold text-white tracking-tight text-center">
-            Nice to see you, <span className="font-bold">KAUSHAL</span>. What's new?
+    <div className="flex flex-col h-screen w-full bg-slate-950 text-slate-100 overflow-hidden relative select-none">
+      {/* Background Ambience */}
+      <div className="absolute inset-0 bg-radial-[at_top_center] from-indigo-950/20 via-slate-950 to-slate-950 pointer-events-none z-0" />
+
+      {/* Top Fixed Chat Header (Stable & Fullscreen) */}
+      <header className="h-16 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl px-6 flex items-center justify-between z-20 shrink-0">
+        <div className="flex items-center gap-3 pl-14">
+          <h1 className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
+            Mission Control <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">AI ASSISTANT</span>
           </h1>
-
-          {/* Floating Glass Input Box */}
-          <div className="w-full max-w-2xl bg-slate-900/80 backdrop-blur-2xl border border-slate-700/60 rounded-3xl p-4 shadow-2xl shadow-black/50 space-y-3">
-            <input
-              type="text"
-              placeholder="Message Copilot..."
-              value={inputVal}
-              onChange={(e) => setInputVal(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              className="w-full bg-transparent text-sm text-slate-100 placeholder-slate-400 focus:outline-none px-2"
-            />
-            
-            <div className="flex items-center justify-between pt-1 border-t border-slate-800/50 text-slate-400">
-              <div className="flex items-center gap-2">
-                <button className="p-1.5 hover:bg-slate-800 rounded-full transition-colors">
-                  <span className="material-symbols-outlined text-lg">add</span>
-                </button>
-                <button className="flex items-center gap-1 text-xs px-2.5 py-1 bg-slate-800/80 hover:bg-slate-800 rounded-full border border-slate-700/50 transition-colors">
-                  <span>Smart</span>
-                  <span className="material-symbols-outlined text-sm">expand_more</span>
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <button className="p-1.5 hover:bg-slate-800 rounded-full transition-colors">
-                  <span className="material-symbols-outlined text-lg">glasses</span>
-                </button>
-                <button className="p-1.5 hover:bg-slate-800 rounded-full transition-colors">
-                  <span className="material-symbols-outlined text-lg">graphic_eq</span>
-                </button>
-                <button
-                  onClick={() => handleSend()}
-                  disabled={!inputVal.trim() || loading}
-                  className="p-1.5 hover:bg-slate-800 rounded-full text-indigo-400 hover:text-indigo-300 disabled:opacity-40 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-lg">send</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Suggestion Pills */}
-          <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl">
-            {chips.map((chip) => (
-              <button
-                key={chip}
-                onClick={() => handleSend(chip)}
-                className="px-3.5 py-1.5 rounded-full bg-slate-900/60 hover:bg-slate-800/80 border border-slate-700/40 text-xs text-slate-300 backdrop-blur-md transition-all cursor-pointer hover:border-indigo-500/50 hover:text-white"
-              >
-                {chip}
-              </button>
-            ))}
-          </div>
-
-          {/* Bottom Recent Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl pt-6">
-            {/* Attached Files Card */}
-            <div className="bg-slate-900/70 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
-                <span className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-sm">attach_file</span> Attach a recent file to chat
-                </span>
-                <span className="material-symbols-outlined text-sm">info</span>
-              </div>
-              <div className="space-y-2">
-                <div
-                  onClick={() => handleSend("Analyze the main_dash.txt file")}
-                  className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-800/50 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300">
-                      <span className="material-symbols-outlined text-base">description</span>
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium text-slate-200">main_dash.txt</div>
-                      <div className="text-[10px] text-slate-500">Yesterday</div>
-                    </div>
-                  </div>
-                  <span className="material-symbols-outlined text-slate-500 text-sm">more_horiz</span>
-                </div>
-                <div
-                  onClick={() => handleSend("Look at aether_logo_bg.png")}
-                  className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-800/50 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center">
-                      <span className="material-symbols-outlined text-base">image</span>
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium text-slate-200">aether_logo_bg.png</div>
-                      <div className="text-[10px] text-slate-500">Yesterday</div>
-                    </div>
-                  </div>
-                  <span className="material-symbols-outlined text-slate-500 text-sm">more_horiz</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Keep Talking Card */}
-            <div className="bg-slate-900/70 backdrop-blur-xl border border-slate-800/80 rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
-                <span className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-sm">chat_bubble_outline</span> Keep talking to Copilot
-                </span>
-              </div>
-              <div className="space-y-2">
-                <div
-                  onClick={() => handleSend("Explain Color Bandwidth Limitation in TV")}
-                  className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-800/50 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300">
-                      <span className="material-symbols-outlined text-base">chat</span>
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium text-slate-200 line-clamp-1">Color Bandwidth Limitation in TV</div>
-                      <div className="text-[10px] text-slate-500">Tuesday, May 5</div>
-                    </div>
-                  </div>
-                  <span className="material-symbols-outlined text-slate-500 text-sm">more_horiz</span>
-                </div>
-                <div
-                  onClick={() => handleSend("What is the Chessboard Square Color Logic?")}
-                  className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-800/50 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-slate-300">
-                      <span className="material-symbols-outlined text-base">chat</span>
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium text-slate-200 line-clamp-1">Chessboard Square Color Logic</div>
-                      <div className="text-[10px] text-slate-500">Tuesday, May 5</div>
-                    </div>
-                  </div>
-                  <span className="material-symbols-outlined text-slate-500 text-sm">more_horiz</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
-      ) : (
-        /* Active Conversation Flow */
-        <div className="flex flex-col flex-1 max-w-4xl mx-auto w-full p-4 md:p-6 pb-32 z-10">
-          <div className="flex flex-col gap-6 flex-1 pt-8">
+
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            Agent Ready
+          </span>
+        </div>
+      </header>
+
+      {/* Scrollable Conversation Area */}
+      <div
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto w-full px-4 sm:px-6 md:px-8 py-6 z-10 space-y-6 max-w-4xl mx-auto"
+      >
+        {messages.length === 0 ? (
+          /* Empty State / Copilot Stitch View */
+          <div className="min-h-[calc(100vh-14rem)] flex flex-col items-center justify-center space-y-8 my-auto py-8">
+            {/* Greeting */}
+            <div className="text-center space-y-2">
+              <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-600 to-violet-500 p-[1.5px] mx-auto mb-4 shadow-xl shadow-indigo-500/20">
+                <div className="w-full h-full bg-slate-950 rounded-[22px] flex items-center justify-center">
+                  <img src="/logo.png" alt="AetherPhoenix" className="w-10 h-10 object-contain" />
+                </div>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+                How can AetherPhoenix help today?
+              </h2>
+              <p className="text-sm text-slate-400 max-w-md mx-auto">
+                Decomposes complex requests into real executable tasks with permissions, telemetry, and artifacts.
+              </p>
+            </div>
+
+            {/* Quick Action Pills mapped to real backend tools */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 w-full max-w-2xl pt-2">
+              {realCapabilities.map((cap, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSend(cap.query)}
+                  className="flex flex-col items-start p-3.5 rounded-2xl bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-indigo-500/50 text-left transition-all duration-200 group cursor-pointer shadow-sm hover:shadow-indigo-500/10 active:scale-98"
+                >
+                  <span className="text-xs font-semibold text-slate-200 group-hover:text-indigo-300 transition-colors">
+                    {cap.label}
+                  </span>
+                  <span className="text-[11px] text-slate-500 truncate w-full mt-1">
+                    {cap.query}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          /* Live Messages Stream */
+          <div className="space-y-6 pt-2 pb-6">
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex gap-3.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'} w-full`}
               >
-                {msg.role === 'planner' && (
-                  <div className="w-9 h-9 rounded-full bg-slate-900 border border-indigo-500/30 flex items-center justify-center shrink-0 overflow-hidden shadow">
-                    <img src="/logo.png" alt="Logo" className="w-6 h-6 object-contain" />
+                {msg.role !== 'user' && (
+                  <div className="w-8 h-8 rounded-xl bg-slate-900 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow mt-1">
+                    <img src="/logo.png" alt="Agent" className="w-5 h-5 object-contain" />
                   </div>
                 )}
-                <div
-                  className={`max-w-[85%] rounded-2xl p-5 ${
-                    msg.role === 'user'
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/10'
-                      : 'bg-slate-900/90 backdrop-blur-md border border-slate-800/80 text-white shadow-lg'
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap leading-relaxed text-sm md:text-base">
-                    {msg.content}
-                  </p>
 
-                  {/* Plan CTA Card */}
-                  {(msg.planData || activePlan) && (
-                    <div className="mt-4 pt-4 border-t border-slate-800/40 flex justify-between items-center gap-4">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase text-indigo-400 tracking-wider">Plan Generated</span>
-                        <h4 className="text-sm font-semibold text-slate-200">
-                          {(msg.planData || activePlan)?.workflow_spec || 'Execution Plan'}
-                        </h4>
-                      </div>
-                      <button
-                        onClick={() => navigate('/plan')}
-                        className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow cursor-pointer shrink-0"
-                      >
-                        <span className="material-symbols-outlined text-sm">visibility</span>
-                        Review Plan
-                      </button>
+                <div className={`space-y-3 max-w-[90%] sm:max-w-[80%]`}>
+                  {/* User Bubble */}
+                  {msg.role === 'user' && (
+                    <div className="bg-indigo-600 text-white px-5 py-3 rounded-2xl rounded-tr-sm shadow-md text-sm leading-relaxed whitespace-pre-wrap">
+                      {msg.content}
                     </div>
                   )}
+
+                  {/* Clarification Popcard */}
+                  {msg.role !== 'user' && msg.status === 'clarifying' && (
+                    <ClarificationPopcard
+                      question={msg.content}
+                      options={msg.options}
+                      onSubmit={(ans) => submitClarification(ans)}
+                    />
+                  )}
+
+                  {/* Plan Popcard */}
+                  {msg.role !== 'user' && msg.planData && msg.status === 'ready' && (
+                    <PlanPopcard
+                      plan={msg.planData}
+                      onApprove={(plan) => executePlan(plan)}
+                      onEdit={(instruction) => handleSend(`Modify the plan: ${instruction}`)}
+                    />
+                  )}
+
+                  {/* Permission Popcard */}
+                  {msg.role !== 'user' && msg.permissionData && (
+                    <PermissionPopcard
+                      permission={msg.permissionData}
+                      onApprove={(reqId) => approvePermission(reqId)}
+                      onReject={(reqId) => rejectPermission(reqId)}
+                    />
+                  )}
+
+                  {/* Workflow Live Progress Popcard */}
+                  {msg.role !== 'user' && msg.workflowData && (
+                    <WorkflowStatusPopcard workflow={msg.workflowData} />
+                  )}
+
+                  {/* Artifact Popcard */}
+                  {msg.role !== 'user' && msg.artifactData && (
+                    <ArtifactPopcard artifact={msg.artifactData} />
+                  )}
+
+                  {/* Standard Agent Text Message (if not a popcard or in addition) */}
+                  {msg.role !== 'user' &&
+                    !msg.planData &&
+                    !msg.permissionData &&
+                    !msg.workflowData &&
+                    !msg.artifactData &&
+                    msg.status !== 'clarifying' && (
+                      <div className="bg-slate-900/90 backdrop-blur-md border border-slate-800 text-slate-200 px-5 py-3.5 rounded-2xl rounded-tl-sm text-sm leading-relaxed whitespace-pre-wrap shadow-md">
+                        {msg.content}
+                      </div>
+                    )}
                 </div>
+
                 {msg.role === 'user' && (
-                  <div className="w-9 h-9 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0 shadow">
-                    <span className="material-symbols-outlined text-white text-sm">person</span>
+                  <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0 shadow text-slate-300 mt-1">
+                    <span className="material-symbols-outlined text-sm">person</span>
                   </div>
                 )}
               </div>
             ))}
 
             {loading && (
-              <div className="flex gap-4 items-center">
-                <div className="w-9 h-9 rounded-full bg-slate-900 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow">
-                  <img src="/logo.png" alt="Logo" className="w-6 h-6 object-contain animate-pulse" />
+              <div className="flex gap-3.5 items-center">
+                <div className="w-8 h-8 rounded-xl bg-slate-900 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow">
+                  <img src="/logo.png" alt="Agent" className="w-5 h-5 object-contain animate-pulse" />
                 </div>
-                <div className="bg-slate-900/90 border border-slate-800/80 px-4 py-3 rounded-2xl flex items-center gap-2 shadow">
+                <div className="bg-slate-900/90 border border-slate-800 px-4 py-3 rounded-2xl flex items-center gap-2 shadow">
                   <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" />
                   <div className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce [animation-delay:0.2s]" />
                   <div className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce [animation-delay:0.4s]" />
+                  <span className="text-xs text-slate-400 font-mono ml-2">Planner formulating response...</span>
                 </div>
               </div>
             )}
 
             <div ref={messagesEndRef} />
           </div>
+        )}
+      </div>
 
-          {/* Sticky Bottom Input for Active Chat */}
-          <div className="fixed bottom-6 left-0 md:left-64 right-0 px-6 z-30">
-            <div className="max-w-4xl mx-auto bg-slate-900/95 backdrop-blur-2xl border border-slate-800/80 rounded-[28px] p-3 flex items-center gap-3 shadow-2xl shadow-black/80">
-              <input
-                className="bg-transparent border-none text-white w-full focus:outline-none px-4 text-sm md:text-base placeholder:text-slate-500"
-                placeholder="Ask AetherPhoenix a follow-up or command..."
-                type="text"
-                value={inputVal}
-                onChange={(e) => setInputVal(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              />
-              <button
-                onClick={() => handleSend()}
-                disabled={!inputVal.trim() || loading}
-                className="w-10 h-10 rounded-full bg-indigo-600 text-white flex items-center justify-center disabled:opacity-40 hover:bg-indigo-500 transition-all cursor-pointer shadow"
-              >
-                <span className="material-symbols-outlined text-[18px]">arrow_upward</span>
+      {/* Fixed Composer Bottom Bar */}
+      <footer className="border-t border-slate-800/80 bg-slate-950/90 backdrop-blur-xl p-4 sm:p-5 z-20 shrink-0">
+        <div className="max-w-4xl mx-auto space-y-2">
+          {selectedFile && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-indigo-500/30 rounded-xl text-xs text-indigo-300 w-fit">
+              <span className="material-symbols-outlined text-sm">attachment</span>
+              <span>{selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)</span>
+              <button onClick={() => setSelectedFile(null)} className="hover:text-white cursor-pointer ml-1">
+                <span className="material-symbols-outlined text-xs">close</span>
               </button>
             </div>
+          )}
+
+          <div className="bg-slate-900/90 border border-slate-800 focus-within:border-indigo-500/60 rounded-2xl p-2.5 flex items-center gap-2.5 shadow-2xl transition-all">
+            {/* Hidden native file input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+            />
+
+            {/* Attachment Button */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-9 h-9 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-400 hover:text-indigo-400 border border-slate-700/60 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              title="Attach File"
+            >
+              <span className="material-symbols-outlined text-lg">attach_file</span>
+            </button>
+
+            {/* Main Input Text */}
+            <input
+              type="text"
+              value={inputVal}
+              onChange={(e) => setInputVal(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="Ask AetherPhoenix or assign a desktop automation goal..."
+              className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none px-2"
+            />
+
+            {/* Send Button */}
+            <button
+              onClick={() => handleSend()}
+              disabled={(!inputVal.trim() && !selectedFile) || loading}
+              className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 disabled:opacity-30 text-white flex items-center justify-center transition-all cursor-pointer shadow-md shadow-indigo-600/30 shrink-0 active:scale-95"
+            >
+              <span className="material-symbols-outlined text-lg">arrow_upward</span>
+            </button>
+          </div>
+          <div className="flex items-center justify-between text-[11px] text-slate-500 px-2 font-mono">
+            <span>Powered by AetherPhoenix Agent Engine</span>
+            <span>Enter to Send</span>
           </div>
         </div>
-      )}
+      </footer>
     </div>
   );
 };

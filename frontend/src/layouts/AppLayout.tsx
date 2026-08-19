@@ -23,11 +23,11 @@ export const AppLayout: React.FC = () => {
     <div className="bg-background text-on-surface font-body overflow-x-hidden min-h-screen flex flex-col">
       <WebGLBackground />
       {!isChatPage && <Header />}
-      <DesktopNav />
-      <div className={`flex-1 flex flex-col ${isChatPage ? '' : 'pt-16'} md:pl-64 pb-20 md:pb-0`}>
+      <DesktopNav isChatPage={isChatPage} />
+      <div className={`flex-1 flex flex-col ${isChatPage ? 'p-0 m-0' : 'pt-16 md:pl-64 pb-20 md:pb-0'}`}>
         <Outlet />
       </div>
-      <BottomNav />
+      {!isChatPage && <BottomNav />}
     </div>
   );
 };
