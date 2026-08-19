@@ -68,32 +68,30 @@ export const ChatPage: React.FC = () => {
           /* Empty State / Copilot Stitch View */
           <div className="min-h-[calc(100vh-14rem)] flex flex-col items-center justify-center space-y-8 my-auto py-8">
             {/* Greeting */}
-            <div className="text-center space-y-2">
-              <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-600 to-violet-500 p-[1.5px] mx-auto mb-4 shadow-xl shadow-indigo-500/20">
-                <div className="w-full h-full bg-white rounded-[22px] flex items-center justify-center">
-                  <img src="/logo.png" alt="AetherPhoenix" className="w-10 h-10 object-contain drop-shadow" />
-                </div>
+            <div className="text-center space-y-3">
+              <div className="w-20 h-20 rounded-3xl bg-white border border-slate-200 p-2 mx-auto mb-4 shadow-2xl shadow-black/30 flex items-center justify-center hover:scale-105 transition-transform">
+                <img src="/logo.png" alt="AetherPhoenix" className="w-16 h-16 object-contain drop-shadow" />
               </div>
               <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
                 How can AetherPhoenix help today?
               </h2>
-              <p className="text-sm text-slate-400 max-w-md mx-auto">
+              <p className="text-sm text-slate-300 max-w-md mx-auto drop-shadow">
                 Decomposes complex requests into real executable tasks with permissions, telemetry, and artifacts.
               </p>
             </div>
 
-            {/* Quick Action Pills mapped to real backend tools */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 w-full max-w-2xl pt-2">
+            {/* Quick Action Pills - Glassmorphism style (translucent, see-through glass effect with light shine) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 w-full max-w-2xl pt-2">
               {realCapabilities.map((cap, idx) => (
                 <button
                   key={idx}
                   onClick={() => handleSend(cap.query)}
-                  className="flex flex-col items-start p-3.5 rounded-2xl bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-indigo-500/50 text-left transition-all duration-200 group cursor-pointer shadow-sm hover:shadow-indigo-500/10 active:scale-98"
+                  className="flex flex-col items-start p-4 rounded-2xl bg-white/10 hover:bg-white/15 backdrop-blur-xl border border-white/20 hover:border-white/40 text-left transition-all duration-300 group cursor-pointer shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-indigo-500/20 active:scale-98"
                 >
-                  <span className="text-xs font-semibold text-slate-200 group-hover:text-indigo-300 transition-colors">
+                  <span className="text-xs font-bold text-white group-hover:text-indigo-200 transition-colors drop-shadow">
                     {cap.label}
                   </span>
-                  <span className="text-[11px] text-slate-500 truncate w-full mt-1">
+                  <span className="text-[11px] text-slate-200/80 truncate w-full mt-1.5 font-normal">
                     {cap.query}
                   </span>
                 </button>

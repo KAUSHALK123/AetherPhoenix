@@ -43,9 +43,9 @@ export const DesktopNav: React.FC<DesktopNavProps> = ({ isChatPage = false }) =>
           />
         )}
 
-        {/* Drawer Overlay Menu (Glassmorphic to show ocean background behind it) */}
+        {/* Drawer Overlay Menu (Glassmorphic to show ocean background behind it with 50px rounded corners on the pull-out edge) */}
         <div
-          className={`fixed left-0 top-0 h-full w-72 bg-slate-950/80 backdrop-blur-xl border-r border-slate-800/80 p-6 flex flex-col gap-6 z-50 shadow-2xl transition-transform duration-300 ease-in-out ${
+          className={`fixed left-0 top-0 h-full w-80 bg-slate-950/80 backdrop-blur-2xl border-r border-slate-800/80 rounded-r-[50px] p-6 flex flex-col gap-6 z-50 shadow-2xl transition-transform duration-300 ease-in-out ${
             isOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
@@ -53,10 +53,10 @@ export const DesktopNav: React.FC<DesktopNavProps> = ({ isChatPage = false }) =>
             <Link
               to="/"
               onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 group"
+              className="flex items-center gap-3.5 group"
             >
-              <div className="w-10 h-10 rounded-xl bg-slate-900 border border-indigo-500/40 flex items-center justify-center p-1.5 shadow">
-                <img src="/logo.png" alt="Logo" className="w-full h-full object-contain" />
+              <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center p-1 shadow-lg shadow-black/20 group-hover:scale-105 transition-transform">
+                <img src="/logo.png" alt="Logo" className="w-9 h-9 object-contain drop-shadow" />
               </div>
               <div>
                 <h2 className="text-base font-bold text-white group-hover:text-indigo-300 transition-colors">AetherPhoenix</h2>
@@ -65,7 +65,7 @@ export const DesktopNav: React.FC<DesktopNavProps> = ({ isChatPage = false }) =>
             </Link>
             <button
               onClick={() => setIsOpen(false)}
-              className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="p-2 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-lg">close</span>
             </button>
@@ -78,7 +78,7 @@ export const DesktopNav: React.FC<DesktopNavProps> = ({ isChatPage = false }) =>
                 to={item.path}
                 onClick={() => setIsOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-3.5 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                  `flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-medium transition-all ${
                     isActive
                       ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/40 shadow-inner'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
@@ -93,9 +93,6 @@ export const DesktopNav: React.FC<DesktopNavProps> = ({ isChatPage = false }) =>
 
           <div className="pt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-500 font-mono">
             <span>v1.0.0-Beta</span>
-            <span className="flex items-center gap-1.5 text-emerald-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Local Agent
-            </span>
           </div>
         </div>
       </>
