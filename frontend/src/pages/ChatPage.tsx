@@ -80,15 +80,15 @@ export const ChatPage: React.FC = () => {
               </p>
             </div>
 
-            {/* Quick Action Pills - Glassmorphism style (translucent, see-through glass effect with light shine) */}
+            {/* Quick Action Pills - Glassmorphism style with see-through transparency */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 w-full max-w-2xl pt-2">
               {realCapabilities.map((cap, idx) => (
                 <button
                   key={idx}
                   onClick={() => handleSend(cap.query)}
-                  className="flex flex-col items-start p-4 rounded-2xl bg-white/10 hover:bg-white/15 backdrop-blur-xl border border-white/20 hover:border-white/40 text-left transition-all duration-300 group cursor-pointer shadow-lg shadow-black/20 hover:shadow-xl hover:shadow-indigo-500/20 active:scale-98"
+                  className="flex flex-col items-start p-4 rounded-2xl glass-card-hover text-left cursor-pointer active:scale-98"
                 >
-                  <span className="text-xs font-bold text-white group-hover:text-indigo-200 transition-colors drop-shadow">
+                  <span className="text-xs font-bold text-white group-hover:text-cyan-200 transition-colors drop-shadow">
                     {cap.label}
                   </span>
                   <span className="text-[11px] text-slate-200/80 truncate w-full mt-1.5 font-normal">
