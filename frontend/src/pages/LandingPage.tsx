@@ -208,25 +208,15 @@ export const LandingPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Hero Banner (White Theme with Mandala Watermark and Masked Loader Text) */}
+      {/* Hero Banner (White Theme with soft Mandala Watermark) */}
       <section className="relative overflow-hidden border-b border-slate-200 bg-white py-24 md:py-32 px-6">
         {/* Background Snowflake Mandala Graphic (As per user uploads) */}
-        <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden opacity-[0.9] pointer-events-none">
+        <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden opacity-[0.12] pointer-events-none">
           <img
             src="/snowflake.png"
             alt="Snowflake Mandala"
-            className="w-[450px] h-[450px] md:w-[600px] md:h-[600px] object-contain"
+            className="w-[500px] h-[500px] md:w-[700px] md:h-[700px] object-contain"
           />
-        </div>
-
-        {/* Loader Text Animation behind Main Text */}
-        <div className="absolute top-[40%] left-[50%] -translate-x-[50%] -translate-y-[50%] z-0 pointer-events-none opacity-[0.15]">
-          <div className="loader-wrapper">
-            <div className="loader"></div>
-            {"AUTOMATION".split("").map((letter, index) => (
-              <span key={index} className="loader-letter">{letter}</span>
-            ))}
-          </div>
         </div>
 
         <div className="max-w-5xl mx-auto text-center relative z-10 space-y-8">
