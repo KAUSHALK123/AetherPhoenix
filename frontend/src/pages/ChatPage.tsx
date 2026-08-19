@@ -54,33 +54,15 @@ export const ChatPage: React.FC = () => {
     <div
       className="flex flex-col h-screen w-full text-slate-100 overflow-hidden relative select-none bg-cover bg-center"
       style={{
-        backgroundImage: `radial-gradient(circle at center, rgba(15, 23, 42, 0.75), rgba(2, 6, 23, 0.96)), url('https://images.unsplash.com/photo-1518837695005-2083093ee35b?q=80&w=2070&auto=format&fit=crop')`,
+        backgroundImage: `url('https://images.unsplash.com/photo-1518837695005-2083093ee35b?q=80&w=2070&auto=format&fit=crop')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }}
     >
-      {/* Top Fixed Chat Header (Stable & Clean - No 'Mission Control' text) */}
-      <header className="h-16 border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-xl px-6 flex items-center justify-between z-20 shrink-0">
-        <div className="flex items-center gap-3 pl-14">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-              AI ASSISTANT
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Agent Ready
-          </span>
-        </div>
-      </header>
-
       {/* Scrollable Conversation Area without ugly scrollbar */}
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto w-full px-4 sm:px-6 md:px-8 py-6 z-10 space-y-6 max-w-4xl mx-auto no-scrollbar"
+        className="flex-1 overflow-y-auto w-full px-4 sm:px-6 md:px-8 pt-16 pb-6 z-10 space-y-6 max-w-4xl mx-auto no-scrollbar"
       >
         {messages.length === 0 ? (
           /* Empty State / Copilot Stitch View */
@@ -217,11 +199,11 @@ export const ChatPage: React.FC = () => {
         )}
       </div>
 
-      {/* Fixed Composer Bottom Bar */}
-      <footer className="border-t border-slate-800/80 bg-slate-950/90 backdrop-blur-xl p-4 sm:p-5 z-20 shrink-0">
+      {/* Floating Composer Bottom Bar */}
+      <footer className="p-4 sm:p-6 z-20 shrink-0">
         <div className="max-w-4xl mx-auto space-y-2">
           {selectedFile && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-indigo-500/30 rounded-xl text-xs text-indigo-300 w-fit">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/80 backdrop-blur-md border border-indigo-500/30 rounded-xl text-xs text-indigo-300 w-fit">
               <span className="material-symbols-outlined text-sm">attachment</span>
               <span>{selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)</span>
               <button onClick={() => setSelectedFile(null)} className="hover:text-white cursor-pointer ml-1">
@@ -230,7 +212,7 @@ export const ChatPage: React.FC = () => {
             </div>
           )}
 
-          <div className="bg-slate-900/90 border border-slate-800 focus-within:border-indigo-500/60 rounded-2xl p-2.5 flex items-center gap-2.5 shadow-2xl transition-all">
+          <div className="bg-slate-900/80 backdrop-blur-2xl border border-slate-700/60 focus-within:border-indigo-500/80 rounded-2xl p-2.5 flex items-center gap-2.5 shadow-2xl transition-all">
             {/* Hidden native file input */}
             <input
               type="file"
@@ -255,7 +237,7 @@ export const ChatPage: React.FC = () => {
               onChange={(e) => setInputVal(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
               placeholder="Ask AetherPhoenix or assign a desktop automation goal..."
-              className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none px-2"
+              className="flex-1 bg-transparent text-sm text-white placeholder-slate-400 focus:outline-none px-2"
             />
 
             {/* Send Button */}
@@ -267,7 +249,7 @@ export const ChatPage: React.FC = () => {
               <span className="material-symbols-outlined text-lg">arrow_upward</span>
             </button>
           </div>
-          <div className="flex items-center justify-between text-[11px] text-slate-500 px-2 font-mono">
+          <div className="flex items-center justify-between text-[11px] text-slate-400 px-2 font-mono drop-shadow">
             <span>Powered by AetherPhoenix Agent Engine</span>
             <span>Enter to Send</span>
           </div>
