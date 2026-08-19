@@ -7,11 +7,16 @@ export const LandingPage: React.FC = () => {
   const [dragOffsetY, setDragOffsetY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [showDrawer, setShowDrawer] = useState(false);
+  const [ringAngle, setRingAngle] = useState(0);
+  const [scrollProgress, setScrollProgress] = useState(0);
   
   const [activeNav, setActiveNav] = useState('home');
   
   const startYRef = useRef<number>(0);
   const hasDraggedRef = useRef<boolean>(false);
+  const targetAngleRef = useRef<number>(0);
+  const currentAngleRef = useRef<number>(0);
+  const lastScrollYRef = useRef<number>(0);
 
   const handleLaunch = useCallback(() => {
     navigate('/chat');
@@ -96,17 +101,42 @@ export const LandingPage: React.FC = () => {
     };
   }, [isDragging, dragOffsetY, handleLaunch]);
 
-  // Scroll to bottom listener to show/hide the pull-up drawer (only at the very end)
+  // Concentric Rings Scroll-driven rotation with smooth Lerp interpolation
   useEffect(() => {
-    const handleScroll = () => {
+    let animFrameId: number;
+    const ROTATION_SPEED = 0.35;
+
+    const onScroll = () => {
+      const currentScroll = window.scrollY;
+      const delta = currentScroll - lastScrollYRef.current;
+      lastScrollYRef.current = currentScroll;
+      targetAngleRef.current += delta * ROTATION_SPEED;
+
+      // Calculate scroll progress (0 to 1 over first 250px of scroll)
+      const progress = Math.min(1, Math.max(0, currentScroll / 250));
+      setScrollProgress(progress);
+
+      // Also trigger drawer visibility check
       const isAtBottom =
         window.innerHeight + window.scrollY >=
         document.documentElement.scrollHeight - 40;
       setShowDrawer(isAtBottom);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    const renderRings = () => {
+      currentAngleRef.current += (targetAngleRef.current - currentAngleRef.current) * 0.08;
+      setRingAngle(currentAngleRef.current);
+      animFrameId = requestAnimationFrame(renderRings);
+    };
+
+    animFrameId = requestAnimationFrame(renderRings);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(animFrameId);
+    };
   }, []);
 
   const handleClick = () => {
@@ -205,48 +235,132 @@ export const LandingPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Hero Banner (White Theme with soft Mandala Watermark) */}
-      <section className="relative overflow-hidden border-b border-slate-200 bg-white py-24 md:py-32 px-6">
-        {/* Background Snowflake Mandala Graphic (As per user uploads - slightly darker watermark) */}
-        <div className="absolute inset-0 z-0 flex items-center justify-center overflow-hidden opacity-[0.28] pointer-events-none">
-          <img
-            src="/snowflake.png"
-            alt="Snowflake Mandala"
-            className="w-[500px] h-[500px] md:w-[700px] md:h-[700px] object-contain"
-          />
-        </div>
+      {/* Hero Banner with Concentric Rotating Rings & Mandala Emblem */}
+      <section className="relative overflow-hidden border-b border-slate-200 bg-white py-12 md:py-16 px-6">
+        <div className="max-w-5xl mx-auto text-center relative z-10 space-y-6 flex flex-col items-center">
+          
+          {/* Concentric Rotating Rings Assembly (Expanded Giant Scale) */}
+          <div className="relative w-[380px] h-[380px] md:w-[480px] md:h-[480px] flex items-center justify-center mx-auto my-0 select-none pointer-events-none">
+            {/* Center Static Emblem / Logo (Enlarged to 300px) */}
+            <div className="absolute w-52 h-52 md:w-76 md:h-76 z-20 rounded-full bg-white border-2 border-slate-200/90 flex items-center justify-center p-4 shadow-2xl shadow-black/25 pointer-events-auto">
+              <img
+                src="/logo.png"
+                alt="AetherPhoenix Logo"
+                className="w-40 h-40 md:w-60 md:h-60 object-contain drop-shadow-md"
+              />
+            </div>
 
-        <div className="max-w-5xl mx-auto text-center relative z-10 space-y-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold backdrop-blur-md">
-            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
-            Open Source • Runs on your machine
+            {/* Inner Rotating Ring SVG (Enlarged to 800px) */}
+            <div
+              className="absolute w-[560px] h-[560px] md:w-[800px] md:h-[800px] z-10 pointer-events-none transition-transform duration-75 ease-out"
+              style={{
+                transform: `rotate(${ringAngle}deg)`,
+              }}
+            >
+              <svg viewBox="0 0 300 300" className="w-full h-full drop-shadow-md">
+                <circle cx="150" cy="150" r="140" fill="none" stroke="#2e303d" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.6"/>
+                <circle cx="150" cy="150" r="80" fill="none" stroke="#2e303d" strokeWidth="1.5" opacity="0.5"/>
+                <g>
+                  {Array.from({ length: 12 }).map((_, i) => {
+                    const angle = (360 / 12) * i;
+                    const chevronWidth = (140 - 80) * 0.35;
+                    return (
+                      <g key={i} transform={`rotate(${angle} 150 150)`}>
+                        <path
+                          d={`M 150 ${150 - 140} L ${150 + chevronWidth} ${150 - 80} L 150 ${150 - 80 + chevronWidth * 0.7} L ${150 - chevronWidth} ${150 - 80} Z`}
+                          fill="#16171d"
+                          stroke="#050507"
+                          strokeWidth="1.5"
+                        />
+                      </g>
+                    );
+                  })}
+                </g>
+              </svg>
+            </div>
+
+            {/* Outer Counter-Rotating Ring SVG (Enlarged to 1150px) */}
+            <div
+              className="absolute w-[760px] h-[760px] md:w-[1150px] md:h-[1150px] z-0 pointer-events-none transition-transform duration-75 ease-out"
+              style={{
+                transform: `rotate(${-ringAngle * 0.75}deg)`,
+              }}
+            >
+              <svg viewBox="0 0 460 460" className="w-full h-full drop-shadow-2xl">
+                <circle cx="230" cy="230" r="220" fill="none" stroke="#2e303d" strokeWidth="1.5" opacity="0.6"/>
+                <circle cx="230" cy="230" r="158" fill="none" stroke="#2e303d" strokeWidth="1.5" strokeDasharray="5 5" opacity="0.5"/>
+                <g>
+                  {Array.from({ length: 18 }).map((_, i) => {
+                    const angle = (360 / 18) * i;
+                    const chevronWidth = (220 - 158) * 0.35;
+                    return (
+                      <g key={i} transform={`rotate(${angle} 230 230)`}>
+                        <path
+                          d={`M 230 ${230 - 220} L ${230 + chevronWidth} ${230 - 158} L 230 ${230 - 158 + chevronWidth * 0.7} L ${230 - chevronWidth} ${230 - 158} Z`}
+                          fill="#101116"
+                          stroke="#050507"
+                          strokeWidth="1.5"
+                        />
+                      </g>
+                    );
+                  })}
+                </g>
+              </svg>
+            </div>
           </div>
+          {/* Hero Text with dynamic dark gradient overlay on scroll */}
+          <div className="relative z-30 max-w-3xl mx-auto px-6 py-6 rounded-3xl transition-all duration-300 space-y-6">
+            {/* Dynamic Dark Gradient Backdrop (Fades in opacity on scroll to make text pop) */}
+            <div
+              className="absolute inset-0 rounded-3xl pointer-events-none transition-opacity duration-200"
+              style={{
+                background: 'radial-gradient(ellipse at center, rgba(15, 23, 42, 0.88) 0%, rgba(2, 6, 23, 0.7) 60%, transparent 100%)',
+                backdropFilter: scrollProgress > 0.1 ? `blur(${scrollProgress * 12}px)` : 'none',
+                opacity: Math.min(1, scrollProgress * 1.3),
+              }}
+            />
 
-          <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight text-slate-900 leading-tight">
-            The AI that{' '}
-            <span className="bg-gradient-to-r from-indigo-600 via-violet-500 to-indigo-600 bg-clip-text text-transparent italic">
-              really
-            </span>{' '}
-            does things.
-          </h1>
+            <div className="relative z-10 space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100/90 border border-slate-200 text-slate-700 text-xs font-semibold backdrop-blur-md shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                Open Source • Runs on your machine
+              </div>
 
-          <p className="text-slate-600 text-base sm:text-lg max-w-2xl mx-auto font-medium leading-relaxed">
-            Organizes your inbox, sends emails, manages your calendar, checks you in for flights. All from WhatsApp, Telegram, or any chat app you already use.
-          </p>
+              <h1
+                className={`text-5xl sm:text-7xl font-extrabold tracking-tight leading-tight transition-colors duration-200 drop-shadow-sm ${
+                  scrollProgress > 0.2 ? 'text-white' : 'text-slate-900'
+                }`}
+              >
+                The AI that{' '}
+                <span className="bg-gradient-to-r from-indigo-400 via-violet-400 to-indigo-300 bg-clip-text text-transparent italic drop-shadow">
+                  really
+                </span>{' '}
+                does things.
+              </h1>
 
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <button
-              onClick={() => navigate('/chat')}
-              className="px-6 py-2.5 bg-[#2f70d9] hover:bg-blue-600 text-white rounded-xl font-semibold text-sm transition-all shadow-lg shadow-blue-500/25 active:scale-95 cursor-pointer"
-            >
-              Get started
-            </button>
-            <button
-              onClick={() => navigate('/plan')}
-              className="px-6 py-2.5 bg-transparent hover:bg-slate-50 text-[#2f70d9] border border-blue-200 rounded-xl font-semibold text-sm transition-all active:scale-95 cursor-pointer"
-            >
-              Read the docs
-            </button>
+              <p
+                className={`text-base sm:text-lg max-w-2xl mx-auto font-medium leading-relaxed transition-colors duration-200 ${
+                  scrollProgress > 0.2 ? 'text-slate-200 drop-shadow' : 'text-slate-600'
+                }`}
+              >
+                Organizes your inbox, sends emails, manages your calendar, checks you in for flights. All from WhatsApp, Telegram, or any chat app you already use.
+              </p>
+
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => navigate('/chat')}
+                  className="px-6 py-2.5 bg-[#2f70d9] hover:bg-blue-600 text-white rounded-xl font-semibold text-sm transition-all shadow-lg shadow-blue-500/25 active:scale-95 cursor-pointer"
+                >
+                  Get started
+                </button>
+                <button
+                  onClick={() => navigate('/plan')}
+                  className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-blue-600 hover:text-blue-500 border border-blue-200/80 rounded-xl font-semibold text-sm transition-all active:scale-95 cursor-pointer backdrop-blur-md"
+                >
+                  Read the docs
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
