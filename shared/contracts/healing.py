@@ -83,12 +83,15 @@ class RootCauseResult(BaseModel):
         ):
             return False
         likely_upper = (self.likely_root_cause or "").upper()
-        if any(
+        return not any(
             pat in likely_upper
-            for pat in ("TOOL_NOT_FOUND", "TOOL_UNAVAILABLE", "UNREGISTERED_TOOL", "NOT_FOUND")
-        ):
-            return False
-        return True
+            for pat in (
+                "TOOL_NOT_FOUND",
+                "TOOL_UNAVAILABLE",
+                "UNREGISTERED_TOOL",
+                "NOT_FOUND",
+            )
+        )
 
     @property
     def recommended_strategy(self) -> str:

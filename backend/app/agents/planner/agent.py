@@ -1,6 +1,5 @@
 import logging
-from typing import Any, Dict, List, Optional
-from uuid import UUID
+from typing import Any, Dict, Optional
 
 from shared.contracts.feedback import PlannerFeedback
 from shared.contracts.planner import (
@@ -151,11 +150,20 @@ class PlannerAgent:
         Handles REPLANNING_TRIGGERED events from the EventBus,
         reconstructs planning context and generates an updated plan.
         """
-        logger.info(f"PlannerAgent received REPLANNING_TRIGGERED event: {getattr(event, 'id', event)}")
+        logger.info(
+            "PlannerAgent received REPLANNING_TRIGGERED event: %s",
+            getattr(event, "id", event),
+        )
         payload = getattr(event, "payload", {}) or {}
         workflow_id = getattr(event, "workflow_id", None) or payload.get("workflow_id")
-        session_id = payload.get("session_id") or (str(workflow_id) if workflow_id else "replanning-session")
-        goal = payload.get("goal") or payload.get("trigger_reason") or "Replanning execution"
+        session_id = payload.get("session_id") or (
+            str(workflow_id) if workflow_id else "replanning-session"
+        )
+        goal = (
+            payload.get("goal")
+            or payload.get("trigger_reason")
+            or "Replanning execution"
+        )
 
         feedback_data = payload.get("feedback")
         feedback = None
@@ -183,7 +191,10 @@ class PlannerAgent:
         )
 
         response = self.process_request(request)
-        logger.info(f"PlannerAgent successfully generated replanning response: status={response.status}")
+        logger.info(
+            "PlannerAgent successfully generated replanning response: status=%s",
+            response.status,
+        )
 
         if workflow_id:
             self.latest_replanning_responses[str(workflow_id)] = response

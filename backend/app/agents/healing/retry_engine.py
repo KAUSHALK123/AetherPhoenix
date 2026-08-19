@@ -158,7 +158,10 @@ class RetryEngine:
             or "PERMISSION_DENIED" in cat_upper
             or "PERMISSION_DENIED" in sum_upper
         ):
-            msg = f"Root cause '{root_cause_category}' ({root_cause_summary}) is non-retryable."
+            msg = (
+                f"Root cause '{root_cause_category}' "
+                f"({root_cause_summary}) is non-retryable."
+            )
             logger.info(msg)
             return False, msg
 

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -43,10 +43,10 @@ class MouseActionRequest(BaseModel):
     """Contract for requesting controlled mouse interactions."""
 
     action: MouseActionType = Field(..., description="The type of mouse action")
-    x: Optional[int] = Field(
+    x: int | None = Field(
         default=None, description="Target X coordinate on the desktop screen"
     )
-    y: Optional[int] = Field(
+    y: int | None = Field(
         default=None, description="Target Y coordinate on the desktop screen"
     )
     button: MouseButton = Field(
@@ -73,10 +73,10 @@ class MouseActionRequest(BaseModel):
         le=60.0,
         description="Execution timeout in seconds",
     )
-    workflow_id: Optional[UUID] = Field(
+    workflow_id: UUID | None = Field(
         default=None, description="Associated workflow ID"
     )
-    task_id: Optional[UUID] = Field(default=None, description="Associated task ID")
+    task_id: UUID | None = Field(default=None, description="Associated task ID")
 
 
 class MouseActionResult(BaseModel):
@@ -86,7 +86,7 @@ class MouseActionResult(BaseModel):
     success: bool = Field(
         default=True, description="Indicates whether the action succeeded"
     )
-    position: Optional[MousePosition] = Field(
+    position: MousePosition | None = Field(
         default=None, description="Mouse cursor coordinates after action"
     )
     execution_time_ms: float = Field(
@@ -95,7 +95,7 @@ class MouseActionResult(BaseModel):
     details: dict[str, Any] = Field(
         default_factory=dict, description="Additional action-specific details"
     )
-    error: Optional[str] = Field(
+    error: str | None = Field(
         default=None, description="Error message if execution failed"
     )
     timestamp: datetime = Field(

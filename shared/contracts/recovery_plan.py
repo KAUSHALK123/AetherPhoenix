@@ -15,7 +15,7 @@ class CompatStrategy:
     def __str__(self) -> str:
         return self.value
 
-    def __eq__(self, other: Any) -> bool:
+    def __eq__(self, other: object) -> bool:
         if hasattr(other, "value"):
             return self.value == other.value
         return self.value == str(other)

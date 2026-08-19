@@ -5,7 +5,6 @@ from uuid import UUID
 from shared.contracts.escalation import (
     EscalationReason,
     EscalationRequest,
-    EscalationResult,
 )
 from shared.contracts.event import EventSource, EventType, RuntimeEvent
 from shared.contracts.execution import (
@@ -269,7 +268,10 @@ class SelfHealingLoop(BaseAgent):
                     if ("limit" in reason.lower() or "exceeded" in reason.lower())
                     else EscalationReason.UNSUPPORTED_ERROR
                 )
-                if "permission" in parsed_error.normalized_code.lower() or "permission" in rc_cat.lower():
+                if (
+                    "permission" in parsed_error.normalized_code.lower()
+                    or "permission" in rc_cat.lower()
+                ):
                     esc_reason = EscalationReason.PERMISSION_DENIED
 
                 esc_req = EscalationRequest(
@@ -336,7 +338,9 @@ class SelfHealingLoop(BaseAgent):
                     workflow_id=workflow_id,
                     task_id=task_id,
                     reason=EscalationReason.MAX_HEALING_ATTEMPTS_EXCEEDED,
-                    details=f"SelfHealingLoop recovery execution failed for task {task_id}",
+                    details=(
+                        f"SelfHealingLoop recovery execution failed for task {task_id}"
+                    ),
                     failure_context={
                         "task_id": str(task_id),
                         "attempt_number": attempt_number,
@@ -346,6 +350,8 @@ class SelfHealingLoop(BaseAgent):
                 )
                 await self.escalation_handler.handle_escalation(esc_req, sws=state)
             except Exception as esc_err:
-                logger.warning(f"Error invoking EscalationHandler on failed recovery: {esc_err}")
+                logger.warning(
+                    f"Error invoking EscalationHandler on failed recovery: {esc_err}"
+                )
 
         return result

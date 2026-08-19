@@ -7,12 +7,12 @@ from uuid import uuid4
 sys.path.insert(0, os.path.abspath('backend'))
 sys.path.insert(0, os.path.abspath('.'))
 
-from shared.contracts.planner import PlannerRequest
-
 from app.agents.planner.agent import PlannerAgent
 
+from shared.contracts.planner import PlannerRequest
 
-def test_planner(goal: str, clarification: str = None):
+
+def test_planner(goal: str, clarification: str | None = None):
     print(f"\n--- Testing Goal: '{goal}' ---")
     agent = PlannerAgent()
     request = PlannerRequest(

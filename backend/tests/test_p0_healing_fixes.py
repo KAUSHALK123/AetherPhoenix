@@ -6,37 +6,42 @@
 
 import asyncio
 import uuid
-import pytest
 
-from shared.contracts.escalation import EscalationReason, EscalationRequest
-from shared.contracts.event import EventSource, EventType as ContractEventType, RuntimeEvent
-from shared.contracts.execution import ExecutionResult, HealingResult, TaskError, TaskFailureReport
+import pytest
+from shared.contracts.event import EventType as ContractEventType
+from shared.contracts.execution import (
+    ExecutionResult,
+    TaskError,
+)
 from shared.contracts.feedback import (
     CapabilityFailureInfo,
     FailureSummary,
-    HealingSummary,
     PlannerFeedback,
     ReplanningContext,
 )
-from shared.contracts.task import Task, TaskCategory, TaskPriority, TaskStatus, TaskType
-from shared.contracts.tool import Tool, ToolState
-from shared.contracts.workflow import SharedWorkflowState, WorkflowMetadata, WorkflowStatus
+from shared.contracts.task import Task, TaskCategory, TaskStatus
+from shared.contracts.workflow import (
+    SharedWorkflowState,
+    WorkflowMetadata,
+    WorkflowStatus,
+)
 
-from app.agents.healing.agent import HealingAgent
 from app.agents.healing.escalation import EscalationHandler
 from app.agents.healing.self_healing_loop import SelfHealingLoop
 from app.agents.planner.agent import PlannerAgent
-from app.agents.planner.feedback import PlannerFeedbackLoop
-from app.agents.supervisor.agent import SupervisorAgent
 from app.agents.worker.agent import WorkerAgent
 from app.core.events.bus import EventBus
-from app.core.events.models import Event as ModelEvent, EventType as ModelEventType
+from app.core.events.models import Event as ModelEvent
+from app.core.events.models import EventType as ModelEventType
 from app.tools.registry import ToolRegistry
 
 
 @pytest.mark.asyncio
 async def test_f3_unknown_tool_non_retryable():
-    """F3: Missing/unregistered tool produces TOOL_NOT_FOUND, is non-retryable, and triggers no retry loops."""
+    """F3: Missing/unregistered tool produces TOOL_NOT_FOUND,
+
+    is non-retryable, and triggers no retry loops.
+    """
     event_bus = EventBus()
     registry = ToolRegistry()  # Empty registry
     worker = WorkerAgent(tool_registry=registry)
@@ -82,12 +87,19 @@ async def test_f3_unknown_tool_non_retryable():
     )
 
     assert can_retry is False
-    assert "non-retryable" in reason.lower() or "not eligible" in reason.lower() or "tool" in reason.lower()
+    assert (
+        "non-retryable" in reason.lower()
+        or "not eligible" in reason.lower()
+        or "tool" in reason.lower()
+    )
 
 
 @pytest.mark.asyncio
 async def test_f4_escalation_handler_on_retry_exhaustion():
-    """F4: EscalationHandler is invoked when healing retries are exhausted or blocked."""
+    """F4: EscalationHandler is invoked when healing retries
+
+    are exhausted or blocked.
+    """
     event_bus = EventBus()
     escalation_events = []
 
@@ -144,12 +156,19 @@ async def test_f4_escalation_handler_on_retry_exhaustion():
 
     # Verify EscalationHandler was invoked and escalation event was published
     assert len(escalation_events) >= 1
-    assert state.metadata.status in (WorkflowStatus.FAILED, WorkflowStatus.ESCALATED, WorkflowStatus.BLOCKED)
+    assert state.metadata.status in (
+        WorkflowStatus.FAILED,
+        WorkflowStatus.ESCALATED,
+        WorkflowStatus.BLOCKED,
+    )
 
 
 @pytest.mark.asyncio
 async def test_f5_replanning_event_triggers_planner():
-    """F5: REPLANNING_TRIGGERED event is received by PlannerAgent and generates an updated plan."""
+    """F5: REPLANNING_TRIGGERED event is received by PlannerAgent
+
+    and generates an updated plan.
+    """
     from shared.contracts.execution import FailureType
 
     event_bus = EventBus()

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -43,10 +43,10 @@ class EscalationRequest(BaseModel):
     task_id: UUID
     reason: EscalationReason
     details: str
-    failure_context: Dict[str, Any] = Field(default_factory=dict)
-    healing_history: List[HealingResult] = Field(default_factory=list)
+    failure_context: dict[str, Any] = Field(default_factory=dict)
+    healing_history: list[HealingResult] = Field(default_factory=list)
     attempt_number: int = Field(default=1, ge=1)
-    risk_level: Optional[RiskLevel] = None
+    risk_level: RiskLevel | None = None
 
 
 class EscalationResult(BaseModel):
@@ -58,7 +58,7 @@ class EscalationResult(BaseModel):
     reason: EscalationReason
     severity: EscalationSeverity
     requires_user_intervention: bool
-    user_action_required: Optional[str] = None
-    failure_context: Dict[str, Any] = Field(default_factory=dict)
-    healing_history: List[HealingResult] = Field(default_factory=list)
+    user_action_required: str | None = None
+    failure_context: dict[str, Any] = Field(default_factory=dict)
+    healing_history: list[HealingResult] = Field(default_factory=list)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
@@ -31,8 +31,8 @@ class RecoveryPlan(BaseModel):
     is_retryable: bool = True
     requires_permission: bool = False
     backoff_seconds: float = 0.0
-    replacement_tasks: List[Task] = Field(default_factory=list)
-    updated_task_params: Dict[str, Any] = Field(default_factory=dict)
+    replacement_tasks: list[Task] = Field(default_factory=list)
+    updated_task_params: dict[str, Any] = Field(default_factory=dict)
     reason: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -45,9 +45,9 @@ class RetryRequest(BaseModel):
     workflow_id: UUID
     attempt_number: int = Field(default=1, ge=0)
     max_retries: int = Field(default=3, ge=1)
-    error: Optional[TaskError] = None
-    recovery_plan: Optional[RecoveryPlan] = None
-    reason: Optional[str] = None
+    error: TaskError | None = None
+    recovery_plan: RecoveryPlan | None = None
+    reason: str | None = None
     delay_seconds: float = 0.0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

@@ -1,9 +1,9 @@
+from typing import Any
 from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 from shared.contracts.execution import ExecutionResult
-from shared.contracts.permission import PermissionType
 from shared.contracts.task import Task, TaskCategory, TaskPriority, TaskStatus
 from shared.contracts.tool import ToolHealth, ToolState
 

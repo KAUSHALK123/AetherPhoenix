@@ -273,7 +273,10 @@ class WorkerAgent(BaseAgent):
             duration_ms = (time.time() - start_time) * 1000.0
 
             msg_lower = str(e).lower()
-            if "not found in registry" in msg_lower or "missing 'required_tool'" in msg_lower:
+            if (
+                "not found in registry" in msg_lower
+                or "missing 'required_tool'" in msg_lower
+            ):
                 error_code = "TOOL_NOT_FOUND"
                 is_rec = False
             else:
