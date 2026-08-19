@@ -209,15 +209,15 @@ export const LandingPage: React.FC = () => {
       </header>
 
       {/* Hero Banner */}
-      <section className="relative overflow-hidden border-b border-slate-800/60 bg-gradient-to-b from-indigo-950/20 via-slate-950 to-slate-950 py-16 px-6">
+      <section className="relative overflow-hidden border-b border-slate-800/60 bg-gradient-to-b from-indigo-950/30 via-slate-950 to-slate-950 py-24 md:py-32 px-6">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(99,102,241,0.15),transparent_50%)]"></div>
-        <div className="max-w-4xl mx-auto text-center relative z-10 space-y-6">
+        <div className="max-w-5xl mx-auto text-center relative z-10 space-y-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium backdrop-blur-md">
             <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
             Open Source • Runs Locally
           </div>
 
-          <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white leading-tight">
+          <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight text-white leading-tight">
             The AI that{' '}
             <span className="bg-gradient-to-r from-indigo-400 via-violet-300 to-purple-400 bg-clip-text text-transparent italic">
               actually
@@ -247,8 +247,8 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Main Content Layout */}
-      <div className="max-w-7xl mx-auto px-6 py-10 w-full flex-1">
+      {/* Main Content Layout (Increased Sizing to 2xl & Padding) */}
+      <div className="max-w-screen-2xl mx-auto px-6 md:px-10 py-16 w-full flex-1">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Feed */}
           <main className="lg:col-span-3 space-y-10">
@@ -294,6 +294,137 @@ export const LandingPage: React.FC = () => {
                   </span>{' '}
                   Web Research
                 </button>
+              </div>
+            </section>
+
+            {/* PINWHEEL FEATURE GRID SECTION (Full Cover Images with Smooth Scale & Hover Lift) */}
+            <section className="space-y-4 pt-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">Project Capabilities & Features</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Core system architecture and operational highlights</p>
+                </div>
+                <span className="px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-mono">3x3 Feature Mosaic</span>
+              </div>
+
+              {/* Pinwheel Layout Container */}
+              <div className="grid grid-cols-1 md:grid-cols-3 md:grid-rows-3 gap-4 auto-rows-[220px]">
+                
+                {/* Item 1: Left Vertical Card (Planner Engine) */}
+                <div 
+                  onClick={() => navigate('/chat')}
+                  className="md:row-span-2 group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-2 hover:border-indigo-500/60 hover:shadow-2xl hover:shadow-indigo-500/20 cursor-pointer"
+                >
+                  {/* Full Cover Image Background */}
+                  <div className="absolute inset-0 z-0 overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop" alt="Planner Architecture" className="w-full h-full object-cover opacity-40 group-hover:opacity-75 group-hover:scale-110 transition-all duration-500 ease-out" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/30"></div>
+                  </div>
+
+                  {/* Card Content Overlay */}
+                  <div className="relative z-10 flex items-center justify-between">
+                    <span className="px-2.5 py-1 rounded-md bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">PLANNER ENGINE</span>
+                    <span className="material-symbols-outlined text-slate-400 group-hover:text-indigo-400 group-hover:scale-110 transition-all">account_tree</span>
+                  </div>
+
+                  <div className="relative z-10 space-y-1.5">
+                    <h3 className="text-lg font-bold text-white group-hover:text-indigo-300 transition-colors">Hierarchical Goal Planner</h3>
+                    <p className="text-xs text-slate-300 leading-relaxed">Decomposes user prompts into structured execution plans with dependencies, execution contracts, and permissions.</p>
+                  </div>
+                </div>
+
+                {/* Item 2: Top Horizontal Card (Worker Execution Engine) */}
+                <div 
+                  onClick={() => navigate('/execution')}
+                  className="md:col-span-2 group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-2 hover:border-cyan-500/60 hover:shadow-2xl hover:shadow-cyan-500/20 cursor-pointer"
+                >
+                  {/* Full Cover Image Background */}
+                  <div className="absolute inset-0 z-0 overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=800&auto=format&fit=crop" alt="Worker Telemetry" className="w-full h-full object-cover opacity-40 group-hover:opacity-75 group-hover:scale-110 transition-all duration-500 ease-out" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/30"></div>
+                  </div>
+
+                  {/* Card Content Overlay */}
+                  <div className="relative z-10 flex items-center justify-between">
+                    <span className="px-2.5 py-1 rounded-md bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">WORKER EXECUTION ENGINE</span>
+                    <span className="material-symbols-outlined text-slate-400 group-hover:text-cyan-400 group-hover:scale-110 transition-all">terminal</span>
+                  </div>
+
+                  <div className="relative z-10 space-y-1.5 max-w-lg">
+                    <h3 className="text-lg font-bold text-white group-hover:text-cyan-300 transition-colors">Multi-Tool Execution System</h3>
+                    <p className="text-xs text-slate-300 leading-relaxed">Performs real task execution across browser automation, desktop control, web research, PDF parsing, and custom PPTX slides generation.</p>
+                  </div>
+                </div>
+
+                {/* Item 3: Center Accent Card (RAG Semantic Agent) */}
+                <div 
+                  onClick={() => navigate('/plan')}
+                  className="group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-5 flex flex-col justify-between transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] hover:border-rose-500/60 hover:shadow-2xl hover:shadow-rose-500/20 cursor-pointer"
+                >
+                  {/* Full Cover Image Background */}
+                  <div className="absolute inset-0 z-0 overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?q=80&w=800&auto=format&fit=crop" alt="RAG Memory" className="w-full h-full object-cover opacity-40 group-hover:opacity-75 group-hover:scale-110 transition-all duration-500 ease-out" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/20"></div>
+                  </div>
+
+                  {/* Card Content Overlay */}
+                  <div className="relative z-10 flex items-center justify-between">
+                    <span className="px-2 py-0.5 rounded bg-rose-500/20 border border-rose-500/30 text-rose-300 text-[9px] font-semibold font-mono backdrop-blur-md">PERSISTENT MEMORY</span>
+                    <span className="material-symbols-outlined text-slate-400 group-hover:text-rose-400 group-hover:scale-110 transition-all">neurology</span>
+                  </div>
+
+                  <div className="relative z-10 space-y-1">
+                    <h3 className="text-sm font-bold text-white group-hover:text-rose-300 transition-colors">RAG Semantic Agent</h3>
+                    <p className="text-[11px] text-slate-300 font-mono">Vector Search + LLM</p>
+                  </div>
+                </div>
+
+                {/* Item 4: Right Vertical Card (Supervisor Monitor) */}
+                <div 
+                  onClick={() => navigate('/execution')}
+                  className="md:row-span-2 group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-2 hover:border-purple-500/60 hover:shadow-2xl hover:shadow-purple-500/20 cursor-pointer"
+                >
+                  {/* Full Cover Image Background */}
+                  <div className="absolute inset-0 z-0 overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?q=80&w=800&auto=format&fit=crop" alt="Supervisor View" className="w-full h-full object-cover opacity-40 group-hover:opacity-75 group-hover:scale-110 transition-all duration-500 ease-out" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/30"></div>
+                  </div>
+
+                  {/* Card Content Overlay */}
+                  <div className="relative z-10 flex items-center justify-between">
+                    <span className="px-2.5 py-1 rounded-md bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">SUPERVISOR ENGINE</span>
+                    <span className="material-symbols-outlined text-slate-400 group-hover:text-purple-400 group-hover:scale-110 transition-all">visibility</span>
+                  </div>
+
+                  <div className="relative z-10 space-y-1.5">
+                    <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">Real-time Pipeline Supervisor</h3>
+                    <p className="text-xs text-slate-300 leading-relaxed">Monitors the running state, tracks task progress, validates results, and dispatches state updates across the EventBus.</p>
+                  </div>
+                </div>
+
+                {/* Item 5: Bottom Horizontal Card (Healing Controller) */}
+                <div 
+                  onClick={() => navigate('/plan')}
+                  className="md:col-span-2 group relative overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-2 hover:border-emerald-500/60 hover:shadow-2xl hover:shadow-emerald-500/20 cursor-pointer"
+                >
+                  {/* Full Cover Image Background */}
+                  <div className="absolute inset-0 z-0 overflow-hidden">
+                    <img src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop" alt="Self-Healing Architecture" className="w-full h-full object-cover opacity-40 group-hover:opacity-75 group-hover:scale-110 transition-all duration-500 ease-out" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/30"></div>
+                  </div>
+
+                  {/* Card Content Overlay */}
+                  <div className="relative z-10 flex items-center justify-between">
+                    <span className="px-2.5 py-1 rounded-md bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">HEALING CONTROLLER</span>
+                    <span className="material-symbols-outlined text-slate-400 group-hover:text-emerald-400 group-hover:scale-110 transition-all">healing</span>
+                  </div>
+
+                  <div className="relative z-10 space-y-1.5 max-w-lg">
+                    <h3 className="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">Resilient Self-Healing Engine</h3>
+                    <p className="text-xs text-slate-300 leading-relaxed">Synthesizes root-cause analyses for runtime failures and executes autonomous healing strategies to repair broken tasks without user intervention.</p>
+                  </div>
+                </div>
+
               </div>
             </section>
 
