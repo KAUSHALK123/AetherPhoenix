@@ -21,7 +21,6 @@ describe('LandingPage (Stitch Fidelity)', () => {
     );
 
     expect(screen.getAllByText(/AetherPhoenix/i)[0]).toBeInTheDocument();
-    expect(screen.getByText(/Open Source • Runs on your machine/i)).toBeInTheDocument();
     expect(screen.getByText(/The AI that/i)).toBeInTheDocument();
   });
 

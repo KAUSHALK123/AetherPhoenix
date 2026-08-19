@@ -237,7 +237,17 @@ export const LandingPage: React.FC = () => {
 
       {/* Hero Banner with Concentric Rotating Rings & Mandala Emblem */}
       <section className="relative overflow-hidden border-b border-slate-200 bg-white py-12 md:py-16 px-6">
-        <div className="max-w-5xl mx-auto text-center relative z-10 space-y-6 flex flex-col items-center">
+        {/* Full Screen Section-wide Dark Gradient Overlay (Increases smoothly across the whole hero section on scroll) */}
+        <div
+          className="absolute inset-0 pointer-events-none z-20 transition-opacity duration-300"
+          style={{
+            background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.2) 0%, rgba(15, 23, 42, 0.85) 45%, rgba(2, 6, 23, 0.98) 100%)',
+            backdropFilter: scrollProgress > 0.05 ? `blur(${scrollProgress * 8}px)` : 'none',
+            opacity: Math.min(1, scrollProgress * 1.3),
+          }}
+        />
+
+        <div className="max-w-5xl mx-auto text-center relative z-30 space-y-6 flex flex-col items-center">
           
           {/* Concentric Rotating Rings Assembly (Expanded Giant Scale) */}
           <div className="relative w-[380px] h-[380px] md:w-[480px] md:h-[480px] flex items-center justify-center mx-auto my-0 select-none pointer-events-none">
@@ -308,58 +318,34 @@ export const LandingPage: React.FC = () => {
               </svg>
             </div>
           </div>
-          {/* Hero Text with dynamic dark gradient overlay on scroll */}
-          <div className="relative z-30 max-w-3xl mx-auto px-6 py-6 rounded-3xl transition-all duration-300 space-y-6">
-            {/* Dynamic Dark Gradient Backdrop (Fades in opacity on scroll to make text pop) */}
-            <div
-              className="absolute inset-0 rounded-3xl pointer-events-none transition-opacity duration-200"
-              style={{
-                background: 'radial-gradient(ellipse at center, rgba(15, 23, 42, 0.88) 0%, rgba(2, 6, 23, 0.7) 60%, transparent 100%)',
-                backdropFilter: scrollProgress > 0.1 ? `blur(${scrollProgress * 12}px)` : 'none',
-                opacity: Math.min(1, scrollProgress * 1.3),
-              }}
-            />
 
-            <div className="relative z-10 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100/90 border border-slate-200 text-slate-700 text-xs font-semibold backdrop-blur-md shadow-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
-                Open Source • Runs on your machine
-              </div>
+          {/* Hero Text (Elevated in front of all rotating rings) */}
+          <div className="relative z-30 space-y-6 max-w-3xl mx-auto pt-2">
+            <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-tight text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.8)]">
+              The AI that{' '}
+              <span className="bg-gradient-to-r from-indigo-300 via-violet-300 to-indigo-200 bg-clip-text text-transparent italic drop-shadow">
+                really
+              </span>{' '}
+              does things.
+            </h1>
 
-              <h1
-                className={`text-5xl sm:text-7xl font-extrabold tracking-tight leading-tight transition-colors duration-200 drop-shadow-sm ${
-                  scrollProgress > 0.2 ? 'text-white' : 'text-slate-900'
-                }`}
+            <p className="text-base sm:text-lg max-w-2xl mx-auto font-medium leading-relaxed text-slate-100 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
+              Organizes your inbox, sends emails, manages your calendar, checks you in for flights. All from WhatsApp, Telegram, or any chat app you already use.
+            </p>
+
+            <div className="flex items-center justify-center gap-3 pt-2">
+              <button
+                onClick={() => navigate('/chat')}
+                className="px-6 py-2.5 bg-[#2f70d9] hover:bg-blue-600 text-white rounded-xl font-semibold text-sm transition-all shadow-xl shadow-blue-500/30 active:scale-95 cursor-pointer"
               >
-                The AI that{' '}
-                <span className="bg-gradient-to-r from-indigo-400 via-violet-400 to-indigo-300 bg-clip-text text-transparent italic drop-shadow">
-                  really
-                </span>{' '}
-                does things.
-              </h1>
-
-              <p
-                className={`text-base sm:text-lg max-w-2xl mx-auto font-medium leading-relaxed transition-colors duration-200 ${
-                  scrollProgress > 0.2 ? 'text-slate-200 drop-shadow' : 'text-slate-600'
-                }`}
+                Get started
+              </button>
+              <button
+                onClick={() => navigate('/plan')}
+                className="px-6 py-2.5 bg-white/15 hover:bg-white/25 text-white border border-white/40 rounded-xl font-semibold text-sm transition-all active:scale-95 cursor-pointer backdrop-blur-md shadow-lg"
               >
-                Organizes your inbox, sends emails, manages your calendar, checks you in for flights. All from WhatsApp, Telegram, or any chat app you already use.
-              </p>
-
-              <div className="flex items-center justify-center gap-3 pt-2">
-                <button
-                  onClick={() => navigate('/chat')}
-                  className="px-6 py-2.5 bg-[#2f70d9] hover:bg-blue-600 text-white rounded-xl font-semibold text-sm transition-all shadow-lg shadow-blue-500/25 active:scale-95 cursor-pointer"
-                >
-                  Get started
-                </button>
-                <button
-                  onClick={() => navigate('/plan')}
-                  className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-blue-600 hover:text-blue-500 border border-blue-200/80 rounded-xl font-semibold text-sm transition-all active:scale-95 cursor-pointer backdrop-blur-md"
-                >
-                  Read the docs
-                </button>
-              </div>
+                Read the docs
+              </button>
             </div>
           </div>
         </div>
@@ -457,9 +443,8 @@ export const LandingPage: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950/20"></div>
                   </div>
 
-                  {/* Card Content Overlay */}
-                  <div className="relative z-10 flex items-center justify-between">
-                    <span className="px-2.5 py-1 rounded-md bg-indigo-500/30 border border-indigo-500/40 text-indigo-200 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">PLANNER ENGINE</span>
+                  {/* Card Header */}
+                  <div className="relative z-10 flex items-center justify-end">
                     <span className="material-symbols-outlined text-slate-300 group-hover:text-indigo-400 group-hover:scale-110 transition-all">account_tree</span>
                   </div>
 
@@ -480,9 +465,8 @@ export const LandingPage: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950/20"></div>
                   </div>
 
-                  {/* Card Content Overlay */}
-                  <div className="relative z-10 flex items-center justify-between">
-                    <span className="px-2.5 py-1 rounded-md bg-cyan-500/30 border border-cyan-500/40 text-cyan-200 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">WORKER EXECUTION ENGINE</span>
+                  {/* Card Header */}
+                  <div className="relative z-10 flex items-center justify-end">
                     <span className="material-symbols-outlined text-slate-300 group-hover:text-cyan-400 group-hover:scale-110 transition-all">terminal</span>
                   </div>
 
@@ -503,9 +487,8 @@ export const LandingPage: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950/20"></div>
                   </div>
 
-                  {/* Card Content Overlay */}
-                  <div className="relative z-10 flex items-center justify-between">
-                    <span className="px-2 py-0.5 rounded bg-rose-500/30 border border-rose-500/40 text-rose-200 text-[9px] font-semibold font-mono backdrop-blur-md">PERSISTENT MEMORY</span>
+                  {/* Card Header */}
+                  <div className="relative z-10 flex items-center justify-end">
                     <span className="material-symbols-outlined text-slate-300 group-hover:text-rose-400 group-hover:scale-110 transition-all">neurology</span>
                   </div>
 
@@ -526,9 +509,8 @@ export const LandingPage: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950/20"></div>
                   </div>
 
-                  {/* Card Content Overlay */}
-                  <div className="relative z-10 flex items-center justify-between">
-                    <span className="px-2.5 py-1 rounded-md bg-purple-500/30 border border-purple-500/40 text-purple-200 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">SUPERVISOR ENGINE</span>
+                  {/* Card Header */}
+                  <div className="relative z-10 flex items-center justify-end">
                     <span className="material-symbols-outlined text-slate-300 group-hover:text-purple-400 group-hover:scale-110 transition-all">visibility</span>
                   </div>
 
@@ -549,9 +531,8 @@ export const LandingPage: React.FC = () => {
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-slate-950/20"></div>
                   </div>
 
-                  {/* Card Content Overlay */}
-                  <div className="relative z-10 flex items-center justify-between">
-                    <span className="px-2.5 py-1 rounded-md bg-emerald-500/30 border border-emerald-500/40 text-emerald-200 text-[10px] font-semibold font-mono tracking-wide backdrop-blur-md">HEALING CONTROLLER</span>
+                  {/* Card Header */}
+                  <div className="relative z-10 flex items-center justify-end">
                     <span className="material-symbols-outlined text-slate-300 group-hover:text-emerald-400 group-hover:scale-110 transition-all">healing</span>
                   </div>
 
