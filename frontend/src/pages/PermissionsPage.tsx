@@ -52,11 +52,11 @@ export const PermissionsPage: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Active Requests Column */}
           <div className="lg:col-span-8 flex flex-col gap-6">
-            <h2 className="text-xl font-bold flex items-center gap-2 text-white">
-              <span className="material-symbols-outlined text-accent-electric">notifications_active</span>
+            <h2 className="text-xl font-bold flex items-center gap-2 text-white drop-shadow">
+              <span className="material-symbols-outlined text-cyan-400">notifications_active</span>
               Active Requests
               {pendingRequests.length > 0 && (
-                <span className="px-2 py-0.5 bg-accent-electric/20 text-accent-electric text-xs rounded-full">
+                <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 text-xs rounded-full border border-cyan-400/30">
                   {pendingRequests.length}
                 </span>
               )}
@@ -64,27 +64,27 @@ export const PermissionsPage: React.FC = () => {
 
             {pendingRequests.length === 0 ? (
               /* Fallback / Mock active card from Stitch design if queue empty */
-              <div className="glass-panel rounded-xl p-6 md:p-8 relative overflow-hidden glow-active">
+              <div className="glass-card rounded-2xl p-6 md:p-8 relative overflow-hidden">
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant">
-                      <span className="material-symbols-outlined text-primary text-2xl">smart_toy</span>
+                    <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
+                      <span className="material-symbols-outlined text-cyan-300 text-2xl">smart_toy</span>
                     </div>
                     <div>
                       <h3 className="font-bold text-lg text-white">Worker-1</h3>
-                      <p className="text-xs text-on-surface-muted">System Agent</p>
+                      <p className="text-xs text-slate-300">System Agent</p>
                     </div>
                   </div>
-                  <div className="bg-amber-500/20 border border-amber-500/50 px-3 py-1 rounded-full flex items-center gap-1.5">
-                    <span className="material-symbols-outlined text-amber-500 text-sm">warning</span>
-                    <span className="text-[10px] font-bold text-amber-500">MEDIUM RISK</span>
+                  <div className="bg-amber-500/20 border border-amber-500/50 px-3 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-md">
+                    <span className="material-symbols-outlined text-amber-400 text-sm">warning</span>
+                    <span className="text-[10px] font-bold text-amber-300">MEDIUM RISK</span>
                   </div>
                 </div>
-                <div className="bg-surface-deep border border-outline-variant/50 rounded-lg p-5 mb-8">
+                <div className="bg-black/30 border border-white/10 rounded-xl p-5 mb-8 backdrop-blur-md">
                   <p className="font-bold text-white mb-2">
-                    Action Requested: <code className="text-accent-electric">Write to /Downloads</code>
+                    Action Requested: <code className="text-cyan-300">Write to /Downloads</code>
                   </p>
-                  <p className="text-sm text-on-surface-muted italic">
+                  <p className="text-sm text-slate-300 italic">
                     "Move analyzed files into organized subfolders to declutter the directory."
                   </p>
                 </div>
@@ -96,7 +96,7 @@ export const PermissionsPage: React.FC = () => {
                         ...prev,
                       ])
                     }
-                    className="flex-1 bg-primary text-white font-bold py-3 rounded-lg hover:bg-accent-electric transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                    className="flex-1 bg-[#2f70d9] text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                   >
                     <span className="material-symbols-outlined text-lg">check_circle</span>
                     ALLOW
@@ -108,7 +108,7 @@ export const PermissionsPage: React.FC = () => {
                         ...prev,
                       ])
                     }
-                    className="flex-1 border border-error text-error font-bold py-3 rounded-lg hover:bg-error/10 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                    className="flex-1 border border-red-400/50 text-red-300 font-bold py-3 rounded-xl hover:bg-red-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 backdrop-blur-md"
                   >
                     <span className="material-symbols-outlined text-lg">block</span>
                     DENY
@@ -122,42 +122,42 @@ export const PermissionsPage: React.FC = () => {
                 return (
                   <div
                     key={req.request_id}
-                    className="glass-panel rounded-xl p-6 md:p-8 relative overflow-hidden glow-active"
+                    className="glass-card rounded-2xl p-6 md:p-8 relative overflow-hidden"
                   >
                     <div className="flex justify-between items-start mb-6">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center border border-outline-variant">
-                          <span className="material-symbols-outlined text-primary text-2xl">smart_toy</span>
+                        <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
+                          <span className="material-symbols-outlined text-cyan-300 text-2xl">smart_toy</span>
                         </div>
                         <div>
                           <h3 className="font-bold text-lg text-white">{agentName}</h3>
-                          <p className="text-xs text-on-surface-muted">Workflow #{req.workflow_id}</p>
+                          <p className="text-xs text-slate-300">Workflow #{req.workflow_id}</p>
                         </div>
                       </div>
-                      <div className="bg-amber-500/20 border border-amber-500/50 px-3 py-1 rounded-full flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-amber-500 text-sm">warning</span>
-                        <span className="text-[10px] font-bold text-amber-500">
+                      <div className="bg-amber-500/20 border border-amber-500/50 px-3 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-md">
+                        <span className="material-symbols-outlined text-amber-400 text-sm">warning</span>
+                        <span className="text-[10px] font-bold text-amber-300">
                           {req.risk_level?.toUpperCase() || 'MEDIUM RISK'}
                         </span>
                       </div>
                     </div>
-                    <div className="bg-surface-deep border border-outline-variant/50 rounded-lg p-5 mb-8">
+                    <div className="bg-black/30 border border-white/10 rounded-xl p-5 mb-8 backdrop-blur-md">
                       <p className="font-bold text-white mb-2">
-                        Action Requested: <code className="text-accent-electric">{capabilityName}</code>
+                        Action Requested: <code className="text-cyan-300">{capabilityName}</code>
                       </p>
-                      <p className="text-sm text-on-surface-muted italic">"{req.reason}"</p>
+                      <p className="text-sm text-slate-300 italic">"{req.reason}"</p>
                     </div>
                     <div className="flex gap-4">
                       <button
                         onClick={() => handleApprove(req.request_id, capabilityName, agentName)}
-                        className="flex-1 bg-primary text-white font-bold py-3 rounded-lg hover:bg-accent-electric transition-all shadow-lg flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                        className="flex-1 bg-[#2f70d9] text-white font-bold py-3 rounded-xl hover:bg-blue-600 transition-all shadow-lg shadow-blue-500/30 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                       >
                         <span className="material-symbols-outlined text-lg">check_circle</span>
                         ALLOW
                       </button>
                       <button
                         onClick={() => handleReject(req.request_id, capabilityName, agentName)}
-                        className="flex-1 border border-error text-error font-bold py-3 rounded-lg hover:bg-error/10 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                        className="flex-1 border border-red-400/50 text-red-300 font-bold py-3 rounded-xl hover:bg-red-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 backdrop-blur-md"
                       >
                         <span className="material-symbols-outlined text-lg">block</span>
                         DENY
@@ -171,30 +171,30 @@ export const PermissionsPage: React.FC = () => {
 
           {/* History Column */}
           <div className="lg:col-span-4 flex flex-col gap-6">
-            <h2 className="text-xl font-bold flex items-center gap-2 text-white">
-              <span className="material-symbols-outlined text-on-surface-muted">history</span>
+            <h2 className="text-xl font-bold flex items-center gap-2 text-white drop-shadow">
+              <span className="material-symbols-outlined text-slate-300">history</span>
               History
             </h2>
-            <div className="glass-panel p-4 rounded-xl space-y-2">
+            <div className="glass-card p-4 rounded-2xl space-y-2">
               {history.map((h, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-4 p-3 rounded-lg hover:bg-surface-variant/30 transition-colors"
+                  className="flex items-center gap-4 p-3 rounded-xl hover:bg-white/10 transition-colors"
                 >
                   <span
                     className={`material-symbols-outlined ${
-                      h.status === 'Approved' ? 'text-emerald-400' : 'text-error'
+                      h.status === 'Approved' ? 'text-emerald-400' : 'text-red-400'
                     } text-sm`}
                   >
                     {h.status === 'Approved' ? 'check_circle' : 'block'}
                   </span>
                   <div className="flex-1">
                     <p className="text-xs font-bold leading-none mb-1 text-white">{h.label}</p>
-                    <p className="text-[10px] text-on-surface-muted uppercase tracking-tighter">
+                    <p className="text-[10px] text-slate-400 uppercase tracking-tighter">
                       {h.agent}
                     </p>
                   </div>
-                  <span className="text-[10px] font-bold text-on-surface-muted">{h.time}</span>
+                  <span className="text-[10px] font-bold text-slate-400">{h.time}</span>
                 </div>
               ))}
             </div>
