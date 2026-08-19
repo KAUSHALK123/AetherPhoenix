@@ -24,13 +24,13 @@ export const DesktopNav: React.FC<DesktopNavProps> = ({ isChatPage = false }) =>
         <div className="fixed top-4 left-4 z-50">
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="w-12 h-12 rounded-2xl bg-slate-900/90 backdrop-blur-xl border border-indigo-500/40 p-2 shadow-2xl hover:border-indigo-500 hover:shadow-indigo-500/30 transition-all flex items-center justify-center cursor-pointer group"
+            className="w-12 h-12 rounded-2xl bg-white border border-slate-200 p-2 shadow-2xl hover:scale-105 transition-all flex items-center justify-center cursor-pointer group"
             title="Toggle Navigation Menu"
           >
             <img
               src="/logo.png"
               alt="AetherPhoenix Logo"
-              className="w-8 h-8 object-contain pointer-events-none group-hover:scale-110 transition-transform"
+              className="w-8 h-8 object-contain pointer-events-none drop-shadow"
             />
           </button>
         </div>

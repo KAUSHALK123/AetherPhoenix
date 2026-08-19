@@ -70,8 +70,8 @@ export const ChatPage: React.FC = () => {
             {/* Greeting */}
             <div className="text-center space-y-2">
               <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-indigo-600 to-violet-500 p-[1.5px] mx-auto mb-4 shadow-xl shadow-indigo-500/20">
-                <div className="w-full h-full bg-slate-950 rounded-[22px] flex items-center justify-center">
-                  <img src="/logo.png" alt="AetherPhoenix" className="w-10 h-10 object-contain" />
+                <div className="w-full h-full bg-white rounded-[22px] flex items-center justify-center">
+                  <img src="/logo.png" alt="AetherPhoenix" className="w-10 h-10 object-contain drop-shadow" />
                 </div>
               </div>
               <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
