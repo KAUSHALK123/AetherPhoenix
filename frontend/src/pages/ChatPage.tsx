@@ -51,16 +51,22 @@ export const ChatPage: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col h-screen w-full bg-slate-950 text-slate-100 overflow-hidden relative select-none">
-      {/* Background Ambience */}
-      <div className="absolute inset-0 bg-radial-[at_top_center] from-indigo-950/20 via-slate-950 to-slate-950 pointer-events-none z-0" />
-
-      {/* Top Fixed Chat Header (Stable & Fullscreen) */}
-      <header className="h-16 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl px-6 flex items-center justify-between z-20 shrink-0">
+    <div
+      className="flex flex-col h-screen w-full text-slate-100 overflow-hidden relative select-none bg-cover bg-center"
+      style={{
+        backgroundImage: `radial-gradient(circle at center, rgba(15, 23, 42, 0.75), rgba(2, 6, 23, 0.96)), url('https://images.unsplash.com/photo-1518837695005-2083093ee35b?q=80&w=2070&auto=format&fit=crop')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      {/* Top Fixed Chat Header (Stable & Clean - No 'Mission Control' text) */}
+      <header className="h-16 border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-xl px-6 flex items-center justify-between z-20 shrink-0">
         <div className="flex items-center gap-3 pl-14">
-          <h1 className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
-            Mission Control <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">AI ASSISTANT</span>
-          </h1>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              AI ASSISTANT
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -71,10 +77,10 @@ export const ChatPage: React.FC = () => {
         </div>
       </header>
 
-      {/* Scrollable Conversation Area */}
+      {/* Scrollable Conversation Area without ugly scrollbar */}
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto w-full px-4 sm:px-6 md:px-8 py-6 z-10 space-y-6 max-w-4xl mx-auto"
+        className="flex-1 overflow-y-auto w-full px-4 sm:px-6 md:px-8 py-6 z-10 space-y-6 max-w-4xl mx-auto no-scrollbar"
       >
         {messages.length === 0 ? (
           /* Empty State / Copilot Stitch View */

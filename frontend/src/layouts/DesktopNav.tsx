@@ -35,11 +35,11 @@ export const DesktopNav: React.FC<DesktopNavProps> = ({ isChatPage = false }) =>
           </button>
         </div>
 
-        {/* Backdrop for Overlay Drawer */}
+        {/* Backdrop for Overlay Drawer (No blur on underlying chat) */}
         {isOpen && (
           <div
             onClick={() => setIsOpen(false)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300"
+            className="fixed inset-0 bg-black/40 z-40 transition-opacity duration-300"
           />
         )}
 
