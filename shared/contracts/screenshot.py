@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Optional, Tuple
+from typing import Any
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, field_validator
@@ -32,11 +32,11 @@ class CaptureRegion(BaseModel):
     width: int = Field(..., gt=0, description="Width of the capture region in pixels")
     height: int = Field(..., gt=0, description="Height of the capture region in pixels")
 
-    def to_tuple(self) -> Tuple[int, int, int, int]:
+    def to_tuple(self) -> tuple[int, int, int, int]:
         """Returns tuple representation: (x, y, width, height)."""
         return (self.x, self.y, self.width, self.height)
 
-    def to_bbox(self) -> Tuple[int, int, int, int]:
+    def to_bbox(self) -> tuple[int, int, int, int]:
         """Returns bounding box tuple: (left, top, right, bottom)."""
         return (self.x, self.y, self.x + self.width, self.y + self.height)
 
@@ -50,7 +50,7 @@ class ScreenshotRequest(BaseModel):
         default=CaptureSource.DESKTOP,
         description="Target capture source (DESKTOP, BROWSER, REGION)",
     )
-    region: Optional[CaptureRegion] = Field(
+    region: CaptureRegion | None = Field(
         default=None,
         description="Optional specific coordinate region to capture",
     )
@@ -58,13 +58,13 @@ class ScreenshotRequest(BaseModel):
         default=ImageFormat.PNG,
         description="Desired image format for output file",
     )
-    quality: Optional[int] = Field(
+    quality: int | None = Field(
         default=None,
         ge=1,
         le=100,
         description="Compression quality (1-100) for JPEG/WEBP",
     )
-    output_path: Optional[str] = Field(
+    output_path: str | None = Field(
         default=None,
         description=(
             "Optional custom destination path; if omitted, managed temp storage is used"
@@ -74,11 +74,11 @@ class ScreenshotRequest(BaseModel):
         default=False,
         description="For browser capture: capture entire scrollable page when True",
     )
-    workflow_id: Optional[UUID] = Field(
+    workflow_id: UUID | None = Field(
         default=None,
         description="Associated workflow ID",
     )
-    task_id: Optional[UUID] = Field(
+    task_id: UUID | None = Field(
         default=None,
         description="Associated task ID",
     )
@@ -153,7 +153,7 @@ class ScreenshotResult(BaseModel):
         default=True,
         description="Flag indicating if the file resides in managed temporary storage",
     )
-    error_message: Optional[str] = Field(
+    error_message: str | None = Field(
         default=None,
         description="Error details if the capture failed",
     )

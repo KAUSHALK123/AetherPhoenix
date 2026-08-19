@@ -2,6 +2,10 @@ from enum import Enum
 from typing import Any, Dict, Optional, Union
 from uuid import UUID
 
+from shared.contracts.escalation import (
+    EscalationReason,
+    EscalationRequest,
+)
 from shared.contracts.event import EventSource, EventType, RuntimeEvent
 from shared.contracts.execution import (
     ExecutionResult,
@@ -12,6 +16,7 @@ from shared.contracts.task import Task
 from shared.contracts.workflow import SharedWorkflowState
 
 from app.agents.healing.error_parser import ErrorParser, ParsedError
+from app.agents.healing.escalation import EscalationHandler
 from app.agents.healing.recovery_planner import RecoveryPlan, RecoveryPlanner
 from app.agents.healing.retry_engine import RetryEngine
 from app.agents.healing.root_cause_analyzer import (
@@ -50,6 +55,7 @@ class SelfHealingLoop(BaseAgent):
         root_cause_analyzer: Optional[RootCauseAnalyzer] = None,
         recovery_planner: Optional[RecoveryPlanner] = None,
         retry_engine: Optional[RetryEngine] = None,
+        escalation_handler: Optional[EscalationHandler] = None,
         max_retries: int = 3,
         max_healing_attempts: int = 5,
     ) -> None:
@@ -60,6 +66,9 @@ class SelfHealingLoop(BaseAgent):
         self.retry_engine = retry_engine or RetryEngine(
             default_max_retries=max_retries,
             default_max_healing_attempts=max_healing_attempts,
+        )
+        self.escalation_handler = escalation_handler or EscalationHandler(
+            event_bus=event_bus
         )
         self.max_retries = max_retries
         self.max_healing_attempts = max_healing_attempts
@@ -208,6 +217,7 @@ class SelfHealingLoop(BaseAgent):
             root_cause=root_cause,
             max_retries=self.max_retries,
             max_healing_attempts=self.max_healing_attempts,
+            recovery_plan=plan,
         )
 
         if not can_retry:
@@ -250,6 +260,39 @@ class SelfHealingLoop(BaseAgent):
                     "root_cause": rc_cat,
                 },
             )
+
+            # Invoke EscalationHandler for unrecoverable/exhausted failure
+            try:
+                esc_reason = (
+                    EscalationReason.MAX_RETRIES_EXCEEDED
+                    if ("limit" in reason.lower() or "exceeded" in reason.lower())
+                    else EscalationReason.UNSUPPORTED_ERROR
+                )
+                if (
+                    "permission" in parsed_error.normalized_code.lower()
+                    or "permission" in rc_cat.lower()
+                ):
+                    esc_reason = EscalationReason.PERMISSION_DENIED
+
+                esc_req = EscalationRequest(
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                    reason=esc_reason,
+                    details=f"SelfHealing blocked/exhausted: {reason}",
+                    failure_context={
+                        "error_code": parsed_error.normalized_code,
+                        "error_message": parsed_error.raw_message,
+                        "root_cause": rc_cat,
+                        "reason": reason,
+                    },
+                    healing_history=list(state.healing_history),
+                    attempt_number=attempt_number,
+                    risk_level=getattr(task, "risk_level", None),
+                )
+                await self.escalation_handler.handle_escalation(esc_req, sws=state)
+            except Exception as esc_err:
+                logger.warning(f"Error invoking EscalationHandler: {esc_err}")
+
             return result
 
         result = await self.retry_engine.execute_recovery(
@@ -288,5 +331,27 @@ class SelfHealingLoop(BaseAgent):
                     "reason": "Retry Engine execution failed",
                 },
             )
+
+            # Invoke EscalationHandler when recovery execution fails
+            try:
+                esc_req = EscalationRequest(
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                    reason=EscalationReason.MAX_HEALING_ATTEMPTS_EXCEEDED,
+                    details=(
+                        f"SelfHealingLoop recovery execution failed for task {task_id}"
+                    ),
+                    failure_context={
+                        "task_id": str(task_id),
+                        "attempt_number": attempt_number,
+                    },
+                    healing_history=list(state.healing_history),
+                    attempt_number=attempt_number,
+                )
+                await self.escalation_handler.handle_escalation(esc_req, sws=state)
+            except Exception as esc_err:
+                logger.warning(
+                    f"Error invoking EscalationHandler on failed recovery: {esc_err}"
+                )
 
         return result

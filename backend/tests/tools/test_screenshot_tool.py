@@ -117,7 +117,16 @@ async def test_screenshot_worker_agent_integration(tmp_path, mock_img):
     engine = ScreenshotEngine(temp_dir=tmp_path)
     adapter = ScreenshotToolAdapter(engine=engine)
 
-    worker = WorkerAgent(tool_registry=tool_reg)
+    class MockPermissionManager:
+        async def check_permission(self, *args, **kwargs) -> bool:
+            return True
+
+        def validate_permission(self, *args, **kwargs) -> bool:
+            return True
+
+    worker = WorkerAgent(
+        tool_registry=tool_reg, permission_manager=MockPermissionManager()
+    )
     worker.register_adapter("app.tools.screenshot.tool.ScreenshotToolAdapter", adapter)
 
     task = Task(

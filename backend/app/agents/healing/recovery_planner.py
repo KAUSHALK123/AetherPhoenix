@@ -157,12 +157,15 @@ class RecoveryPlanner:
                     "DEPENDENCY_FAILURE",
                     "WORKFLOW",
                     "RootCauseCategory.WORKFLOW",
+                    "TOOL",
+                    "RootCauseCategory.TOOL",
                 )
                 and err_type
                 not in (
                     FailureType.OUTPUT_MISSING,
                     FailureType.PERMISSION_DENIED,
                     FailureType.DEPENDENCY_FAILED,
+                    FailureType.TOOL_UNAVAILABLE,
                 )
             )
             or rc_cat_str == "UNRECOVERABLE"

@@ -77,9 +77,20 @@ class RootCauseResult(BaseModel):
 
     @property
     def is_recoverable(self) -> bool:
-        return self.category not in (
+        if self.category in (
             RootCauseCategory.PERMISSION,
             RootCauseCategory.USER,
+        ):
+            return False
+        likely_upper = (self.likely_root_cause or "").upper()
+        return not any(
+            pat in likely_upper
+            for pat in (
+                "TOOL_NOT_FOUND",
+                "TOOL_UNAVAILABLE",
+                "UNREGISTERED_TOOL",
+                "NOT_FOUND",
+            )
         )
 
     @property

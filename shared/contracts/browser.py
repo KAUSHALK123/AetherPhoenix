@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -18,7 +18,7 @@ class BrowserSession(BaseModel):
     """Model representing an active browser session."""
 
     session_id: str = Field(..., description="Unique identifier for the session")
-    current_url: Optional[str] = Field(
+    current_url: str | None = Field(
         None, description="The URL currently loaded in the browser"
     )
     state: BrowserState = Field(
@@ -31,9 +31,7 @@ class BrowserResult(BaseModel):
     """Structured execution result for browser operations."""
 
     success: bool = Field(..., description="Whether the operation succeeded")
-    data: Optional[Dict[str, Any]] = Field(
+    data: dict[str, Any] | None = Field(
         None, description="Data extracted or returned by the operation"
     )
-    error: Optional[str] = Field(
-        None, description="Error message if the operation failed"
-    )
+    error: str | None = Field(None, description="Error message if the operation failed")

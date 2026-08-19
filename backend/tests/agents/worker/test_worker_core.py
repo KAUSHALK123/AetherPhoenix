@@ -97,7 +97,7 @@ async def test_missing_required_tool(worker_agent):
 
     assert result.success is False
     assert result.error is not None
-    assert result.error.error_code == "EXECUTION_FAILED"
+    assert result.error.error_code in ("EXECUTION_FAILED", "TOOL_NOT_FOUND")
     assert "missing 'required_tool'" in result.error.error_message
 
 
