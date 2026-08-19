@@ -1,46 +1,43 @@
 @echo off
-echo Starting AetherPhoenix Test and Build Pipeline...
+setlocal enabledelayedexpansion
 
-echo ----------------------------------------
-echo Backend Setup and Testing
-echo ----------------------------------------
-cd backend
-call uv sync
-call uv run playwright install chromium --with-deps
-set PYTHONPATH=..
-call uv run pytest
-call uv run ruff check .
-call uv run black --check .
-if %errorlevel% neq 0 (
-    echo Backend checks failed!
-    exit /b %errorlevel%
+echo ===================================================
+echo   AetherPhoenix AI Desktop Suite - Launch Script
+echo ===================================================
+echo.
+
+set ROOT_DIR=%~dp0
+set BACKEND_DIR=%ROOT_DIR%backend
+set FRONTEND_DIR=%ROOT_DIR%frontend
+
+:: 1. Launch Backend API Server
+echo [1/3] Starting FastAPI Backend on http://localhost:8000...
+cd /d "%BACKEND_DIR%"
+set PYTHONPATH=%ROOT_DIR%
+
+if exist ".venv\Scripts\uvicorn.exe" (
+    start "AetherPhoenix Backend" /min cmd /c "set PYTHONPATH=%ROOT_DIR%&& .venv\Scripts\uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
+) else (
+    start "AetherPhoenix Backend" /min cmd /c "set PYTHONPATH=%ROOT_DIR%&& python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload"
 )
 
-echo ----------------------------------------
-echo Frontend Build
-echo ----------------------------------------
-cd ../frontend
-call npm install
-call npm run build
-if %errorlevel% neq 0 (
-    echo Frontend build failed!
-    exit /b %errorlevel%
-)
+:: 2. Launch Frontend Dev Server
+echo [2/3] Starting Vite Frontend on http://localhost:5173...
+cd /d "%FRONTEND_DIR%"
+start "AetherPhoenix Frontend" /min cmd /c "npm run dev"
 
-echo ----------------------------------------
-echo Docker Compose Setup
-echo ----------------------------------------
-cd ..
-docker compose build
-docker compose up -d
+:: 3. Open Browser
+echo [3/3] Launching AetherPhoenix in browser...
+timeout /t 3 /nobreak >nul
+start http://localhost:5173
 
-echo ----------------------------------------
-echo Docker Services Status
-echo ----------------------------------------
-docker compose ps
-
-echo ----------------------------------------
-echo Press any key to bring down the services...
-echo ----------------------------------------
-pause
-docker compose down
+echo.
+echo ===================================================
+echo   AetherPhoenix is running!
+echo   - Frontend: http://localhost:5173
+echo   - Backend API: http://localhost:8000
+echo   - Swagger Docs: http://localhost:8000/docs
+echo ===================================================
+echo.
+echo Press any key to close this launcher window (services will remain running)...
+pause >nul
