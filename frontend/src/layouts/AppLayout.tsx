@@ -20,11 +20,11 @@ export const AppLayout: React.FC = () => {
   }, [fetchPending]);
 
   return (
-    <div className="bg-background text-on-surface font-body overflow-x-hidden min-h-screen flex flex-col">
-      <WebGLBackground />
+    <div className={`text-on-surface font-body overflow-x-hidden ${isChatPage ? 'h-screen w-screen overflow-hidden' : 'bg-background min-h-screen flex flex-col'}`}>
+      {!isChatPage && <WebGLBackground />}
       {!isChatPage && <Header />}
       <DesktopNav isChatPage={isChatPage} />
-      <div className={`flex-1 flex flex-col ${isChatPage ? 'p-0 m-0' : 'pt-16 md:pl-64 pb-20 md:pb-0'}`}>
+      <div className={`flex flex-col ${isChatPage ? 'h-full w-full p-0 m-0 overflow-hidden' : 'flex-1 pt-16 md:pl-64 pb-20 md:pb-0'}`}>
         <Outlet />
       </div>
       {!isChatPage && <BottomNav />}

@@ -43,9 +43,9 @@ export const DesktopNav: React.FC<DesktopNavProps> = ({ isChatPage = false }) =>
           />
         )}
 
-        {/* Drawer Overlay Menu */}
+        {/* Drawer Overlay Menu (Glassmorphic to show ocean background behind it) */}
         <div
-          className={`fixed left-0 top-0 h-full w-72 bg-slate-950/95 backdrop-blur-2xl border-r border-slate-800 p-6 flex flex-col gap-6 z-50 shadow-2xl transition-transform duration-300 ease-in-out ${
+          className={`fixed left-0 top-0 h-full w-72 bg-slate-950/80 backdrop-blur-xl border-r border-slate-800/80 p-6 flex flex-col gap-6 z-50 shadow-2xl transition-transform duration-300 ease-in-out ${
             isOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
