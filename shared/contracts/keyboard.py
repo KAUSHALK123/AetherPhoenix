@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -76,13 +76,13 @@ class KeyboardActionRequest(BaseModel):
     action: KeyboardActionType = Field(
         ..., description="The keyboard action type to perform"
     )
-    key: Optional[str] = Field(
+    key: str | None = Field(
         default=None, description="Single key name or special key identifier"
     )
-    keys: Optional[List[str]] = Field(
+    keys: list[str] | None = Field(
         default=None, description="List of keys for hotkey / shortcut combinations"
     )
-    text: Optional[str] = Field(
+    text: str | None = Field(
         default=None, description="Text string to type into the active application"
     )
     interval: float = Field(
@@ -112,12 +112,12 @@ class KeyboardActionResult(BaseModel):
         default="success", description="Status outcome: 'success' or 'failed'"
     )
     action: str = Field(..., description="Action that was executed")
-    details: Dict[str, Any] = Field(
+    details: dict[str, Any] = Field(
         default_factory=dict, description="Execution metadata and details"
     )
     execution_time_ms: float = Field(
         default=0.0, description="Execution elapsed time in milliseconds"
     )
-    error: Optional[str] = Field(
+    error: str | None = Field(
         default=None, description="Error message if operation failed"
     )
