@@ -52,6 +52,12 @@ except ImportError:
     GitToolAdapter = None
     register_git_tool = None
 
+try:
+    from app.tools.terminal import TerminalToolAdapter, register_terminal_tool
+except ImportError:
+    TerminalToolAdapter = None
+    register_terminal_tool = None
+
 from app.tools.ppt import PPTGenerator, ppt_tool_metadata
 from app.tools.registry import ToolRegistry
 
@@ -115,4 +121,6 @@ __all__ = [
     "StructuredResearchResult",
     "PPTGenerator",
     "ppt_tool_metadata",
+    "register_terminal_tool",
+    "TerminalToolAdapter",
 ]

@@ -131,6 +131,14 @@ class PlannerAgent:
                 required_tools=["git_tool"],
             )
         )
+        cap_reg.register(
+            Capability(
+                name="terminal_integration",
+                description="Executes system terminal commands directly in the local environment",
+                category=TaskCategory.TERMINAL,
+                required_tools=["terminal_tool"],
+            )
+        )
 
         self.capability_engine = CapabilityDiscoveryEngine(registry=cap_reg)
         self.parallel_engine = ParallelTaskAnalyzer()
@@ -265,7 +273,9 @@ class PlannerAgent:
         if request.session_id in self.active_sessions:
             original_goal = self.active_sessions[request.session_id]
             # Combine original goal with clarification answer
-            combined_message = f"{original_goal} (Clarification provided: {request.message})"  # noqa: E501
+            combined_message = (
+                f"{original_goal} (Clarification provided: {request.message})"  # noqa: E501
+            )
             request.message = combined_message
         else:
             combined_message = request.message
