@@ -120,6 +120,14 @@ class PlannerAgent:
                 required_tools=["desktop_automation"],
             )
         )
+        cap_reg.register(
+            Capability(
+                name="git_integration",
+                description="Executes Git operations like commit, push, pull, branch, and status",
+                category=TaskCategory.GIT,
+                required_tools=["git_tool"],
+            )
+        )
 
         self.capability_engine = CapabilityDiscoveryEngine(registry=cap_reg)
         self.parallel_engine = ParallelTaskAnalyzer()
