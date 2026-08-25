@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from shared.contracts.execution import ExecutionMetrics, ExecutionResult, TaskError
 from shared.contracts.task import Task
@@ -88,7 +88,9 @@ class GitToolAdapter(BaseToolAdapter):
             if not success:
                 error = TaskError(
                     error_code="GIT_COMMAND_FAILED",
-                    error_message=err_str or "Git command failed without stderr output.",
+                    error_message=err_str or (
+                        "Git command failed without stderr output."
+                    ),
                     is_recoverable=False,
                 )
                 return ExecutionResult(

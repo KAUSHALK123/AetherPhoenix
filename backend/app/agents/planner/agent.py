@@ -123,7 +123,10 @@ class PlannerAgent:
         cap_reg.register(
             Capability(
                 name="git_integration",
-                description="Executes Git operations like commit, push, pull, branch, and status",
+                description=(
+                    "Executes Git operations like commit, push, pull, "
+                    "branch, and status"
+                ),
                 category=TaskCategory.GIT,
                 required_tools=["git_tool"],
             )

@@ -1,8 +1,9 @@
-import pytest
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
+import pytest
 from shared.contracts.task import Task, TaskCategory, TaskType
+
 from app.tools.git.adapter import GitToolAdapter
 
 
@@ -49,7 +50,10 @@ async def test_git_status_success(mock_exec, git_adapter):
 @patch("asyncio.create_subprocess_exec")
 async def test_git_commit_failure(mock_exec, git_adapter):
     mock_process = AsyncMock()
-    mock_process.communicate.return_value = (b"", b"error: pathspec 'nonexistent.txt' did not match any file(s) known to git")
+    mock_process.communicate.return_value = (
+        b"",
+        b"error: pathspec 'nonexistent.txt' did not match any file(s) known to git"
+    )
     mock_process.returncode = 1
     mock_exec.return_value = mock_process
 
@@ -74,4 +78,5 @@ async def test_git_missing_branch_for_checkout(git_adapter):
 
     assert result.success is False
     assert result.error.error_code == "GIT_EXECUTION_ERROR"
-    assert "Branch name is required for checkout operation" in result.error.error_message
+    expected_error = "Branch name is required for checkout operation"
+    assert expected_error in result.error.error_message
