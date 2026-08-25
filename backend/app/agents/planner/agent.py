@@ -131,6 +131,17 @@ class PlannerAgent:
                 required_tools=["git_tool"],
             )
         )
+        cap_reg.register(
+            Capability(
+                name="terminal_integration",
+                description=(
+                    "Executes system terminal commands directly "
+                    "in the local environment"
+                ),
+                category=TaskCategory.TERMINAL,
+                required_tools=["terminal_tool"],
+            )
+        )
 
         self.capability_engine = CapabilityDiscoveryEngine(registry=cap_reg)
         self.parallel_engine = ParallelTaskAnalyzer()
