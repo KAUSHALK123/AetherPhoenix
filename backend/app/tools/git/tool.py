@@ -16,12 +16,13 @@ logger = logging.getLogger(__name__)
 
 class GitToolInput(BaseModel):
     """Input arguments for the Git integration tool."""
+
     operation: str = Field(
         ...,
         description=(
             "The git operation to perform: status, branches, history, "
             "checkout, stage, commit, diff, pull, push."
-        )
+        ),
     )
     branch: Optional[str] = Field(None, description="The branch name for checkout.")
     create_branch: Optional[bool] = Field(
@@ -43,6 +44,7 @@ class GitToolInput(BaseModel):
 
 class GitToolOutput(BaseModel):
     """Output for the Git integration tool."""
+
     success: bool
     output: Optional[str] = None
     error: Optional[str] = None
@@ -52,10 +54,10 @@ class GitToolOutput(BaseModel):
 def register_git_tool(registry: ToolRegistry) -> Tool:
     """
     Registers the Git tool with the provided ToolRegistry.
-    
+
     Args:
         registry: The application ToolRegistry instance.
-        
+
     Returns:
         The registered Tool contract instance.
     """
@@ -68,7 +70,7 @@ def register_git_tool(registry: ToolRegistry) -> Tool:
         adapter="git_tool_adapter",
         required_permissions=[PermissionType.GIT_OPERATIONS.value],
     )
-    
+
     registry.register(tool)
     logger.info("Successfully registered 'git_tool' tool in ToolRegistry.")
     return tool

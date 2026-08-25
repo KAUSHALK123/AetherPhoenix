@@ -28,12 +28,12 @@ class GitToolAdapter(BaseToolAdapter):
         try:
             # Parse inputs
             input_data = GitToolInput(**task.inputs)
-            
+
             operation = input_data.operation.lower()
             working_directory = input_data.working_directory
-            
+
             cmd = []
-            
+
             if operation == "detect_repo":
                 cmd = ["git", "rev-parse", "--is-inside-work-tree"]
             elif operation == "status":
@@ -70,27 +70,26 @@ class GitToolAdapter(BaseToolAdapter):
                 raise ValueError(f"Unsupported Git operation: {operation}")
 
             logger.info(f"Executing Git command: {' '.join(cmd)}")
-            
+
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 cwd=working_directory,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
-            
+
             stdout, stderr = await process.communicate()
-            
+
             out_str = stdout.decode("utf-8", errors="replace").strip()
             err_str = stderr.decode("utf-8", errors="replace").strip()
-            
+
             success = process.returncode == 0
-            
+
             if not success:
                 error = TaskError(
                     error_code="GIT_COMMAND_FAILED",
-                    error_message=err_str or (
-                        "Git command failed without stderr output."
-                    ),
+                    error_message=err_str
+                    or ("Git command failed without stderr output."),
                     is_recoverable=False,
                 )
                 return ExecutionResult(
@@ -109,7 +108,7 @@ class GitToolAdapter(BaseToolAdapter):
                 output={"output": out_str},
                 metrics=ExecutionMetrics(),
             )
-            
+
         except Exception as e:
             logger.error(f"Git adapter execution failed: {e}", exc_info=True)
             return ExecutionResult(

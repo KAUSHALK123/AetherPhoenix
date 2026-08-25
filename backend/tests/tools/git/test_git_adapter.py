@@ -21,7 +21,7 @@ def create_git_task(operation: str, **kwargs) -> Task:
         category=TaskCategory.GIT,
         required_tool="git_tool",
         expected_output="Git command result",
-        inputs={"operation": operation, **kwargs}
+        inputs={"operation": operation, **kwargs},
     )
 
 
@@ -39,10 +39,7 @@ async def test_git_status_success(mock_exec, git_adapter):
     assert result.success is True
     assert "M file1.txt" in result.output["output"]
     mock_exec.assert_called_once_with(
-        "git", "status", "-s",
-        cwd=None,
-        stdout=-1,
-        stderr=-1
+        "git", "status", "-s", cwd=None, stdout=-1, stderr=-1
     )
 
 
@@ -52,7 +49,7 @@ async def test_git_commit_failure(mock_exec, git_adapter):
     mock_process = AsyncMock()
     mock_process.communicate.return_value = (
         b"",
-        b"error: pathspec 'nonexistent.txt' did not match any file(s) known to git"
+        b"error: pathspec 'nonexistent.txt' did not match any file(s) known to git",
     )
     mock_process.returncode = 1
     mock_exec.return_value = mock_process
@@ -64,10 +61,7 @@ async def test_git_commit_failure(mock_exec, git_adapter):
     assert result.error is not None
     assert result.error.error_code == "GIT_COMMAND_FAILED"
     mock_exec.assert_called_once_with(
-        "git", "commit", "-m", "Test commit",
-        cwd=None,
-        stdout=-1,
-        stderr=-1
+        "git", "commit", "-m", "Test commit", cwd=None, stdout=-1, stderr=-1
     )
 
 
