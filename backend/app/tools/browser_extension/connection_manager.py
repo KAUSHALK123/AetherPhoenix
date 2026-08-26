@@ -153,9 +153,8 @@ class BrowserExtensionConnectionManager:
             timestamp=time.time(),
         )
 
-        future: asyncio.Future[
-            BrowserExtensionResponse
-        ] = asyncio.get_event_loop().create_future()
+        loop = asyncio.get_event_loop()
+        future: asyncio.Future[BrowserExtensionResponse] = loop.create_future()
         self._pending_commands[command_id] = future
 
         try:
