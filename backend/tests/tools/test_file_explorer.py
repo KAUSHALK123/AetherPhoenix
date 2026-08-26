@@ -1,10 +1,9 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-
 from shared.contracts.artifact import Artifact, ArtifactType
-from shared.contracts.task import Task, TaskCategory, TaskStatus
+from shared.contracts.task import Task, TaskCategory
 
 from app.core.config import get_config
 from app.core.exceptions import PermissionDeniedException

@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from shared.contracts.permission import PermissionType
 from shared.contracts.tool import Tool, ToolHealth, ToolState
@@ -23,7 +22,8 @@ def register_file_explorer_tool(registry: ToolRegistry) -> Tool:
         name="file_explorer",
         description=(
             "Interacts with operating system File Explorer to open folders/files, "
-            "reveal artifacts, create directories, detect existence, and retrieve metadata."
+            "reveal artifacts, create directories, detect existence, and "
+            "retrieve metadata."
         ),
         version="1.0.0",
         status=ToolState.READY,

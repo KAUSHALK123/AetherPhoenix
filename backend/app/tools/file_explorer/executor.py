@@ -4,7 +4,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
 from uuid import UUID
 
 from shared.contracts.artifact import Artifact
@@ -70,7 +70,8 @@ class FileExplorerExecutor:
         if not (in_workspace or in_artifacts):
             logger.error(
                 f"Path validation failed: '{path}' resolves to '{resolved_path}' "
-                f"outside permitted directories ({self.workspace_dir}, {self.artifacts_dir})"
+                f"outside permitted directories "
+                f"({self.workspace_dir}, {self.artifacts_dir})"
             )
             raise ValueError(
                 f"Access denied: path '{path}' is outside the permitted directories."
@@ -79,7 +80,7 @@ class FileExplorerExecutor:
         return resolved_path
 
     def _launch_os_open(self, target_path: Path) -> None:
-        """Launches the target file or folder using the OS default application handler."""
+        """Launches the target file or folder using OS default handler."""
         path_str = str(target_path)
         if sys.platform == "win32":
             if hasattr(os, "startfile"):
@@ -92,14 +93,16 @@ class FileExplorerExecutor:
             subprocess.Popen(["xdg-open", path_str])
 
     def _launch_os_reveal(self, target_path: Path) -> None:
-        """Reveals and highlights the target file in the native OS file explorer window."""
+        """Reveals and highlights target file in native OS file explorer."""
         path_str = str(target_path)
         if sys.platform == "win32":
             subprocess.Popen(["explorer.exe", f"/select,{path_str}"])
         elif sys.platform == "darwin":
             subprocess.Popen(["open", "-R", path_str])
         else:
-            folder_path = str(target_path.parent if target_path.is_file() else target_path)
+            folder_path = str(
+                target_path.parent if target_path.is_file() else target_path
+            )
             subprocess.Popen(["xdg-open", folder_path])
 
     async def open_folder(self, request: OpenFolderRequest) -> FileExplorerActionResult:
@@ -148,7 +151,8 @@ class FileExplorerExecutor:
         and visibly reveals/highlights it in the OS File Explorer.
         """
         logger.info(
-            f"Revealing artifact (id={request.artifact_id}, name={request.artifact_name}, path={request.filepath})"
+            f"Revealing artifact (id={request.artifact_id}, "
+            f"name={request.artifact_name}, path={request.filepath})"
         )
         resolved_artifact: Optional[Artifact] = None
         target_path: Optional[Path] = None
@@ -193,7 +197,9 @@ class FileExplorerExecutor:
             success=True,
             action="reveal_artifact",
             target_path=str(target_path),
-            message=f"Artifact '{target_path.name}' visibly revealed in OS File Explorer.",
+            message=(
+                f"Artifact '{target_path.name}' visibly revealed in OS File Explorer."
+            ),
             metadata={
                 "artifact_id": str(resolved_artifact.artifact_id)
                 if resolved_artifact
