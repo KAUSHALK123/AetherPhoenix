@@ -186,9 +186,7 @@ async def test_reveal_artifact_by_name(executor, workspace):
         filepath=str(art_file),
         artifact_type=ArtifactType.PDF,
     )
-    await executor.artifact_storage_service.register_artifact(
-        art, source_path=art_file
-    )
+    await executor.artifact_storage_service.register_artifact(art, source_path=art_file)
 
     req = RevealArtifactRequest(artifact_name="report.pdf")
     with patch.object(executor, "_launch_os_reveal") as mock_reveal:
