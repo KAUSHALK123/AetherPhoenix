@@ -19,7 +19,7 @@ def register_browser_extension_capability(
     worker_agent: Optional[Any] = None,
     permission_manager: Optional[Any] = None,
 ):
-    """Registers the browser_extension tool and capability into the system registries."""
+    """Registers browser_extension tool and capability into system registries."""
     browser_ext_tool = Tool(
         name="browser_extension",
         version="1.0.0",

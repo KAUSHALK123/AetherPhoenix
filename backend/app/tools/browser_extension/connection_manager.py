@@ -3,13 +3,14 @@ import json
 import time
 import uuid
 from typing import Any, Dict, Optional
-from fastapi import WebSocket, WebSocketDisconnect
 
+from fastapi import WebSocket
 from shared.contracts.browser_extension import (
     BrowserExtensionCommand,
     BrowserExtensionResponse,
     ExtensionConnectionStatus,
 )
+
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
@@ -67,11 +68,13 @@ class BrowserExtensionConnectionManager:
                     await self._active_websocket.close()
                 except Exception:
                     pass
-            
+
             self._client_id = str(uuid.uuid4())
             self._active_websocket = websocket
             self._last_heartbeat = time.time()
-            logger.info(f"Browser Extension connected with client_id: {self._client_id}")
+            logger.info(
+                f"Browser Extension connected with client_id: {self._client_id}"
+            )
             return self._client_id
 
     async def disconnect(self) -> None:
@@ -85,7 +88,9 @@ class BrowserExtensionConnectionManager:
             for command_id, future in list(self._pending_commands.items()):
                 if not future.done():
                     future.set_exception(
-                        ExtensionNotConnectedError("Extension disconnected while command was executing")
+                        ExtensionNotConnectedError(
+                            "Extension disconnected while command was executing"
+                        )
                     )
             self._pending_commands.clear()
 
@@ -102,7 +107,9 @@ class BrowserExtensionConnectionManager:
 
         if msg_type == "heartbeat" or msg_type == "status_update":
             self._active_tab_url = data.get("active_tab_url", self._active_tab_url)
-            self._active_tab_title = data.get("active_tab_title", self._active_tab_title)
+            self._active_tab_title = data.get(
+                "active_tab_title", self._active_tab_title
+            )
             return
 
         # Handle command responses
@@ -132,7 +139,9 @@ class BrowserExtensionConnectionManager:
         and waits for the response up to timeout_seconds.
         """
         if not self._active_websocket:
-            raise ExtensionNotConnectedError("Browser Extension is not connected to AetherPhoenix")
+            raise ExtensionNotConnectedError(
+                "Browser Extension is not connected to AetherPhoenix"
+            )
 
         command_id = str(uuid.uuid4())
         command = BrowserExtensionCommand(
@@ -144,7 +153,9 @@ class BrowserExtensionConnectionManager:
             timestamp=time.time(),
         )
 
-        future: asyncio.Future[BrowserExtensionResponse] = asyncio.get_event_loop().create_future()
+        future: asyncio.Future[BrowserExtensionResponse] = (
+            asyncio.get_event_loop().create_future()
+        )
         self._pending_commands[command_id] = future
 
         try:
@@ -155,7 +166,9 @@ class BrowserExtensionConnectionManager:
             return response
         except asyncio.TimeoutError:
             self._pending_commands.pop(command_id, None)
-            logger.error(f"Command {command_id} ({action}) timed out after {timeout_seconds}s")
+            logger.error(
+                f"Command {command_id} ({action}) timed out after {timeout_seconds}s"
+            )
             return BrowserExtensionResponse(
                 command_id=command_id,
                 success=False,

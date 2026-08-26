@@ -12,4 +12,3 @@ api_router.include_router(
 api_router.include_router(
     browser_extension.router, prefix="/browser-extension", tags=["browser-extension"]
 )
-

@@ -59,9 +59,9 @@ def test_planner_delete_downloads():
 
     # 2. Reasoning is specific to data loss
     risks = plan.get("risks", [])
-    assert any(
-        "data loss" in risk or "irreversible" in risk for risk in risks
-    ), f"Risks did not contain 'data loss' or 'irreversible'. Actual risks: {risks}"
+    assert any("data loss" in risk or "irreversible" in risk for risk in risks), (
+        f"Risks did not contain 'data loss' or 'irreversible'. Actual risks: {risks}"
+    )
 
     # 3. No actual PlannerAgent execution task
     tasks = plan.get("tasks", [])

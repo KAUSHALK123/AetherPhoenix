@@ -29,11 +29,13 @@ def test_extension_websocket_lifecycle(client):
         assert status_res.json()["connected"] is True
 
         # Send heartbeat message
-        websocket.send_json({
-            "type": "heartbeat",
-            "active_tab_url": "https://aetherphoenix.ai",
-            "active_tab_title": "AetherPhoenix AI",
-        })
+        websocket.send_json(
+            {
+                "type": "heartbeat",
+                "active_tab_url": "https://aetherphoenix.ai",
+                "active_tab_title": "AetherPhoenix AI",
+            }
+        )
 
     # After websocket closes context, connection should disconnect
     assert not manager.is_connected

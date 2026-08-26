@@ -1,6 +1,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-
 from shared.contracts.browser_extension import ExtensionConnectionStatus
+
 from app.core.logging import get_logger
 from app.tools.browser_extension.connection_manager import (
     get_connection_manager,
@@ -15,7 +15,7 @@ router = APIRouter()
 async def websocket_endpoint(websocket: WebSocket):
     """
     WebSocket endpoint for the Chrome Browser Extension.
-    Establishes connection and handles message traffic between extension and AetherPhoenix.
+    Establishes connection and handles messages with AetherPhoenix.
     """
     manager = get_connection_manager()
     client_id = await manager.connect(websocket)
@@ -33,8 +33,6 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @router.get("/status", response_model=ExtensionConnectionStatus)
 async def get_extension_status():
-    """
-    Returns current connection status of the Chrome Browser Extension.
-    """
+    """Returns current connection status of the Chrome Browser Extension."""
     manager = get_connection_manager()
     return manager.get_status()

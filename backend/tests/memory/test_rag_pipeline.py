@@ -48,8 +48,7 @@ async def test_relevant_query_retrieval(clean_pipeline):
     await clean_pipeline.vector_db.store_memory(
         memory_id=m1,
         text=(
-            "The user prefers slide presentations with a dark mode "
-            "glassmorphism theme."
+            "The user prefers slide presentations with a dark mode glassmorphism theme."
         ),
         metadata={"category": "preference", "session_id": "session_101"},
     )

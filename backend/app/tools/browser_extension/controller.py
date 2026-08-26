@@ -1,9 +1,9 @@
-import logging
 from typing import Any, Dict, Optional
 from uuid import UUID
 
 from shared.contracts.browser import BrowserResult
 from shared.contracts.permission import PermissionType
+
 from app.core.exceptions import PermissionDeniedException
 from app.core.logging.logger import get_logger
 from app.core.permissions.manager import PermissionManager, get_permission_manager
@@ -27,7 +27,7 @@ class BrowserExtensionActionError(Exception):
 
 class BrowserExtensionController:
     """
-    Controller for interacting with the user's browser via the AetherPhoenix Chrome Extension.
+    Controller for interacting with the user's browser via Chrome Extension.
     Enforces Safe Execution Mode, Permission System rules, and credential protection.
     """
 
@@ -90,23 +90,29 @@ class BrowserExtensionController:
 
     def _sanitize_inputs(self, params: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Sanitizes action input parameters to ensure sensitive data (passwords, tokens)
+        Sanitizes input parameters to ensure sensitive data (passwords, secrets)
         are not stored or logged in plain text.
         """
         sanitized = dict(params)
         for key in list(sanitized.keys()):
-            if "password" in key.lower() or "secret" in key.lower() or "token" in key.lower():
+            key_lower = key.lower()
+            if "password" in key_lower or "secret" in key_lower or "token" in key_lower:
                 sanitized[key] = "******"
         return sanitized
 
-    def _sanitize_outputs(self, data: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    def _sanitize_outputs(
+        self, data: Optional[Dict[str, Any]]
+    ) -> Optional[Dict[str, Any]]:
         """
-        Ensures extracted content or element outputs do not return captured credentials.
+        Ensures extracted content or element outputs do not return credentials.
         """
         if not data:
             return data
         sanitized = dict(data)
-        if "value" in sanitized and ("password" in str(sanitized.get("selector", "")).lower() or "password" in str(sanitized.get("type", "")).lower()):
+        selector_str = str(sanitized.get("selector", "")).lower()
+        type_str = str(sanitized.get("type", "")).lower()
+        is_pwd = "password" in selector_str or "password" in type_str
+        if "value" in sanitized and is_pwd:
             sanitized["value"] = "[MASKED_CREDENTIAL]"
         return sanitized
 
@@ -115,7 +121,7 @@ class BrowserExtensionController:
         workflow_id: Optional[UUID | str] = None,
         task_id: Optional[UUID | str] = None,
     ) -> BrowserResult:
-        """Detects and returns active tab information (url, title, tab_id, window_id)."""
+        """Detects active tab information (url, title, tab_id, window_id)."""
         await self._check_permission(
             action="detect_active_tab",
             workflow_id=workflow_id,
@@ -129,7 +135,8 @@ class BrowserExtensionController:
                 workflow_id=str(workflow_id) if workflow_id else None,
             )
             if not res.success:
-                return BrowserResult(success=False, error=res.error or "Failed to detect active tab")
+                err_msg = res.error or "Failed to detect active tab"
+                return BrowserResult(success=False, error=err_msg)
             return BrowserResult(success=True, data=self._sanitize_outputs(res.data))
         except ExtensionNotConnectedError as e:
             return BrowserResult(success=False, error=str(e))
@@ -156,7 +163,8 @@ class BrowserExtensionController:
                 workflow_id=str(workflow_id) if workflow_id else None,
             )
             if not res.success:
-                return BrowserResult(success=False, error=res.error or "Failed to read page info")
+                err_msg = res.error or "Failed to read page info"
+                return BrowserResult(success=False, error=err_msg)
             return BrowserResult(success=True, data=self._sanitize_outputs(res.data))
         except ExtensionNotConnectedError as e:
             return BrowserResult(success=False, error=str(e))
@@ -189,7 +197,8 @@ class BrowserExtensionController:
                 timeout_seconds=timeout_ms / 1000.0,
             )
             if not res.success:
-                return BrowserResult(success=False, error=res.error or f"Failed to navigate to {url}")
+                err_msg = res.error or f"Failed to navigate to {url}"
+                return BrowserResult(success=False, error=err_msg)
             return BrowserResult(success=True, data=res.data)
         except ExtensionNotConnectedError as e:
             return BrowserResult(success=False, error=str(e))
@@ -221,7 +230,8 @@ class BrowserExtensionController:
                 workflow_id=str(workflow_id) if workflow_id else None,
             )
             if not res.success:
-                return BrowserResult(success=False, error=res.error or f"Failed to open new tab with {url}")
+                err_msg = res.error or f"Failed to open new tab with {url}"
+                return BrowserResult(success=False, error=err_msg)
             return BrowserResult(success=True, data=res.data)
         except ExtensionNotConnectedError as e:
             return BrowserResult(success=False, error=str(e))
@@ -238,21 +248,30 @@ class BrowserExtensionController:
         workflow_id: Optional[UUID | str] = None,
         task_id: Optional[UUID | str] = None,
     ) -> BrowserResult:
-        """Interacts with page elements (click, fill, submit) via browser extension."""
-        # Detect sensitive actions (e.g., login inputs, password fields, payment forms)
+        """Interacts with page elements (click, fill, submit) via extension."""
+        selector_lower = selector.lower()
         is_sensitive = (
             action.lower() in SENSITIVE_ACTIONS
-            or "password" in selector.lower()
-            or "credit" in selector.lower()
-            or "pay" in selector.lower()
+            or "password" in selector_lower
+            or "credit" in selector_lower
+            or "pay" in selector_lower
         )
 
-        params = {"selector": selector, "interaction_action": action, "value": value, "timeout_ms": timeout_ms}
+        params = {
+            "selector": selector,
+            "interaction_action": action,
+            "value": value,
+            "timeout_ms": timeout_ms,
+        }
         sanitized_params = self._sanitize_inputs(params)
 
         await self._check_permission(
             action=f"interact_{action}",
-            context={"selector": selector, "is_sensitive": is_sensitive, **sanitized_params},
+            context={
+                "selector": selector,
+                "is_sensitive": is_sensitive,
+                **sanitized_params,
+            },
             workflow_id=workflow_id,
             task_id=task_id,
         )
@@ -266,7 +285,8 @@ class BrowserExtensionController:
                 timeout_seconds=timeout_ms / 1000.0,
             )
             if not res.success:
-                return BrowserResult(success=False, error=res.error or f"Failed interaction '{action}' on '{selector}'")
+                err_msg = res.error or f"Failed interaction '{action}' on '{selector}'"
+                return BrowserResult(success=False, error=err_msg)
             return BrowserResult(success=True, data=self._sanitize_outputs(res.data))
         except ExtensionNotConnectedError as e:
             return BrowserResult(success=False, error=str(e))
@@ -297,7 +317,8 @@ class BrowserExtensionController:
                 workflow_id=str(workflow_id) if workflow_id else None,
             )
             if not res.success:
-                return BrowserResult(success=False, error=res.error or "Failed to extract content")
+                err_msg = res.error or "Failed to extract content"
+                return BrowserResult(success=False, error=err_msg)
             return BrowserResult(success=True, data=self._sanitize_outputs(res.data))
         except ExtensionNotConnectedError as e:
             return BrowserResult(success=False, error=str(e))

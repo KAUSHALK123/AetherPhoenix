@@ -2,15 +2,12 @@ import asyncio
 import json
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
-import pytest
 
+import pytest
 from shared.contracts.browser_extension import (
-    BrowserExtensionAction,
-    BrowserExtensionCommand,
     BrowserExtensionResponse,
 )
-from shared.contracts.permission import PermissionType
-from shared.contracts.task import Task, TaskCategory, TaskStatus
+from shared.contracts.task import Task, TaskCategory
 
 from app.core.exceptions import PermissionDeniedException
 from app.engine.registry import CapabilityRegistry
@@ -80,11 +77,13 @@ async def test_connection_manager_send_command_success():
         cmd_dict = json.loads(sent_text)
         cmd_id = cmd_dict["command_id"]
 
-        response_payload = json.dumps({
-            "command_id": cmd_id,
-            "success": True,
-            "data": {"url": "https://example.com", "title": "Example Domain"},
-        })
+        response_payload = json.dumps(
+            {
+                "command_id": cmd_id,
+                "success": True,
+                "data": {"url": "https://example.com", "title": "Example Domain"},
+            }
+        )
         await mgr.handle_incoming_message(response_payload)
 
     task = asyncio.create_task(simulate_extension())
@@ -181,7 +180,9 @@ async def test_adapter_execution(mock_permission_manager):
     )
     adapter = BrowserExtensionAdapter(controller=controller)
 
-    with patch.object(controller, "extract_content", new_callable=AsyncMock) as mock_extract:
+    with patch.object(
+        controller, "extract_content", new_callable=AsyncMock
+    ) as mock_extract:
         mock_extract.return_value = MagicMock(
             success=True, data={"content": "Extracted Page Text"}
         )

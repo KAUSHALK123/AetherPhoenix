@@ -96,7 +96,7 @@ class BrowserExtensionAdapter(BaseToolAdapter):
 
                 if not selector:
                     raise ValueError("Selector is required for 'interact' action")
-                logs.append(f"Interacting with element '{selector}' (action={interaction_action})")
+                logs.append(f"Interacting with '{selector}' ({interaction_action})")
                 res = await self.controller.interact(
                     selector=selector,
                     action=interaction_action,
@@ -121,7 +121,9 @@ class BrowserExtensionAdapter(BaseToolAdapter):
                 raise ValueError(f"Unsupported browser extension action: '{action}'")
 
             if not res.success:
-                raise BrowserExtensionActionError(res.error or "Action failed in browser extension")
+                raise BrowserExtensionActionError(
+                    res.error or "Action failed in browser extension"
+                )
 
             duration_ms = (time.time() - start_time) * 1000.0
             logs.append(f"Browser extension action '{action}' completed successfully")

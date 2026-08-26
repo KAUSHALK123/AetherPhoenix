@@ -164,7 +164,10 @@ __all__ = [
     "BrowserExtensionAction",
     "BrowserExtensionCommand",
     "BrowserExtensionResponse",
-    "ExtensionConnectionStatus",
+    # Browser
+    "BrowserResult",
+    "BrowserSession",
+    "BrowserState",
     # Capability
     "Capability",
     "CapabilityFailureInfo",
@@ -197,6 +200,7 @@ __all__ = [
     "ExecutionPhase",
     "ExecutionResult",
     "ExecutionStatus",
+    "ExtensionConnectionStatus",
     "FailureSummary",
     "FailureType",
     "Goal",
