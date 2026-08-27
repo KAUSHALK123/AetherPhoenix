@@ -199,15 +199,16 @@ class ExportEngine:
         artifact_name = request.title or target_path.name
         art_type = self.FORMAT_MAP.get(request.target_format, ArtifactType.REPORTS)
 
+        source_art_id_str = str(source_artifact_id) if source_artifact_id else None
+        source_fp_str = str(source_path) if source_path else None
+
         # Merge metadata preserving source lineage
         merged_metadata = {
             **source_metadata,
             **request.metadata,
             "export_format": request.target_format.value,
-            "source_artifact_id": str(source_artifact_id)
-            if source_artifact_id
-            else None,
-            "source_filepath": str(source_path) if source_path else None,
+            "source_artifact_id": source_art_id_str,
+            "source_filepath": source_fp_str,
             "exported_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -247,8 +248,8 @@ class ExportEngine:
             format=request.target_format,
             size_bytes=file_size,
             checksum=checksum,
-            source_artifact_id=str(source_artifact_id) if source_artifact_id else None,
-            source_filepath=str(source_path) if source_path else None,
+            source_artifact_id=source_art_id_str,
+            source_filepath=source_fp_str,
             status="SUCCESS",
             created_at=datetime.now(timezone.utc),
             execution_time_ms=elapsed_ms,
