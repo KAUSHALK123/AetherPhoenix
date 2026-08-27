@@ -200,9 +200,7 @@ class NotificationService:
             )
 
         elif event_type_str == EventType.ARTIFACT_CREATED.value:
-            artifact_name = (
-                payload.get("filename") or payload.get("name") or "Artifact"
-            )
+            artifact_name = payload.get("filename") or payload.get("name") or "Artifact"
             return Notification(
                 event_id=str(event.id),
                 workflow_id=workflow_id,
@@ -334,7 +332,5 @@ def get_notification_service() -> NotificationService:
     """
     global _notification_service_instance
     if _notification_service_instance is None:
-        _notification_service_instance = NotificationService(
-            event_bus=get_event_bus()
-        )
+        _notification_service_instance = NotificationService(event_bus=get_event_bus())
     return _notification_service_instance

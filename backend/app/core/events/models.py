@@ -114,4 +114,3 @@ class Notification(BaseModel):
     timestamp: datetime = Field(default_factory=utc_now)
     read: bool = False
     payload: Dict[str, Any] = Field(default_factory=dict)
-

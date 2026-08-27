@@ -188,9 +188,7 @@ class FileExplorerExecutor:
                 or "Unknown"
             )
             logger.error(f"Artifact target missing on disk: {target_desc}")
-            raise FileNotFoundError(
-                f"Artifact file not found on disk: {target_desc}"
-            )
+            raise FileNotFoundError(f"Artifact file not found on disk: {target_desc}")
 
         self._launch_os_reveal(target_path)
         return FileExplorerActionResult(
@@ -201,12 +199,12 @@ class FileExplorerExecutor:
                 f"Artifact '{target_path.name}' visibly revealed in OS File Explorer."
             ),
             metadata={
-                "artifact_id": str(resolved_artifact.artifact_id)
-                if resolved_artifact
-                else None,
-                "artifact_name": resolved_artifact.name
-                if resolved_artifact
-                else target_path.name,
+                "artifact_id": (
+                    str(resolved_artifact.artifact_id) if resolved_artifact else None
+                ),
+                "artifact_name": (
+                    resolved_artifact.name if resolved_artifact else target_path.name
+                ),
                 "filepath": str(target_path),
             },
         )
