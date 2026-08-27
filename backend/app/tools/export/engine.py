@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from PIL import Image
 from shared.contracts.artifact import Artifact, ArtifactType
 from shared.contracts.document import DocumentFormat, StructuredDocumentInput
 from shared.contracts.export import ExportFormat, ExportRequest, ExportResult
@@ -26,8 +25,6 @@ from app.services.artifact_storage import (
     ArtifactStorageService,
     get_artifact_storage_service,
 )
-from app.tools.document.generator import DocumentGenerator
-from app.tools.pdf.generator import PDFGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +65,38 @@ class ExportEngine:
         self.artifact_storage_service = (
             artifact_storage_service or get_artifact_storage_service()
         )
-        self.pdf_generator = PDFGenerator(permission_manager=permission_manager)
-        self.doc_generator = DocumentGenerator(permission_manager=permission_manager)
+        self._pdf_generator = None
+        self._doc_generator = None
+
+    @property
+    def pdf_generator(self) -> Any:
+        if self._pdf_generator is None:
+            try:
+                from app.tools.pdf.generator import PDFGenerator
+
+                self._pdf_generator = PDFGenerator(
+                    permission_manager=self.permission_manager
+                )
+            except Exception as e:
+                logger.warning(f"PDFGenerator unavailable: {e}")
+                raise ExportError(f"PDF generation is unavailable: {str(e)}") from e
+        return self._pdf_generator
+
+    @property
+    def doc_generator(self) -> Any:
+        if self._doc_generator is None:
+            try:
+                from app.tools.document.generator import DocumentGenerator
+
+                self._doc_generator = DocumentGenerator(
+                    permission_manager=self.permission_manager
+                )
+            except Exception as e:
+                logger.warning(f"DocumentGenerator unavailable: {e}")
+                raise ExportError(
+                    f"Document generation is unavailable: {str(e)}"
+                ) from e
+        return self._doc_generator
 
     async def _check_permission(
         self,
@@ -364,6 +391,13 @@ class ExportEngine:
 
         # B. Image to Image Conversion (PNG / JPEG / WEBP)
         if target_format in (ExportFormat.PNG, ExportFormat.JPEG, ExportFormat.WEBP):
+            try:
+                from PIL import Image
+            except ImportError as ie:
+                raise ExportError(
+                    f"Image conversion unavailable: missing Pillow ({ie})"
+                ) from ie
+
             if source_path and source_ext in (
                 ".png",
                 ".jpg",
