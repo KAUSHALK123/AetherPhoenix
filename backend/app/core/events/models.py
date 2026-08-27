@@ -14,6 +14,8 @@ class EventType(str, Enum):
     WORKFLOW_RESUMED = "WorkflowResumed"
     WORKFLOW_CANCELLED = "WorkflowCancelled"
     WORKFLOW_COMPLETED = "WorkflowCompleted"
+    WORKFLOW_FAILED = "WorkflowFailed"
+    WORKFLOW_PERMANENTLY_FAILED = "WorkflowPermanentlyFailed"
 
     # Planning
     PLANNING_STARTED = "PlanningStarted"
@@ -60,6 +62,21 @@ class EventType(str, Enum):
     REPLANNING_TRIGGERED = "ReplanningTriggered"
 
 
+class NotificationCategory(str, Enum):
+    WORKFLOW = "WORKFLOW"
+    PERMISSION = "PERMISSION"
+    TASK = "TASK"
+    ARTIFACT = "ARTIFACT"
+    HEALING = "HEALING"
+
+
+class NotificationSeverity(str, Enum):
+    INFO = "INFO"
+    SUCCESS = "SUCCESS"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+
+
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -78,3 +95,23 @@ class Event(BaseModel):
     source_component: str
     target_component: Optional[str] = None
     payload: Dict[str, Any] = Field(default_factory=dict)
+
+
+class Notification(BaseModel):
+    """
+    User-facing notification data model created from EventBus events.
+    """
+
+    id: UUID = Field(default_factory=uuid4)
+    event_id: Optional[str] = None
+    workflow_id: Optional[str] = None
+    task_id: Optional[str] = None
+    event_type: str
+    title: str
+    message: str
+    category: NotificationCategory = NotificationCategory.WORKFLOW
+    severity: NotificationSeverity = NotificationSeverity.INFO
+    timestamp: datetime = Field(default_factory=utc_now)
+    read: bool = False
+    payload: Dict[str, Any] = Field(default_factory=dict)
+

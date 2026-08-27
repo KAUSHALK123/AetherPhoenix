@@ -5,6 +5,10 @@ from app.services.artifact_storage import (
     get_artifact_storage_service,
     reset_artifact_storage_service,
 )
+from app.services.notification_service import (
+    NotificationService,
+    get_notification_service,
+)
 from app.services.observability import (
     EventObservabilityService,
     get_observability_service,
@@ -18,4 +22,7 @@ __all__ = [
     "reset_artifact_storage_service",
     "EventObservabilityService",
     "get_observability_service",
+    "NotificationService",
+    "get_notification_service",
 ]
+
