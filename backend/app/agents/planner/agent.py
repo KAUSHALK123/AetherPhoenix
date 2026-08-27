@@ -136,8 +136,8 @@ class PlannerAgent:
             Capability(
                 name="ocr",
                 description=(
-                    "Extracts readable text from images, screenshots, scanned documents, "
-                    "and visual inputs."
+                    "Extracts readable text from images, screenshots, "
+                    "scanned documents, and visual inputs."
                 ),
                 category=TaskCategory.OCR,
                 required_tools=["ocr"],
