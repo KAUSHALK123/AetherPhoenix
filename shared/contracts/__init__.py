@@ -37,6 +37,11 @@ from shared.contracts.escalation import (
     EscalationSeverity,
 )
 from shared.contracts.event import EventSource, EventType, RuntimeEvent
+from shared.contracts.export import (
+    ExportFormat,
+    ExportRequest,
+    ExportResult,
+)
 from shared.contracts.execution import (
     ExecutionMetrics,
     ExecutionResult,
@@ -194,6 +199,10 @@ __all__ = [
     "EventSource",
     # Event
     "EventType",
+    # Export
+    "ExportFormat",
+    "ExportRequest",
+    "ExportResult",
     # Execution
     "ExecutionMetrics",
     "ExecutionMode",

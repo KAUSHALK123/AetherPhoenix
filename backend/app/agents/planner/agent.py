@@ -132,6 +132,18 @@ class PlannerAgent:
                 required_tools=["desktop_automation"],
             )
         )
+        cap_reg.register(
+            Capability(
+                name="export",
+                description=(
+                    "Unified export layer for converting workflow artifacts "
+                    "into supported formats (PDF, PPTX, Markdown, DOCX, HTML, "
+                    "Images, CSV, JSON, TXT)."
+                ),
+                category=TaskCategory.OTHER,
+                required_tools=["export"],
+            )
+        )
 
         self.capability_engine = CapabilityDiscoveryEngine(registry=cap_reg)
         self.parallel_engine = ParallelTaskAnalyzer()

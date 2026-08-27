@@ -242,7 +242,7 @@ class TaskDecompositionEngine:
             task_name="Export PDF Handout",
             description="Convert PowerPoint deck to PDF format",
             assigned_agent="WorkerAgent",
-            required_tool="",
+            required_tool="export",
             category=TaskCategory.PDF_GENERATION,
             priority=TaskPriority.LOW,
             dependencies=[subtask_generate_ppt.task_id],
@@ -252,6 +252,7 @@ class TaskDecompositionEngine:
             failure_criteria=["PDF generation failed"],
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
+            inputs={"target_format": "pdf"},
         )
 
         subtask_generate_ppt.artifact_location = (
