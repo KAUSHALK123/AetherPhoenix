@@ -48,6 +48,18 @@ class PlannerAgent:
         cap_reg = CapabilityRegistry()
         cap_reg.register(
             Capability(
+                name="file_explorer",
+                description=(
+                    "Interacts with OS File Explorer to open folders/files, "
+                    "reveal artifacts, create directories, detect existence, "
+                    "and retrieve metadata."
+                ),
+                category=TaskCategory.FILE_SYSTEM,
+                required_tools=["file_explorer"],
+            )
+        )
+        cap_reg.register(
+            Capability(
                 name="local_file_manager",
                 description="Manages local files and folders",
                 category=TaskCategory.FILE_SYSTEM,

@@ -76,6 +76,17 @@ except ImportError:
     WebResearchRequest = None
     WebResearchTool = None
 
+try:
+    from app.tools.file_explorer import (
+        FileExplorerExecutor,
+        FileExplorerToolAdapter,
+        register_file_explorer_tool,
+    )
+except ImportError:
+    FileExplorerExecutor = None
+    FileExplorerToolAdapter = None
+    register_file_explorer_tool = None
+
 __all__ = [
     "ToolRegistry",
     "DesktopController",
@@ -107,4 +118,7 @@ __all__ = [
     "StructuredResearchResult",
     "PPTGenerator",
     "ppt_tool_metadata",
+    "FileExplorerExecutor",
+    "FileExplorerToolAdapter",
+    "register_file_explorer_tool",
 ]
