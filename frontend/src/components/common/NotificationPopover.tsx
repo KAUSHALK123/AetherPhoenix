@@ -13,7 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import { useNotificationStore } from '../../store/notificationStore';
-import type { Notification, NotificationCategory, NotificationSeverity } from '../../types/notification';
+import type { NotificationCategory, NotificationSeverity } from '../../types/notification';
 
 interface NotificationPopoverProps {
   isOpen: boolean;
