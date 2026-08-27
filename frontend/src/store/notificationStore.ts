@@ -55,84 +55,85 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         unreadCount: unread,
         toastQueue: updatedToastQueue,
       };
-    }),
+    });
+  },
 
-    removeToast: (id: string) => {
-      set((state) => ({
-        toastQueue: state.toastQueue.filter((t) => t.id !== id),
-      }));
-    },
+  removeToast: (id: string) => {
+    set((state) => ({
+      toastQueue: state.toastQueue.filter((t) => t.id !== id),
+    }));
+  },
 
-    markAsRead: async (id: string) => {
-      set((state) => {
-        const updated = state.notifications.map((n) =>
-          n.id === id ? { ...n, read: true } : n
-        );
-        return {
-          notifications: updated,
-          unreadCount: updated.filter((n) => !n.read).length,
-        };
-      });
-
-      try {
-        await notificationService.markAsRead(id);
-      } catch (err) {
-        console.error('Failed to mark notification as read on backend:', err);
-      }
-    },
-
-    markAllAsRead: async () => {
-      set((state) => ({
-        notifications: state.notifications.map((n) => ({ ...n, read: true })),
-        unreadCount: 0,
-      }));
-
-      try {
-        await notificationService.markAllAsRead();
-      } catch (err) {
-        console.error('Failed to mark all notifications as read on backend:', err);
-      }
-    },
-
-    setActiveFilter: (filter) => set({ activeFilter: filter }),
-
-    connectWebSocket: () => {
-      const connect = () => {
-        if (socketInstance && (socketInstance.readyState === WebSocket.OPEN || socketInstance.readyState === WebSocket.CONNECTING)) {
-          return;
-        }
-
-        socketInstance = notificationService.connectWebSocket(
-          (notification) => {
-            get().addNotification(notification);
-          },
-          () => {
-            set({ isConnected: false });
-          },
-          () => {
-            set({ isConnected: false });
-            // Reconnect after 3 seconds
-            reconnectTimer = setTimeout(() => {
-              connect();
-            }, 3000);
-          }
-        );
-
-        socketInstance.onopen = () => {
-          set({ isConnected: true });
-        };
+  markAsRead: async (id: string) => {
+    set((state) => {
+      const updated = state.notifications.map((n) =>
+        n.id === id ? { ...n, read: true } : n
+      );
+      return {
+        notifications: updated,
+        unreadCount: updated.filter((n) => !n.read).length,
       };
+    });
 
-      connect();
-      get().fetchNotifications();
+    try {
+      await notificationService.markAsRead(id);
+    } catch (err) {
+      console.error('Failed to mark notification as read on backend:', err);
+    }
+  },
 
-      // Cleanup function
-      return () => {
-        if (reconnectTimer) clearTimeout(reconnectTimer);
-        if (socketInstance) {
-          socketInstance.close();
-          socketInstance = null;
+  markAllAsRead: async () => {
+    set((state) => ({
+      notifications: state.notifications.map((n) => ({ ...n, read: true })),
+      unreadCount: 0,
+    }));
+
+    try {
+      await notificationService.markAllAsRead();
+    } catch (err) {
+      console.error('Failed to mark all notifications as read on backend:', err);
+    }
+  },
+
+  setActiveFilter: (filter) => set({ activeFilter: filter }),
+
+  connectWebSocket: () => {
+    const connect = () => {
+      if (socketInstance && (socketInstance.readyState === WebSocket.OPEN || socketInstance.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
+
+      socketInstance = notificationService.connectWebSocket(
+        (notification) => {
+          get().addNotification(notification);
+        },
+        () => {
+          set({ isConnected: false });
+        },
+        () => {
+          set({ isConnected: false });
+          // Reconnect after 3 seconds
+          reconnectTimer = setTimeout(() => {
+            connect();
+          }, 3000);
         }
+      );
+
+      socketInstance.onopen = () => {
+        set({ isConnected: true });
       };
-    },
+    };
+
+    connect();
+    get().fetchNotifications();
+
+    // Cleanup function
+    return () => {
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (socketInstance) {
+        socketInstance.close();
+        socketInstance = null;
+      }
+    };
+  },
 }));

@@ -1,8 +1,6 @@
-import asyncio
 import logging
 from collections import deque
-from typing import Dict, List, Optional
-from uuid import UUID
+from typing import List, Optional
 
 from fastapi import WebSocket
 
@@ -20,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 class ConnectionManager:
     """
-    WebSocket Connection Manager for streaming real-time notifications to connected clients.
+    WebSocket Connection Manager for streaming real-time notifications to clients.
     """
 
     def __init__(self) -> None:
@@ -29,12 +27,16 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket) -> None:
         await websocket.accept()
         self.active_connections.append(websocket)
-        logger.info(f"WebSocket client connected. Active clients: {len(self.active_connections)}")
+        logger.info(
+            f"WebSocket client connected. Active: {len(self.active_connections)}"
+        )
 
     def disconnect(self, websocket: WebSocket) -> None:
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
-            logger.info(f"WebSocket client disconnected. Active clients: {len(self.active_connections)}")
+            logger.info(
+                f"WebSocket client disconnected. Active: {len(self.active_connections)}"
+            )
 
     async def broadcast(self, notification: Notification) -> None:
         if not self.active_connections:
@@ -61,7 +63,9 @@ class NotificationService:
     maintains an in-memory history, and streams notifications via WebSocket.
     """
 
-    def __init__(self, event_bus: Optional[EventBus] = None, max_notifications: int = 500) -> None:
+    def __init__(
+        self, event_bus: Optional[EventBus] = None, max_notifications: int = 500
+    ) -> None:
         self.event_bus = event_bus or get_event_bus()
         self.notifications: deque[Notification] = deque(maxlen=max_notifications)
         self.connection_manager = ConnectionManager()
@@ -71,12 +75,14 @@ class NotificationService:
 
     async def _on_event(self, event: Event) -> None:
         """
-        EventBus subscriber callback. Transforms relevant events into user notifications.
+        EventBus subscriber callback. Converts events into user notifications.
         """
         notification = self._map_event_to_notification(event)
         if notification:
             self.notifications.append(notification)
-            logger.debug(f"Created notification [{notification.severity}]: {notification.title} - {notification.message}")
+            logger.debug(
+                f"Notification [{notification.severity}]: {notification.title}"
+            )
             await self.connection_manager.broadcast(notification)
 
     def _map_event_to_notification(self, event: Event) -> Optional[Notification]:
@@ -84,14 +90,20 @@ class NotificationService:
         Transforms an EventBus Event into a user-friendly Notification.
         """
         event_type_str = (
-            event.event_type.value if isinstance(event.event_type, EventType) else str(event.event_type)
+            event.event_type.value
+            if isinstance(event.event_type, EventType)
+            else str(event.event_type)
         )
         payload = event.payload or {}
         workflow_id = event.workflow_id or payload.get("workflow_id")
         task_id = event.task_id or payload.get("task_id")
 
         if event_type_str == EventType.WORKFLOW_STARTED.value:
-            goal = payload.get("goal") or payload.get("workflow_name") or "Autonomous Workflow"
+            goal = (
+                payload.get("goal")
+                or payload.get("workflow_name")
+                or "Autonomous Workflow"
+            )
             return Notification(
                 event_id=str(event.id),
                 workflow_id=workflow_id,
@@ -106,7 +118,11 @@ class NotificationService:
             )
 
         elif event_type_str == EventType.PERMISSION_REQUESTED.value:
-            perm_type = payload.get("permission_type") or payload.get("capability") or "System Resource"
+            perm_type = (
+                payload.get("permission_type")
+                or payload.get("capability")
+                or "System Resource"
+            )
             reason = payload.get("reason") or "Required for task execution"
             return Notification(
                 event_id=str(event.id),
@@ -184,7 +200,9 @@ class NotificationService:
             )
 
         elif event_type_str == EventType.ARTIFACT_CREATED.value:
-            artifact_name = payload.get("filename") or payload.get("name") or "Artifact"
+            artifact_name = (
+                payload.get("filename") or payload.get("name") or "Artifact"
+            )
             return Notification(
                 event_id=str(event.id),
                 workflow_id=workflow_id,
@@ -212,8 +230,16 @@ class NotificationService:
                 payload=payload,
             )
 
-        elif event_type_str in (EventType.WORKFLOW_FAILED.value, EventType.WORKFLOW_PERMANENTLY_FAILED.value, "WorkflowFailed"):
-            error_reason = payload.get("error") or payload.get("reason") or "Execution encountered unrecoverable errors"
+        elif event_type_str in (
+            EventType.WORKFLOW_FAILED.value,
+            EventType.WORKFLOW_PERMANENTLY_FAILED.value,
+            "WorkflowFailed",
+        ):
+            error_reason = (
+                payload.get("error")
+                or payload.get("reason")
+                or "Execution encountered unrecoverable errors"
+            )
             return Notification(
                 event_id=str(event.id),
                 workflow_id=workflow_id,
@@ -233,8 +259,17 @@ class NotificationService:
             EventType.HEALING_ESCALATED.value,
             EventType.ESCALATION_REQUESTED.value,
         ):
-            details = payload.get("details") or payload.get("reason") or payload.get("escalation_reason") or "Self-healing activity requires user attention"
-            title = "Healing Escalated" if "ESCALAT" in event_type_str.upper() else "Healing Activity"
+            details = (
+                payload.get("details")
+                or payload.get("reason")
+                or payload.get("escalation_reason")
+                or "Self-healing activity requires user attention"
+            )
+            title = (
+                "Healing Escalated"
+                if "ESCALAT" in event_type_str.upper()
+                else "Healing Activity"
+            )
             return Notification(
                 event_id=str(event.id),
                 workflow_id=workflow_id,
@@ -251,7 +286,10 @@ class NotificationService:
         return None
 
     def get_notifications(
-        self, workflow_id: Optional[str] = None, unread_only: bool = False, limit: int = 50
+        self,
+        workflow_id: Optional[str] = None,
+        unread_only: bool = False,
+        limit: int = 50,
     ) -> List[Notification]:
         """
         Retrieves notifications ordered by timestamp descending.
@@ -265,7 +303,9 @@ class NotificationService:
         sorted_list = sorted(filtered, key=lambda n: n.timestamp, reverse=True)
         return sorted_list[:limit]
 
-    def mark_as_read(self, notification_id: Optional[str] = None, mark_all: bool = False) -> int:
+    def mark_as_read(
+        self, notification_id: Optional[str] = None, mark_all: bool = False
+    ) -> int:
         """
         Marks notification(s) as read. Returns number of updated notifications.
         """
@@ -275,7 +315,9 @@ class NotificationService:
                 if not n.read:
                     n.read = True
                     count += 1
-            elif notification_id and (str(n.id) == notification_id or n.event_id == notification_id):
+            elif notification_id and (
+                str(n.id) == notification_id or n.event_id == notification_id
+            ):
                 if not n.read:
                     n.read = True
                     count += 1
@@ -292,5 +334,7 @@ def get_notification_service() -> NotificationService:
     """
     global _notification_service_instance
     if _notification_service_instance is None:
-        _notification_service_instance = NotificationService(event_bus=get_event_bus())
+        _notification_service_instance = NotificationService(
+            event_bus=get_event_bus()
+        )
     return _notification_service_instance

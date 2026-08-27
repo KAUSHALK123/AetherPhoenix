@@ -49,7 +49,9 @@ async def mark_notification_as_read(notification_id: str) -> dict:
     """
     count = notification_service.mark_as_read(notification_id=notification_id)
     if count == 0:
-        raise HTTPException(status_code=404, detail="Notification not found or already read")
+        raise HTTPException(
+            status_code=404, detail="Notification not found or already read"
+        )
     return {"success": True, "message": "Notification marked as read", "count": count}
 
 
@@ -59,4 +61,8 @@ async def mark_all_notifications_as_read() -> dict:
     Mark all notifications as read.
     """
     count = notification_service.mark_as_read(mark_all=True)
-    return {"success": True, "message": "All notifications marked as read", "count": count}
+    return {
+        "success": True,
+        "message": "All notifications marked as read",
+        "count": count,
+    }

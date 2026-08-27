@@ -1,6 +1,12 @@
 import pytest
+
 from app.core.events.bus import EventBus
-from app.core.events.models import Event, EventType, NotificationCategory, NotificationSeverity
+from app.core.events.models import (
+    Event,
+    EventType,
+    NotificationCategory,
+    NotificationSeverity,
+)
 from app.services.notification_service import NotificationService
 
 
@@ -36,7 +42,10 @@ async def test_notification_service_maps_permission_requested():
         workflow_id="wf-123",
         event_type=EventType.PERMISSION_REQUESTED,
         source_component="PermissionManager",
-        payload={"permission_type": "Internet Access", "reason": "Fetch live market data"},
+        payload={
+            "permission_type": "Internet Access",
+            "reason": "Fetch live market data",
+        },
     )
     await event_bus.publish(event)
 
