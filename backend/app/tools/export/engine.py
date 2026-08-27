@@ -247,9 +247,7 @@ class ExportEngine:
             format=request.target_format,
             size_bytes=file_size,
             checksum=checksum,
-            source_artifact_id=str(source_artifact_id)
-            if source_artifact_id
-            else None,
+            source_artifact_id=str(source_artifact_id) if source_artifact_id else None,
             source_filepath=str(source_path) if source_path else None,
             status="SUCCESS",
             created_at=datetime.now(timezone.utc),
@@ -422,9 +420,7 @@ class ExportEngine:
             doc_fmt = doc_fmt_map.get(target_format, DocumentFormat.MARKDOWN)
 
             doc_title = (
-                request.title
-                or source_metadata.get("title")
-                or "Export Document"
+                request.title or source_metadata.get("title") or "Export Document"
             )
             doc_input = StructuredDocumentInput(
                 title=doc_title,

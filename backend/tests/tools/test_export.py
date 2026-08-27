@@ -34,9 +34,7 @@ def export_engine(tmp_workspace):
 @pytest.fixture
 def export_adapter(export_engine, tmp_workspace):
     _, provider = tmp_workspace
-    return ExportToolAdapter(
-        engine=export_engine, artifact_storage_service=provider
-    )
+    return ExportToolAdapter(engine=export_engine, artifact_storage_service=provider)
 
 
 def test_export_contracts():
