@@ -132,6 +132,17 @@ class PlannerAgent:
                 required_tools=["desktop_automation"],
             )
         )
+        cap_reg.register(
+            Capability(
+                name="ocr",
+                description=(
+                    "Extracts readable text from images, screenshots, scanned documents, "
+                    "and visual inputs."
+                ),
+                category=TaskCategory.OCR,
+                required_tools=["ocr"],
+            )
+        )
 
         self.capability_engine = CapabilityDiscoveryEngine(registry=cap_reg)
         self.parallel_engine = ParallelTaskAnalyzer()

@@ -87,6 +87,19 @@ except ImportError:
     FileExplorerToolAdapter = None
     register_file_explorer_tool = None
 
+try:
+    from app.tools.ocr import (
+        OCREngine,
+        OCRError,
+        OCRToolAdapter,
+        register_ocr_tool,
+    )
+except ImportError:
+    OCREngine = None
+    OCRError = None
+    OCRToolAdapter = None
+    register_ocr_tool = None
+
 __all__ = [
     "ToolRegistry",
     "DesktopController",
@@ -121,4 +134,8 @@ __all__ = [
     "FileExplorerExecutor",
     "FileExplorerToolAdapter",
     "register_file_explorer_tool",
+    "OCREngine",
+    "OCRToolAdapter",
+    "register_ocr_tool",
+    "OCRError",
 ]
