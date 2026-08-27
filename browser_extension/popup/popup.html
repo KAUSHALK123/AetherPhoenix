@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AetherPhoenix Browser Agent</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <div class="logo">AetherPhoenix</div>
+    <div class="badge" id="statusBadge">Disconnected</div>
+  </div>
+  <div class="content">
+    <div class="section">
+      <label>Active Tab:</label>
+      <div id="tabTitle" class="info-text">Detecting active tab...</div>
+      <div id="tabUrl" class="info-subtext"></div>
+    </div>
+    <div class="section">
+      <label>Backend Endpoint:</label>
+      <div class="info-subtext">ws://localhost:8000/api/v1/browser-extension/ws</div>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

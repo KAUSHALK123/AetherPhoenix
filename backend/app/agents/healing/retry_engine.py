@@ -177,10 +177,7 @@ class RetryEngine:
 
         # 1. Per-task retry limit.
         if task.retry_count >= limit_retries:
-            msg = (
-                f"Task {task.task_id} reached maximum retry limit "
-                f"of {limit_retries}."
-            )
+            msg = f"Task {task.task_id} reached maximum retry limit of {limit_retries}."
             logger.info(msg)
             return False, msg
 

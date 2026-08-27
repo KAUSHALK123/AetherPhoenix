@@ -57,13 +57,12 @@ class EventObservabilityService:
                 else "WORKFLOW_CANCELLED"
             ),
         ):
-            # Attempt to find the context in RuntimeKernel and cache it
             kernel = get_kernel()
+            event_wf_id = str(event.workflow_id)
             for ctx in kernel.active_contexts.values():
-                if str(ctx.shared_state.metadata.workflow_id) == str(event.workflow_id):
-                    self.historical_workflows[str(event.workflow_id)] = (
-                        self._serialize_state(ctx.shared_state)
-                    )
+                if str(ctx.shared_state.metadata.workflow_id) == event_wf_id:
+                    serialized = self._serialize_state(ctx.shared_state)
+                    self.historical_workflows[event_wf_id] = serialized
                     break
 
     def _serialize_state(self, state: SharedWorkflowState) -> dict:

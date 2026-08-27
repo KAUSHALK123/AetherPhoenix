@@ -1,6 +1,13 @@
 """Runtime contracts for AI Desktop Assistant agents and components."""
 
 from shared.contracts.artifact import Artifact, ArtifactType
+from shared.contracts.browser import BrowserResult, BrowserSession, BrowserState
+from shared.contracts.browser_extension import (
+    BrowserExtensionAction,
+    BrowserExtensionCommand,
+    BrowserExtensionResponse,
+    ExtensionConnectionStatus,
+)
 from shared.contracts.capability import Capability
 from shared.contracts.context_retrieval import (
     AgentType,
@@ -153,6 +160,14 @@ __all__ = [
     # Artifact
     "Artifact",
     "ArtifactType",
+    # Browser Extension
+    "BrowserExtensionAction",
+    "BrowserExtensionCommand",
+    "BrowserExtensionResponse",
+    # Browser
+    "BrowserResult",
+    "BrowserSession",
+    "BrowserState",
     # Capability
     "Capability",
     "CapabilityFailureInfo",
@@ -185,6 +200,7 @@ __all__ = [
     "ExecutionPhase",
     "ExecutionResult",
     "ExecutionStatus",
+    "ExtensionConnectionStatus",
     "FailureSummary",
     "FailureType",
     "Goal",
