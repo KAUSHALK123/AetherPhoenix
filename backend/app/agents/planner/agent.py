@@ -156,7 +156,6 @@ class PlannerAgent:
             )
         )
 
-
         self.capability_engine = CapabilityDiscoveryEngine(registry=cap_reg)
         self.parallel_engine = ParallelTaskAnalyzer()
         self.active_sessions: dict[str, str] = {}
