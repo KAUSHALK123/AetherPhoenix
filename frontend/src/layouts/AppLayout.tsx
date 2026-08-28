@@ -2,9 +2,12 @@ import React, { useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { DesktopNav } from './DesktopNav';
 import { usePermissionStore } from '../store/permissionStore';
+import { useNotificationStore } from '../store/notificationStore';
+import { NotificationToastContainer } from '../components/common/NotificationToast';
 
 export const AppLayout: React.FC = () => {
   const fetchPending = usePermissionStore((state) => state.fetchPending);
+  const connectWebSocket = useNotificationStore((state) => state.connectWebSocket);
   const location = useLocation();
   const isChatPage = location.pathname === '/chat';
 
@@ -15,6 +18,13 @@ export const AppLayout: React.FC = () => {
     }, 3000);
     return () => clearInterval(interval);
   }, [fetchPending]);
+
+  useEffect(() => {
+    const cleanupWs = connectWebSocket();
+    return () => {
+      if (cleanupWs) cleanupWs();
+    };
+  }, [connectWebSocket]);
 
   return (
     <div className="relative w-screen h-screen overflow-hidden text-white font-body select-none">
@@ -31,6 +41,9 @@ export const AppLayout: React.FC = () => {
 
       {/* Common Glassmorphic Navigation Drawer across all internal pages */}
       <DesktopNav isChatPage={true} />
+
+      {/* Real-time Toast Notifications Container */}
+      <NotificationToastContainer />
 
       {/* Main Content Area */}
       <div className={`relative z-10 w-full h-full ${isChatPage ? 'overflow-hidden' : 'overflow-y-auto pt-16 md:pt-12 px-4 md:px-8 pb-12'}`}>

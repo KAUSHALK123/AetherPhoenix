@@ -48,6 +48,18 @@ class PlannerAgent:
         cap_reg = CapabilityRegistry()
         cap_reg.register(
             Capability(
+                name="file_explorer",
+                description=(
+                    "Interacts with OS File Explorer to open folders/files, "
+                    "reveal artifacts, create directories, detect existence, "
+                    "and retrieve metadata."
+                ),
+                category=TaskCategory.FILE_SYSTEM,
+                required_tools=["file_explorer"],
+            )
+        )
+        cap_reg.register(
+            Capability(
                 name="local_file_manager",
                 description="Manages local files and folders",
                 category=TaskCategory.FILE_SYSTEM,
@@ -140,6 +152,29 @@ class PlannerAgent:
                 ),
                 category=TaskCategory.TERMINAL,
                 required_tools=["terminal_tool"],
+            )
+        )
+        cap_reg.register(
+            Capability(
+                name="export",
+                description=(
+                    "Unified export layer for converting workflow artifacts "
+                    "into supported formats (PDF, PPTX, Markdown, DOCX, HTML, "
+                    "Images, CSV, JSON, TXT)."
+                ),
+                category=TaskCategory.OTHER,
+                required_tools=["export"],
+            )
+        )
+        cap_reg.register(
+            Capability(
+                name="ocr",
+                description=(
+                    "Extracts readable text from images, screenshots, "
+                    "scanned documents, and visual inputs."
+                ),
+                category=TaskCategory.OCR,
+                required_tools=["ocr"],
             )
         )
 

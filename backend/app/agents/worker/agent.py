@@ -341,7 +341,7 @@ class WorkerAgent(BaseAgent):
         )
 
         logger.info(
-            f"WorkerAgent re-executing task {task.task_id} " f"(Attempt #{attempt_num})"
+            f"WorkerAgent re-executing task {task.task_id} (Attempt #{attempt_num})"
         )
         return await self.execute(task, *args, **kwargs)
 

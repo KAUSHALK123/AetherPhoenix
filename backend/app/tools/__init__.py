@@ -88,6 +88,44 @@ except ImportError:
     WebResearchRequest = None
     WebResearchTool = None
 
+try:
+    from app.tools.file_explorer import (
+        FileExplorerExecutor,
+        FileExplorerToolAdapter,
+        register_file_explorer_tool,
+    )
+except ImportError:
+    FileExplorerExecutor = None
+    FileExplorerToolAdapter = None
+    register_file_explorer_tool = None
+
+try:
+    from app.tools.export import (
+        ExportEngine,
+        ExportError,
+        ExportToolAdapter,
+        register_export_tool,
+    )
+except ImportError:
+    ExportEngine = None
+    ExportError = None
+    ExportToolAdapter = None
+    register_export_tool = None
+
+try:
+    from app.tools.ocr import (
+        OCREngine,
+        OCRError,
+        OCRToolAdapter,
+        register_ocr_tool,
+    )
+except ImportError:
+    OCREngine = None
+    OCRError = None
+    OCRToolAdapter = None
+    register_ocr_tool = None
+
+
 __all__ = [
     "ToolRegistry",
     "DesktopController",
@@ -121,6 +159,17 @@ __all__ = [
     "StructuredResearchResult",
     "PPTGenerator",
     "ppt_tool_metadata",
+    "FileExplorerExecutor",
+    "FileExplorerToolAdapter",
+    "register_file_explorer_tool",
+    "ExportEngine",
+    "ExportToolAdapter",
+    "register_export_tool",
+    "ExportError",
+    "OCREngine",
+    "OCRToolAdapter",
+    "register_ocr_tool",
+    "OCRError",
     "register_terminal_tool",
     "TerminalToolAdapter",
 ]

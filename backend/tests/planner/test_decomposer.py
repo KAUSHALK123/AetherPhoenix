@@ -29,9 +29,13 @@ def test_decompose_presentation_goal(decomposer):
     assert len(root_tasks) == 2
 
     # Verify all tasks are CREATED and no tools are assigned
+    # (except export tool for export task)
     for t in plan.tasks:
         assert t.status == TaskStatus.CREATED
-        assert t.required_tool == ""
+        if t.task_name == "Export PDF Handout":
+            assert t.required_tool == "export"
+        else:
+            assert t.required_tool == ""
 
 
 def test_decompose_research_goal(decomposer):
