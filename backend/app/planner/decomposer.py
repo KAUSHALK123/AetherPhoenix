@@ -128,6 +128,20 @@ class TaskDecompositionEngine:
         elif any(
             w in lower_goal
             for w in [
+                "ocr",
+                "screenshot",
+                "scanned",
+                "picture",
+                "read image",
+                "extract text",
+                "image text",
+                "visual text",
+            ]
+        ):
+            return self._decompose_ocr_goal(goal, workflow_id)
+        elif any(
+            w in lower_goal
+            for w in [
                 "organize",
                 "move",
                 "copy",
@@ -785,3 +799,41 @@ class TaskDecompositionEngine:
         )
 
         return [phase, app_task]
+
+    def _decompose_ocr_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
+        """Decomposes an OCR text extraction goal into structured tasks."""
+        phase = Task(
+            workflow_id=workflow_id,
+            task_name="Phase 1: OCR Text Extraction",
+            description=f"Perform optical character recognition for: '{goal}'",
+            task_type=TaskType.PHASE,
+            assigned_agent="System",
+            success_criteria=["OCR task executed successfully"],
+            failure_criteria=["OCR task failed"],
+            required_tool="",
+            category=TaskCategory.OCR,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="Extracted text output",
+            status=TaskStatus.CREATED,
+        )
+
+        ocr_task = Task(
+            workflow_id=workflow_id,
+            task_name="Extract Text from Visual Input",
+            description=f"Read image/document and extract readable text for: {goal}",
+            task_type=TaskType.LEAF,
+            assigned_agent="WorkerAgent",
+            parent_task_id=phase.task_id,
+            success_criteria=["Readable text extracted successfully from input"],
+            failure_criteria=["Failed to extract readable text"],
+            required_tool="",
+            category=TaskCategory.OCR,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="Structured OCR result containing extracted text",
+            inputs={"goal": goal},
+            status=TaskStatus.CREATED,
+        )
+
+        return [phase, ocr_task]

@@ -77,6 +77,12 @@ from shared.contracts.memory import (
     sanitize_memory_content,
     sanitize_memory_metadata,
 )
+from shared.contracts.ocr import (
+    OCRBoundingBox,
+    OCRRequest,
+    OCRResult,
+    OCRTextSegment,
+)
 from shared.contracts.pdf import (
     CodeBlockElement,
     HeadingElement,
@@ -231,6 +237,11 @@ __all__ = [
     "MouseActionType",
     "MouseButton",
     "MousePosition",
+    # OCR
+    "OCRBoundingBox",
+    "OCRRequest",
+    "OCRResult",
+    "OCRTextSegment",
     "PDFDocumentInput",
     "PDFElement",
     # PDF
