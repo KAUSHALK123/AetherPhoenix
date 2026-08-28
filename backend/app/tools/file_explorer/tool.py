@@ -35,6 +35,7 @@ def register_file_explorer_tool(registry: ToolRegistry) -> Tool:
             PermissionType.FILE_WRITE.value,
         ],
     )
+
     registry.register(file_explorer_tool)
     logger.info("Successfully registered 'file_explorer' tool in ToolRegistry.")
     return file_explorer_tool
