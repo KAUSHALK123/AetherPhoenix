@@ -18,12 +18,12 @@ def register_file_explorer_tool(registry: ToolRegistry) -> Tool:
     Returns:
         The registered Tool contract object.
     """
-    file_explorer_tool = Tool(
+        file_explorer_tool = Tool(
         name="file_explorer",
         description=(
             "Interacts with operating system File Explorer to open folders/files, "
-            "reveal artifacts, create directories, detect existence, "
-            "and retrieve metadata."
+            "reveal artifacts, create directories, detect existence, and "
+            "retrieve metadata."
         ),
         version="1.0.0",
         status=ToolState.READY,
@@ -35,6 +35,7 @@ def register_file_explorer_tool(registry: ToolRegistry) -> Tool:
             PermissionType.FILE_WRITE.value,
         ],
     )
+
     registry.register(file_explorer_tool)
     logger.info("Successfully registered 'file_explorer' tool in ToolRegistry.")
     return file_explorer_tool

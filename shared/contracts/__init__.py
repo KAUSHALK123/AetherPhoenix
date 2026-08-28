@@ -1,6 +1,13 @@
 """Runtime contracts for AI Desktop Assistant agents and components."""
 
 from shared.contracts.artifact import Artifact, ArtifactType
+from shared.contracts.browser import BrowserResult, BrowserSession, BrowserState
+from shared.contracts.browser_extension import (
+    BrowserExtensionAction,
+    BrowserExtensionCommand,
+    BrowserExtensionResponse,
+    ExtensionConnectionStatus,
+)
 from shared.contracts.capability import Capability
 from shared.contracts.context_retrieval import (
     AgentType,
@@ -45,6 +52,11 @@ from shared.contracts.execution_log import (
     ExecutionStatus,
     WorkerExecutionLog,
 )
+from shared.contracts.export import (
+    ExportFormat,
+    ExportRequest,
+    ExportResult,
+)
 from shared.contracts.feedback import (
     CapabilityFailureInfo,
     FailureSummary,
@@ -64,6 +76,12 @@ from shared.contracts.memory import (
     MemoryQuery,
     sanitize_memory_content,
     sanitize_memory_metadata,
+)
+from shared.contracts.ocr import (
+    OCRBoundingBox,
+    OCRRequest,
+    OCRResult,
+    OCRTextSegment,
 )
 from shared.contracts.pdf import (
     CodeBlockElement,
@@ -153,6 +171,14 @@ __all__ = [
     # Artifact
     "Artifact",
     "ArtifactType",
+    # Browser Extension
+    "BrowserExtensionAction",
+    "BrowserExtensionCommand",
+    "BrowserExtensionResponse",
+    # Browser
+    "BrowserResult",
+    "BrowserSession",
+    "BrowserState",
     # Capability
     "Capability",
     "CapabilityFailureInfo",
@@ -185,6 +211,11 @@ __all__ = [
     "ExecutionPhase",
     "ExecutionResult",
     "ExecutionStatus",
+    # Export
+    "ExportFormat",
+    "ExportRequest",
+    "ExportResult",
+    "ExtensionConnectionStatus",
     "FailureSummary",
     "FailureType",
     "Goal",
@@ -206,6 +237,11 @@ __all__ = [
     "MouseActionType",
     "MouseButton",
     "MousePosition",
+    # OCR
+    "OCRBoundingBox",
+    "OCRRequest",
+    "OCRResult",
+    "OCRTextSegment",
     "PDFDocumentInput",
     "PDFElement",
     # PDF

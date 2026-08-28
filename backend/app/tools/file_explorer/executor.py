@@ -79,8 +79,8 @@ class FileExplorerExecutor:
 
         return resolved_path
 
-    def _launch_os_open(self, target_path: Path) -> None:
-        """Launches target file or folder using OS default handler."""
+        def _launch_os_open(self, target_path: Path) -> None:
+        """Launches the target file or folder using OS default handler."""
         path_str = str(target_path)
         if sys.platform == "win32":
             if hasattr(os, "startfile"):
@@ -93,7 +93,7 @@ class FileExplorerExecutor:
             subprocess.Popen(["xdg-open", path_str])
 
     def _launch_os_reveal(self, target_path: Path) -> None:
-        """Reveals and highlights target file in native OS explorer."""
+        """Reveals and highlights target file in native OS file explorer."""
         path_str = str(target_path)
         if sys.platform == "win32":
             subprocess.Popen(["explorer.exe", f"/select,{path_str}"])
@@ -104,6 +104,7 @@ class FileExplorerExecutor:
                 target_path.parent if target_path.is_file() else target_path
             )
             subprocess.Popen(["xdg-open", folder_path])
+
 
     async def open_folder(self, request: OpenFolderRequest) -> FileExplorerActionResult:
         """Visibly opens a directory in the OS file explorer."""
