@@ -46,6 +46,18 @@ except ImportError:
     ScreenshotToolAdapter = None
     register_screenshot_tool = None
 
+try:
+    from app.tools.git import GitToolAdapter, register_git_tool
+except ImportError:
+    GitToolAdapter = None
+    register_git_tool = None
+
+try:
+    from app.tools.terminal import TerminalToolAdapter, register_terminal_tool
+except ImportError:
+    TerminalToolAdapter = None
+    register_terminal_tool = None
+
 from app.tools.ppt import PPTGenerator, ppt_tool_metadata
 from app.tools.registry import ToolRegistry
 
@@ -132,6 +144,8 @@ __all__ = [
     "ScreenshotToolAdapter",
     "register_screenshot_tool",
     "ScreenshotCaptureError",
+    "register_git_tool",
+    "GitToolAdapter",
     "WebResearchTool",
     "BaseResearchTool",
     "SearchEngineInterface",
@@ -156,4 +170,6 @@ __all__ = [
     "OCRToolAdapter",
     "register_ocr_tool",
     "OCRError",
+    "register_terminal_tool",
+    "TerminalToolAdapter",
 ]
