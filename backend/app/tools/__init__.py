@@ -88,6 +88,19 @@ except ImportError:
     register_file_explorer_tool = None
 
 try:
+    from app.tools.export import (
+        ExportEngine,
+        ExportError,
+        ExportToolAdapter,
+        register_export_tool,
+    )
+except ImportError:
+    ExportEngine = None
+    ExportError = None
+    ExportToolAdapter = None
+    register_export_tool = None
+
+try:
     from app.tools.ocr import (
         OCREngine,
         OCRError,
@@ -99,6 +112,7 @@ except ImportError:
     OCRError = None
     OCRToolAdapter = None
     register_ocr_tool = None
+
 
 __all__ = [
     "ToolRegistry",
@@ -134,6 +148,10 @@ __all__ = [
     "FileExplorerExecutor",
     "FileExplorerToolAdapter",
     "register_file_explorer_tool",
+    "ExportEngine",
+    "ExportToolAdapter",
+    "register_export_tool",
+    "ExportError",
     "OCREngine",
     "OCRToolAdapter",
     "register_ocr_tool",

@@ -52,6 +52,11 @@ from shared.contracts.execution_log import (
     ExecutionStatus,
     WorkerExecutionLog,
 )
+from shared.contracts.export import (
+    ExportFormat,
+    ExportRequest,
+    ExportResult,
+)
 from shared.contracts.feedback import (
     CapabilityFailureInfo,
     FailureSummary,
@@ -206,6 +211,10 @@ __all__ = [
     "ExecutionPhase",
     "ExecutionResult",
     "ExecutionStatus",
+    # Export
+    "ExportFormat",
+    "ExportRequest",
+    "ExportResult",
     "ExtensionConnectionStatus",
     "FailureSummary",
     "FailureType",

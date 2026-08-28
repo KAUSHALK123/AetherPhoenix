@@ -134,6 +134,18 @@ class PlannerAgent:
         )
         cap_reg.register(
             Capability(
+                name="export",
+                description=(
+                    "Unified export layer for converting workflow artifacts "
+                    "into supported formats (PDF, PPTX, Markdown, DOCX, HTML, "
+                    "Images, CSV, JSON, TXT)."
+                ),
+                category=TaskCategory.OTHER,
+                required_tools=["export"],
+            )
+        )
+        cap_reg.register(
+            Capability(
                 name="ocr",
                 description=(
                     "Extracts readable text from images, screenshots, "
