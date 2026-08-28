@@ -18,7 +18,7 @@ def register_file_explorer_tool(registry: ToolRegistry) -> Tool:
     Returns:
         The registered Tool contract object.
     """
-        file_explorer_tool = Tool(
+    file_explorer_tool = Tool(
         name="file_explorer",
         description=(
             "Interacts with operating system File Explorer to open folders/files, "
