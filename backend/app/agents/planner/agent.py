@@ -134,6 +134,28 @@ class PlannerAgent:
         )
         cap_reg.register(
             Capability(
+                name="git_integration",
+                description=(
+                    "Executes Git operations like commit, push, pull, "
+                    "branch, and status"
+                ),
+                category=TaskCategory.GIT,
+                required_tools=["git_tool"],
+            )
+        )
+        cap_reg.register(
+            Capability(
+                name="terminal_integration",
+                description=(
+                    "Executes system terminal commands directly "
+                    "in the local environment"
+                ),
+                category=TaskCategory.TERMINAL,
+                required_tools=["terminal_tool"],
+            )
+        )
+        cap_reg.register(
+            Capability(
                 name="export",
                 description=(
                     "Unified export layer for converting workflow artifacts "

@@ -45,6 +45,11 @@ class ILogger(ABC):
         pass
 
     @abstractmethod
+    def exception(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        """Log an error level message with exception traceback."""
+        pass
+
+    @abstractmethod
     def bind(self, **kwargs: Any) -> "ILogger":
         """
         Return a new logger instance with contextual key-value pairs bound to it
