@@ -32,7 +32,9 @@ async def generate_plan(request: GeneratePlanRequest):
         )
 
         # Process request offloaded to thread to avoid blocking event loop
-        response = await asyncio.to_thread(planner_agent.process_request, planner_request)
+        response = await asyncio.to_thread(
+            planner_agent.process_request, planner_request
+        )
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
