@@ -1,5 +1,5 @@
 """
-Comprehensive Performance Benchmark & Bottleneck Test Suite (Sprint 10 - Issue #Sprint-10-Performance-Testing).
+Comprehensive Performance Benchmark & Bottleneck Test Suite (Sprint 10).
 
 Measures and records baseline performance across key system components:
 1. Planner response time
@@ -19,21 +19,22 @@ Measures and records baseline performance across key system components:
 import asyncio
 import gc
 import os
-import sys
 import tempfile
 import time
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import httpx
 import pytest
-from sqlalchemy import text
-
-from shared.contracts.export import ExportFormat, ExportRequest
-from shared.contracts.permission import PermissionRequest, PermissionStatus, PermissionType, RiskLevel
-from shared.contracts.planner import PlannerOutput, PlannerRequest
+from shared.contracts.planner import PlannerRequest
 from shared.contracts.task import Task, TaskCategory, TaskStatus, TaskType
-from shared.contracts.workflow import ExecutionMode, SharedWorkflowState, WorkflowMetadata, WorkflowStatus
+from shared.contracts.workflow import (
+    ExecutionMode,
+    SharedWorkflowState,
+    WorkflowMetadata,
+    WorkflowStatus,
+)
+from sqlalchemy import text
 
 from app.agents.healing.agent import HealingAgent
 from app.agents.planner.agent import PlannerAgent
@@ -41,31 +42,30 @@ from app.agents.supervisor.agent import SupervisorAgent
 from app.agents.worker.agent import WorkerAgent
 from app.core.events.bus import EventBus
 from app.core.permissions.manager import PermissionManager
-from app.database.session import SessionLocal, engine
+from app.database.session import SessionLocal
 from app.engine.orchestrator import PipelineOrchestrator
 from app.engine.registry import CapabilityRegistry
 from app.main import app
 from app.planner.decomposer import TaskDecompositionEngine
 from app.schemas.ppt import PresentationSchema, SlideContent, SlideType
-from app.services.observability import get_observability_service
-from app.tools.browser.controller import BrowserController
-from app.tools.browser.interface import BrowserAdapter, register_browser_capability
+from app.tools.browser.interface import register_browser_capability
 from app.tools.desktop.controller import DesktopController
 from app.tools.desktop.interface import DesktopToolAdapter, register_desktop_tool
 from app.tools.desktop.models import DesktopActionResult
-from app.tools.export.engine import ExportEngine
+
 try:
     from app.tools.ppt.generator import PPTGenerator
+
     HAS_PPTX = True
 except (ImportError, ModuleNotFoundError):
     PPTGenerator = None
     HAS_PPTX = False
 from app.tools.registry import ToolRegistry
 
-
 # -----------------------------------------------------------------------------
 # Test Fixtures & Setup
 # -----------------------------------------------------------------------------
+
 
 @pytest.fixture
 def performance_env():
@@ -73,7 +73,9 @@ def performance_env():
     event_bus = EventBus()
     cap_registry = CapabilityRegistry()
     tool_registry = ToolRegistry()
-    permission_manager = PermissionManager(mode=ExecutionMode.AUTONOMOUS, event_bus=event_bus)
+    permission_manager = PermissionManager(
+        mode=ExecutionMode.AUTONOMOUS, event_bus=event_bus
+    )
 
     worker_agent = WorkerAgent(
         tool_registry=tool_registry,
@@ -128,6 +130,7 @@ def performance_env():
 # 1. Planner Response Time Benchmark
 # -----------------------------------------------------------------------------
 
+
 def test_planner_response_time_benchmark():
     """Benchmark PlannerAgent goal parsing and decomposition latency."""
     planner = PlannerAgent()
@@ -136,11 +139,15 @@ def test_planner_response_time_benchmark():
 
     # Benchmark Goal Decomposition
     start_decomp = time.perf_counter()
-    plan = decomposer.decompose_goal("Build a FastAPI web app with database integration", workflow_id)
+    plan = decomposer.decompose_goal(
+        "Build a FastAPI web app with database integration", workflow_id
+    )
     decomp_time_ms = (time.perf_counter() - start_decomp) * 1000
 
     assert len(plan.tasks) > 0
-    assert decomp_time_ms < 500.0, f"Decomposer latency too high: {decomp_time_ms:.2f}ms"
+    assert (
+        decomp_time_ms < 500.0
+    ), f"Decomposer latency too high: {decomp_time_ms:.2f}ms"
 
     # Benchmark Full Planner Request Processing
     req = PlannerRequest(
@@ -152,17 +159,23 @@ def test_planner_response_time_benchmark():
     req_time_ms = (time.perf_counter() - start_req) * 1000
 
     assert res.status == "ready"
-    assert req_time_ms < 1000.0, f"PlannerAgent processing latency too high: {req_time_ms:.2f}ms"
-    print(f"\n[METRIC] Planner Decomposition: {decomp_time_ms:.2f}ms | Planner Request: {req_time_ms:.2f}ms")
+    assert (
+        req_time_ms < 1000.0
+    ), f"PlannerAgent processing latency too high: {req_time_ms:.2f}ms"
+    print(
+        f"\n[METRIC] Decomp: {decomp_time_ms:.2f}ms | "
+        f"Request: {req_time_ms:.2f}ms"
+    )
 
 
 # -----------------------------------------------------------------------------
 # 2. Execution Bridge Response Time Benchmark
 # -----------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_execution_bridge_response_time_benchmark(performance_env):
-    """Benchmark Capability Registry, Tool Resolution, and Worker Adapter Bridge dispatch latency."""
+    """Benchmark Capability Registry and Worker Adapter Bridge dispatch latency."""
     env = performance_env
     worker_agent: WorkerAgent = env["worker_agent"]
     workflow_id = uuid4()
@@ -186,7 +199,9 @@ async def test_execution_bridge_response_time_benchmark(performance_env):
     bridge_time_ms = (time.perf_counter() - start_bridge) * 1000
 
     assert result.success is True
-    assert bridge_time_ms < 100.0, f"Execution Bridge latency too high: {bridge_time_ms:.2f}ms"
+    assert (
+        bridge_time_ms < 100.0
+    ), f"Execution Bridge latency too high: {bridge_time_ms:.2f}ms"
     print(f"[METRIC] Execution Bridge Latency: {bridge_time_ms:.2f}ms")
 
 
@@ -194,9 +209,10 @@ async def test_execution_bridge_response_time_benchmark(performance_env):
 # 3. Workflow Startup Latency Benchmark
 # -----------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_workflow_startup_latency_benchmark(performance_env):
-    """Benchmark time to initialize SharedWorkflowState and launch PipelineOrchestrator."""
+    """Benchmark SharedWorkflowState init and PipelineOrchestrator startup."""
     env = performance_env
     orchestrator: PipelineOrchestrator = env["orchestrator"]
     workflow_id = uuid4()
@@ -231,14 +247,22 @@ async def test_workflow_startup_latency_benchmark(performance_env):
     startup_run_time_ms = (time.perf_counter() - start_run) * 1000
 
     assert result_state.metadata.status == WorkflowStatus.COMPLETED
-    assert init_time_ms < 50.0, f"Workflow State Init latency too high: {init_time_ms:.2f}ms"
-    assert startup_run_time_ms < 200.0, f"Workflow Startup & Run latency too high: {startup_run_time_ms:.2f}ms"
-    print(f"[METRIC] Workflow Init: {init_time_ms:.2f}ms | Startup & Execution: {startup_run_time_ms:.2f}ms")
+    assert (
+        init_time_ms < 50.0
+    ), f"Workflow State Init latency too high: {init_time_ms:.2f}ms"
+    assert (
+        startup_run_time_ms < 200.0
+    ), f"Workflow Startup & Run latency too high: {startup_run_time_ms:.2f}ms"
+    print(
+        f"[METRIC] Workflow Init: {init_time_ms:.2f}ms | "
+        f"Execution: {startup_run_time_ms:.2f}ms"
+    )
 
 
 # -----------------------------------------------------------------------------
 # 4 & 5. Worker & Tool Execution Time Benchmarks
 # -----------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_worker_and_tool_execution_time_benchmark(performance_env):
@@ -268,13 +292,19 @@ async def test_worker_and_tool_execution_time_benchmark(performance_env):
     total_batch_time_ms = (time.perf_counter() - start_batch) * 1000
     avg_per_task_ms = total_batch_time_ms / iterations
 
-    assert avg_per_task_ms < 20.0, f"Average worker task execution time too high: {avg_per_task_ms:.2f}ms"
-    print(f"[METRIC] Worker/Tool Execution Batch (50 tasks): {total_batch_time_ms:.2f}ms | Avg: {avg_per_task_ms:.2f}ms/task")
+    assert (
+        avg_per_task_ms < 20.0
+    ), f"Average worker task execution time too high: {avg_per_task_ms:.2f}ms"
+    print(
+        f"[METRIC] Worker/Tool Batch: {total_batch_time_ms:.2f}ms | "
+        f"Avg: {avg_per_task_ms:.2f}ms/task"
+    )
 
 
 # -----------------------------------------------------------------------------
 # 6. PPT Generation Time Benchmark
 # -----------------------------------------------------------------------------
+
 
 @pytest.mark.skipif(not HAS_PPTX, reason="pptx library not installed")
 def test_ppt_generation_time_benchmark():
@@ -320,13 +350,19 @@ def test_ppt_generation_time_benchmark():
         assert result.slide_count == 5
         assert os.path.exists(output_file)
         assert result.file_size > 0
-        assert ppt_time_ms < 1500.0, f"PPT Generation latency too high: {ppt_time_ms:.2f}ms"
-        print(f"[METRIC] PPT Generation Time (5 slides): {ppt_time_ms:.2f}ms | File size: {result.file_size} bytes")
+        assert (
+            ppt_time_ms < 1500.0
+        ), f"PPT Generation latency too high: {ppt_time_ms:.2f}ms"
+        print(
+            f"[METRIC] PPT Gen (5 slides): {ppt_time_ms:.2f}ms | "
+            f"File: {result.file_size} bytes"
+        )
 
 
 # -----------------------------------------------------------------------------
 # 7. API Response Times Benchmark
 # -----------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_api_response_times_benchmark():
@@ -342,7 +378,9 @@ async def test_api_response_times_benchmark():
 
     latencies = {}
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
         for path, method, payload in endpoints:
             start_ep = time.perf_counter()
             if method == "GET":
@@ -354,7 +392,9 @@ async def test_api_response_times_benchmark():
             latencies[path] = latency_ms
 
             assert resp.status_code in (200, 201)
-            assert latency_ms < 500.0, f"Endpoint {path} latency too high: {latency_ms:.2f}ms"
+            assert (
+                latency_ms < 500.0
+            ), f"Endpoint {path} latency too high: {latency_ms:.2f}ms"
             assert "x-process-time-ms" in resp.headers
 
     print("\n[METRIC] API Endpoint Response Times:")
@@ -365,6 +405,7 @@ async def test_api_response_times_benchmark():
 # -----------------------------------------------------------------------------
 # 8. Database Persistence Time Benchmark
 # -----------------------------------------------------------------------------
+
 
 def test_database_persistence_time_benchmark():
     """Benchmark SQLite database connection, session creation, writes, and reads."""
@@ -379,9 +420,14 @@ def test_database_persistence_time_benchmark():
         query_time_ms = (time.perf_counter() - start_query) * 1000
 
         assert len(res) > 0
-        assert session_time_ms < 50.0, f"DB session creation too slow: {session_time_ms:.2f}ms"
+        assert (
+            session_time_ms < 50.0
+        ), f"DB session creation too slow: {session_time_ms:.2f}ms"
         assert query_time_ms < 20.0, f"DB query latency too high: {query_time_ms:.2f}ms"
-        print(f"[METRIC] DB Session Init: {session_time_ms:.2f}ms | Query Exec: {query_time_ms:.2f}ms")
+        print(
+            f"[METRIC] DB Session: {session_time_ms:.2f}ms | "
+            f"Query: {query_time_ms:.2f}ms"
+        )
     finally:
         db.close()
 
@@ -390,14 +436,17 @@ def test_database_persistence_time_benchmark():
 # 9, 10 & 11. Frontend Initial Load & Polling Overhead Benchmark
 # -----------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_dashboard_and_polling_overhead_benchmark():
-    """Benchmark rapid polling requests simulating frontend initial load and high-frequency polling."""
+    """Benchmark rapid polling requests simulating frontend initial load and polling."""
     num_requests = 50
 
     start_polling = time.perf_counter()
     transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://testserver") as client:
+    async with httpx.AsyncClient(
+        transport=transport, base_url="http://testserver"
+    ) as client:
         for _ in range(num_requests):
             resp = await client.get("/api/v1/permissions/pending")
             assert resp.status_code == 200
@@ -405,19 +454,25 @@ async def test_dashboard_and_polling_overhead_benchmark():
     total_polling_time_ms = (time.perf_counter() - start_polling) * 1000
     avg_polling_latency_ms = total_polling_time_ms / num_requests
 
-    assert avg_polling_latency_ms < 20.0, f"Polling latency too high: {avg_polling_latency_ms:.2f}ms/request"
-    print(f"[METRIC] Dashboard/Permission Rapid Polling ({num_requests} requests): {total_polling_time_ms:.2f}ms | Avg: {avg_polling_latency_ms:.2f}ms/req")
+    assert (
+        avg_polling_latency_ms < 20.0
+    ), f"Polling latency too high: {avg_polling_latency_ms:.2f}ms/request"
+    print(
+        f"[METRIC] Dashboard/Permission Polling ({num_requests} reqs): "
+        f"{total_polling_time_ms:.2f}ms | Avg: {avg_polling_latency_ms:.2f}ms/req"
+    )
 
 
 # -----------------------------------------------------------------------------
 # 12. Concurrent Multi-User / Multi-Workflow Scaling Benchmark
 # -----------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_concurrent_multi_user_workflows_benchmark(performance_env):
     """
     Simulates:
-    Multiple Users -> Multiple Workflows -> Multiple Workers -> Concurrent Tool Execution.
+    Users -> Workflows -> Workers -> Tool Execution.
     Validates concurrency throughput, state isolation, and absence of deadlocks.
     """
     env = performance_env
@@ -467,7 +522,9 @@ async def test_concurrent_multi_user_workflows_benchmark(performance_env):
         return res_state
 
     start_concurrent = time.perf_counter()
-    results = await asyncio.gather(*[execute_user_workflow(i) for i in range(num_concurrent_users)])
+    results = await asyncio.gather(
+        *[execute_user_workflow(i) for i in range(num_concurrent_users)]
+    )
     total_concurrent_time_ms = (time.perf_counter() - start_concurrent) * 1000
 
     assert len(results) == num_concurrent_users
@@ -476,15 +533,24 @@ async def test_concurrent_multi_user_workflows_benchmark(performance_env):
         assert len(res_state.completed_tasks) == tasks_per_workflow
 
     total_tasks_processed = num_concurrent_users * tasks_per_workflow
-    throughput_tasks_per_sec = (total_tasks_processed / total_concurrent_time_ms) * 1000.0
+    throughput_tasks_per_sec = (
+        total_tasks_processed / total_concurrent_time_ms
+    ) * 1000.0
 
-    print(f"\n[METRIC] Concurrent Workflows: {num_concurrent_users} users ({total_tasks_processed} total tasks)")
-    print(f"[METRIC] Total Execution Time: {total_concurrent_time_ms:.2f}ms | Throughput: {throughput_tasks_per_sec:.2f} tasks/sec")
+    print(
+        f"\n[METRIC] Concurrency: {num_concurrent_users} users "
+        f"({total_tasks_processed} tasks)"
+    )
+    print(
+        f"[METRIC] Time: {total_concurrent_time_ms:.2f}ms | "
+        f"Throughput: {throughput_tasks_per_sec:.2f} tasks/sec"
+    )
 
 
 # -----------------------------------------------------------------------------
 # 13. Memory Leak & Resource Stability Benchmark
 # -----------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_memory_leak_and_resource_stability_benchmark(performance_env):
@@ -529,5 +595,10 @@ async def test_memory_leak_and_resource_stability_benchmark(performance_env):
     final_objects = len(gc.get_objects())
     object_delta = final_objects - initial_objects
 
-    print(f"\n[METRIC] Memory Leak Check ({runs} runs): Initial Objects={initial_objects}, Final Objects={final_objects}, Delta={object_delta}")
-    assert object_delta < 3000, f"Potential memory leak detected! Object delta: {object_delta}"
+    print(
+        f"\n[METRIC] Memory Leak ({runs} runs): Initial={initial_objects}, "
+        f"Final={final_objects}, Delta={object_delta}"
+    )
+    assert (
+        object_delta < 3000
+    ), f"Potential memory leak detected! Object delta: {object_delta}"
