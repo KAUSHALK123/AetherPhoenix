@@ -137,9 +137,7 @@ async def test_worker_invalid_tool_unregistered_tool(worker_agent):
 
 
 @pytest.mark.asyncio
-async def test_worker_invalid_tool_unregistered_adapter(
-    worker_agent, tool_registry
-):
+async def test_worker_invalid_tool_unregistered_adapter(worker_agent, tool_registry):
     """Test task failure when adapter is not registered in WorkerAgent."""
     tool = Tool(
         name="no_adapter_tool",
