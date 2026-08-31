@@ -91,8 +91,17 @@ class LocalFileSystemArtifactStorageProvider(BaseArtifactStorageProvider):
             workflow_dir = self.base_dir / str(artifact.workflow_id)
             workflow_dir.mkdir(parents=True, exist_ok=True)
 
-            target_filename = f"{artifact_id}_{artifact.name}"
-            target_path = workflow_dir / target_filename
+            sanitized_name = (
+                Path(artifact.name).name.replace("/", "").replace("\\", "").strip()
+            )
+            if not sanitized_name or sanitized_name in (".", ".."):
+                sanitized_name = "artifact.dat"
+            target_filename = f"{artifact_id}_{sanitized_name}"
+            target_path = (workflow_dir / target_filename).resolve()
+            if not target_path.is_relative_to(self.base_dir.resolve()):
+                raise ValueError(
+                    f"Path traversal detected in artifact name: '{artifact.name}'"
+                )
 
             file_bytes: bytes = b""
 

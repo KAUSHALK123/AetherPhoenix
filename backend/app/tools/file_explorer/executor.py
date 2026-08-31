@@ -63,9 +63,14 @@ class FileExplorerExecutor:
             resolved_path = (self.workspace_dir / p).resolve()
 
         # Validate that path is within workspace_dir or artifacts_dir
-        str_resolved = str(resolved_path)
-        in_workspace = str_resolved.startswith(str(self.workspace_dir))
-        in_artifacts = str_resolved.startswith(str(self.artifacts_dir))
+        in_workspace = (
+            resolved_path == self.workspace_dir
+            or resolved_path.is_relative_to(self.workspace_dir)
+        )
+        in_artifacts = (
+            resolved_path == self.artifacts_dir
+            or resolved_path.is_relative_to(self.artifacts_dir)
+        )
 
         if not (in_workspace or in_artifacts):
             logger.error(
