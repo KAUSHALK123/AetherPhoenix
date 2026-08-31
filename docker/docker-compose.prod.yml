@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: aether_phoenix_backend_prod
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=False
+      - HOST=0.0.0.0
+      - PORT=8000
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT_JSON=True
+      - CORS_ORIGINS=["http://localhost:5173","http://localhost:80","http://127.0.0.1:5173"]
+    volumes:
+      - backend_data:/app/data
+      - backend_artifacts:/app/artifacts
+      - backend_logs:/app/logs
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - aether_prod_network
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: aether_phoenix_frontend_prod
+    restart: always
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=production
+      - VITE_API_URL=http://localhost:8000
+    networks:
+      - aether_prod_network
+    depends_on:
+      backend:
+        condition: service_healthy
+
+networks:
+  aether_prod_network:
+    name: aether_prod_network
+    driver: bridge
+
+volumes:
+  backend_data:
+  backend_artifacts:
+  backend_logs:

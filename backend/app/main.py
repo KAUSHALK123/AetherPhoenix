@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,7 +23,12 @@ logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info(f"Starting {settings.PROJECT_NAME} v{settings.VERSION}")
+    logger.info(
+        f"Starting {settings.PROJECT_NAME} v{settings.VERSION} [{settings.ENVIRONMENT}]"
+    )
+    # Ensure required runtime directories exist
+    Path(settings.ARTIFACTS_DIR).mkdir(parents=True, exist_ok=True)
+    Path(settings.LOG_DIR).mkdir(parents=True, exist_ok=True)
     yield
     logger.info(f"Shutting down {settings.PROJECT_NAME}")
 
@@ -34,9 +40,18 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Dynamic CORS Configuration based on runtime settings
+if isinstance(settings.CORS_ORIGINS, list):
+    cors_origins = settings.CORS_ORIGINS
+else:
+    cors_origins = [str(settings.CORS_ORIGINS)]
+
+if not cors_origins or cors_origins == ["*"]:
+    cors_origins = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,4 +63,10 @@ app.include_router(api_router, prefix="/api/v1")
 @app.get("/health")
 async def health_check():
     logger.debug("Health check endpoint invoked")
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "project": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "environment": settings.ENVIRONMENT,
+        "database": "connected",
+    }
