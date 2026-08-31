@@ -32,6 +32,17 @@ class PowerShellExecutor:
             "invoke-restmethod",
             "irm",
             "start-process -nonewwindow",
+            "rm -rf",
+            "del /f",
+            "remove-item",
+            "format ",
+            "format-volume",
+            "clear-disk",
+            "drop database",
+            "reg delete",
+            "stop-computer",
+            "restart-computer",
+            "set-executionpolicy",
         ]
         cmd_lower = command.lower()
         for p in prohibited:
@@ -46,11 +57,20 @@ class PowerShellExecutor:
         """
         logger.info(f"Preparing to execute PowerShell command: {cmd.command}")
 
-        # Permission check
-        if cmd.require_approval and self.permission_manager:
-            is_approved = await self.permission_manager.check_permission(
-                action=cmd.command, permission_type=PermissionType.POWERSHELL
-            )
+        # Permission check - always enforce if permission_manager configured
+        if self.permission_manager:
+            try:
+                res = self.permission_manager.check_permission(
+                    action=cmd.command,
+                    permission_type=PermissionType.POWERSHELL,
+                    context={"command": cmd.command},
+                )
+            except TypeError:
+                res = self.permission_manager.check_permission(
+                    action=cmd.command,
+                    permission_type=PermissionType.POWERSHELL,
+                )
+            is_approved = await res if hasattr(res, "__await__") else bool(res)
             if not is_approved:
                 logger.warning(f"Permission denied for command: {cmd.command}")
                 raise PermissionDeniedException(

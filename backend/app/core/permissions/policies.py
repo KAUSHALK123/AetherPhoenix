@@ -33,6 +33,21 @@ RESTRICTED_URL_SCHEMES: Set[str] = {
     "javascript:",
 }
 
+# Destructive command patterns blocked unconditionally in all execution modes
+DESTRUCTIVE_COMMAND_TOKENS: Set[str] = {
+    "rm -rf",
+    "format ",
+    "format-volume",
+    "del /f",
+    "remove-item",
+    "clear-disk",
+    "drop database",
+    "reg delete",
+    "stop-computer",
+    "restart-computer",
+    "set-executionpolicy",
+}
+
 
 @dataclass
 class PolicyDecision:
@@ -130,22 +145,24 @@ class SafeExecutionPolicy:
 
         # Check for restricted URLs
         if "url" in ctx:
-            url = str(ctx.get("url", "")).lower()
-            for scheme in RESTRICTED_URL_SCHEMES:
-                if url.startswith(scheme):
+            raw_url = str(ctx.get("url", "")).strip().lower()
+            try:
+                import urllib.parse
+
+                parsed = urllib.parse.urlparse(raw_url)
+                scheme = (parsed.scheme + "://") if parsed.scheme else raw_url
+            except Exception:
+                scheme = raw_url
+            for restricted_scheme in RESTRICTED_URL_SCHEMES:
+                if raw_url.startswith(restricted_scheme) or scheme.startswith(
+                    restricted_scheme
+                ):
                     return RiskLevel.CRITICAL
 
         # Check for risky commands
         if "command" in ctx or "script" in ctx:
             cmd = str(ctx.get("command") or ctx.get("script") or "").lower()
-            dangerous_tokens = [
-                "rm -rf",
-                "format ",
-                "del /f",
-                "drop database",
-                "reg delete",
-            ]
-            for token in dangerous_tokens:
+            for token in DESTRUCTIVE_COMMAND_TOKENS:
                 if token in cmd:
                     return RiskLevel.CRITICAL
 
@@ -190,16 +207,35 @@ class SafeExecutionPolicy:
                     metadata=ctx,
                 )
 
-            url = str(ctx.get("url", "")).lower()
-            if any(url.startswith(scheme) for scheme in RESTRICTED_URL_SCHEMES):
-                return PolicyDecision(
-                    allowed=False,
-                    requires_approval=True,
-                    risk_level=RiskLevel.CRITICAL,
-                    reason=f"Restricted URL scheme '{url}' is blocked by Safe Mode.",
-                    action=action,
-                    metadata=ctx,
-                )
+            url = str(ctx.get("url", "")).strip().lower()
+            for scheme in RESTRICTED_URL_SCHEMES:
+                if url.startswith(scheme):
+                    return PolicyDecision(
+                        allowed=False,
+                        requires_approval=True,
+                        risk_level=RiskLevel.CRITICAL,
+                        reason=(
+                            f"Restricted URL scheme '{url}' is blocked by Safe Mode."
+                        ),
+                        action=action,
+                        metadata=ctx,
+                    )
+
+            # Destructive commands blocked unconditionally across all execution modes
+            cmd = str(ctx.get("command") or ctx.get("script") or action or "").lower()
+            for token in DESTRUCTIVE_COMMAND_TOKENS:
+                if token in cmd:
+                    return PolicyDecision(
+                        allowed=False,
+                        requires_approval=True,
+                        risk_level=RiskLevel.CRITICAL,
+                        reason=(
+                            f"Destructive command pattern '{token}' is blocked "
+                            "unconditionally by Safe Mode."
+                        ),
+                        action=action,
+                        metadata=ctx,
+                    )
 
         # Mode-based decisions
         if mode_str == ExecutionMode.SAFE.value:

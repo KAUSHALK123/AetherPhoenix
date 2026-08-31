@@ -82,6 +82,10 @@ class StructuredLogger(ILogger):
         extra = self._prepare_extra(kwargs)
         self._logger.log(level, msg, *args, extra=extra, **kwargs)
 
+    def exception(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        kwargs["exc_info"] = True
+        self.error(msg, *args, **kwargs)
+
 
 def create_console_handler(
     json_format: bool = True,

@@ -283,23 +283,68 @@ class ExportEngine:
             metadata=merged_metadata,
         )
 
+    def _is_path_permitted(self, path: Path) -> bool:
+        """Validates that a path resides within allowed workspace, artifacts,
+        or temp boundaries.
+        """
+        import tempfile
+
+        cfg = get_config()
+        permitted_bases = [
+            Path.cwd().resolve(),
+            Path(tempfile.gettempdir()).resolve(),
+        ]
+        workspace_dir = getattr(cfg, "WORKSPACE_DIR", None)
+        if workspace_dir:
+            permitted_bases.append(Path(workspace_dir).resolve())
+        artifacts_dir = getattr(cfg, "ARTIFACTS_DIR", None)
+        if artifacts_dir:
+            permitted_bases.append(Path(artifacts_dir).resolve())
+        temp_dir = getattr(cfg, "TEMP_DIR", None)
+        if temp_dir:
+            permitted_bases.append(Path(temp_dir).resolve())
+
+        storage_svc = getattr(self, "artifact_storage_service", None)
+        if storage_svc:
+            base_dir = None
+            if hasattr(storage_svc, "provider") and hasattr(
+                storage_svc.provider, "base_dir"
+            ):
+                base_dir = Path(storage_svc.provider.base_dir).resolve()
+            elif hasattr(storage_svc, "base_dir"):
+                base_dir = Path(storage_svc.base_dir).resolve()
+
+            if base_dir:
+                permitted_bases.append(base_dir)
+                permitted_bases.append(base_dir.parent)
+
+        resolved = path.expanduser().resolve()
+        for base in permitted_bases:
+            try:
+                if resolved == base or resolved.is_relative_to(base):
+                    return True
+            except (ValueError, AttributeError):
+                continue
+        return False
+
     async def _resolve_source(
         self, request: ExportRequest
-    ) -> tuple[bytes | str | None, Path | None, UUID | str | None, dict[str, Any]]:
-        """Resolves source artifact content, filepath, and metadata."""
+    ) -> tuple[bytes | str | None, Path | None, str | None, dict[str, Any]]:
+        """Resolves source artifact or file payload and metadata."""
         source_content: bytes | str | None = None
         source_path: Path | None = None
-        source_artifact_id: UUID | str | None = request.source_artifact_id
-        source_metadata: dict[str, Any] = {}
+        source_artifact_id: str | None = None
+        source_metadata: dict[str, Any] = dict(request.metadata)
 
         # 1. Resolve from source_artifact_id
         if request.source_artifact_id:
+            source_artifact_id = str(request.source_artifact_id)
             art = await self.artifact_storage_service.get_artifact(
                 request.source_artifact_id
             )
             if art:
-                source_metadata = art.metadata.copy() if art.metadata else {}
-                if Path(art.filepath).exists():
+                source_metadata.update(art.metadata)
+                if art.filepath and Path(art.filepath).exists():
                     source_path = Path(art.filepath)
                 source_content = (
                     await self.artifact_storage_service.get_artifact_content(
@@ -309,8 +354,17 @@ class ExportEngine:
 
         # 2. Resolve from source_filepath
         if not source_content and not source_path and request.source_filepath:
-            sp = Path(request.source_filepath)
+            sp = Path(request.source_filepath).expanduser().resolve()
             if sp.exists():
+                if not self._is_path_permitted(sp):
+                    logger.error(
+                        f"Path traversal detected: source_filepath "
+                        f"'{request.source_filepath}' is outside permitted directories."
+                    )
+                    raise ExportError(
+                        f"Access denied: source_filepath '{request.source_filepath}' "
+                        "is outside permitted directories."
+                    )
                 source_path = sp
                 try:
                     source_content = sp.read_bytes()
@@ -330,8 +384,17 @@ class ExportEngine:
             if meta_content:
                 source_content = meta_content
             elif "filepath" in request.metadata:
-                fp = Path(request.metadata["filepath"])
+                fp = Path(request.metadata["filepath"]).expanduser().resolve()
                 if fp.exists():
+                    if not self._is_path_permitted(fp):
+                        logger.error(
+                            f"Path traversal detected: metadata filepath '{fp}' "
+                            "is outside permitted directories."
+                        )
+                        raise ExportError(
+                            f"Access denied: metadata filepath '{fp}' "
+                            "is outside permitted directories."
+                        )
                     source_path = fp
                     source_content = fp.read_bytes()
 
@@ -347,6 +410,15 @@ class ExportEngine:
         """Determines target export destination path on local disk."""
         if request.output_path:
             out_p = Path(request.output_path).expanduser().resolve()
+            if not self._is_path_permitted(out_p):
+                logger.error(
+                    f"Path traversal detected: output_path '{request.output_path}' "
+                    "is outside permitted directories."
+                )
+                raise ExportError(
+                    f"Access denied: output_path '{request.output_path}' "
+                    "is outside permitted directories."
+                )
             out_p.parent.mkdir(parents=True, exist_ok=True)
             return out_p
 
