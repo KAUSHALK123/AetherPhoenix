@@ -1,19 +1,28 @@
-
-
 services:
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: aether_phoenix_backend
+    restart: unless-stopped
     ports:
       - "8000:8000"
-    volumes:
-      - ./backend:/app
-      - ./shared:/app/shared
+    env_file:
+      - ./backend/.env.example
     environment:
       - ENVIRONMENT=development
       - PYTHONPATH=/app
+      - HOST=0.0.0.0
+      - PORT=8000
+    volumes:
+      - ./backend:/app
+      - ./shared:/app/shared
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - aether_network
 
@@ -22,19 +31,20 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: aether_phoenix_frontend
+    restart: unless-stopped
     ports:
       - "5173:5173"
+    environment:
+      - NODE_ENV=development
+      - VITE_API_URL=http://localhost:8000
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    environment:
-      - NODE_ENV=development
-      - CHOKIDAR_USEPOLLING=true
-      - VITE_API_URL=http://localhost:8000
     networks:
       - aether_network
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 networks:
   aether_network:
