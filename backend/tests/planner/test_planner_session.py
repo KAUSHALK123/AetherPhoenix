@@ -1,5 +1,5 @@
-import pytest
 from shared.contracts.planner import PlannerRequest
+
 from app.planner.session import PlannerSession, SessionManager, get_session_manager
 
 
