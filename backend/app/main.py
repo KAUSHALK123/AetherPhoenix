@@ -42,6 +42,18 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def add_performance_timing_header(request, call_next):
+    import time
+
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    process_time_ms = (time.perf_counter() - start_time) * 1000.0
+    response.headers["X-Process-Time-Ms"] = f"{process_time_ms:.2f}"
+    return response
+
+
 app.include_router(api_router, prefix="/api/v1")
 
 
