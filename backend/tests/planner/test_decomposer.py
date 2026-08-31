@@ -38,7 +38,6 @@ def test_decompose_presentation_goal(decomposer):
             assert t.required_tool == ""
 
 
-
 def test_decompose_research_goal(decomposer):
     workflow_id = uuid4()
     goal = "Research recent advancements in Quantum Computing"

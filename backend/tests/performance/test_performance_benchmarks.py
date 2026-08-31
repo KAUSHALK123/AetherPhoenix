@@ -163,8 +163,7 @@ def test_planner_response_time_benchmark():
         req_time_ms < 1000.0
     ), f"PlannerAgent processing latency too high: {req_time_ms:.2f}ms"
     print(
-        f"\n[METRIC] Decomp: {decomp_time_ms:.2f}ms | "
-        f"Request: {req_time_ms:.2f}ms"
+        f"\n[METRIC] Decomp: {decomp_time_ms:.2f}ms | " f"Request: {req_time_ms:.2f}ms"
     )
 
 
