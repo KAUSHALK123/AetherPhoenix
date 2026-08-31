@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { PermissionModal } from '../components/permissions/PermissionModal';
 import type { PermissionRequest } from '../types/permission';
@@ -40,7 +40,9 @@ describe('PermissionModal', () => {
     );
 
     const allowButton = screen.getByRole('button', { name: /Allow Action/i });
-    fireEvent.click(allowButton);
+    await act(async () => {
+      fireEvent.click(allowButton);
+    });
 
     expect(handleApprove).toHaveBeenCalledWith('req-test-123');
   });
@@ -56,10 +58,14 @@ describe('PermissionModal', () => {
     );
 
     const denyButton = screen.getByRole('button', { name: /^Deny$/i });
-    fireEvent.click(denyButton);
+    await act(async () => {
+      fireEvent.click(denyButton);
+    });
 
     const confirmDenyButton = screen.getByRole('button', { name: /Confirm Deny/i });
-    fireEvent.click(confirmDenyButton);
+    await act(async () => {
+      fireEvent.click(confirmDenyButton);
+    });
 
     expect(handleReject).toHaveBeenCalledWith('req-test-123', undefined);
   });
