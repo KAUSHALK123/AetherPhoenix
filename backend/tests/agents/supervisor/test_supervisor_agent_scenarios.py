@@ -1,18 +1,15 @@
-import pytest
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from shared.contracts.execution import (
     ExecutionResult,
-    SupervisorDecision,
-    SupervisorValidation,
     TaskError,
 )
 from shared.contracts.task import Task, TaskCategory, TaskStatus, TaskType
 from shared.contracts.workflow import SharedWorkflowState, WorkflowMetadata
 
 from app.agents.supervisor.agent import SupervisorAgent
-from app.agents.supervisor.failure_detector import FailureDetectorService
 
 
 @pytest.fixture
@@ -50,7 +47,9 @@ def workflow_state(sample_task):
 
 
 @pytest.mark.asyncio
-async def test_supervisor_successful_output_validation(supervisor_agent, sample_task, workflow_state):
+async def test_supervisor_successful_output_validation(
+    supervisor_agent, sample_task, workflow_state
+):
     """Test supervisor approving valid task execution result."""
     result = ExecutionResult(
         task_id=sample_task.task_id,
@@ -71,7 +70,9 @@ async def test_supervisor_successful_output_validation(supervisor_agent, sample_
 
 
 @pytest.mark.asyncio
-async def test_supervisor_invalid_output_detection(supervisor_agent, sample_task, workflow_state):
+async def test_supervisor_invalid_output_detection(
+    supervisor_agent, sample_task, workflow_state
+):
     """Test supervisor detecting invalid or empty output and rejecting task."""
     result = ExecutionResult(
         task_id=sample_task.task_id,
@@ -83,7 +84,11 @@ async def test_supervisor_invalid_output_detection(supervisor_agent, sample_task
 
     # Force validator to consider output invalid
     with patch.object(supervisor_agent.validator, "validate") as mock_val:
-        mock_val.return_value = (False, {"output": False}, ["Output is missing required data payload"])
+        mock_val.return_value = (
+            False,
+            {"output": False},
+            ["Output is missing required data payload"],
+        )
 
         validation = await supervisor_agent.execute(
             sample_task,
@@ -95,7 +100,9 @@ async def test_supervisor_invalid_output_detection(supervisor_agent, sample_task
 
 
 @pytest.mark.asyncio
-async def test_supervisor_task_failure_detection(supervisor_agent, sample_task, workflow_state):
+async def test_supervisor_task_failure_detection(
+    supervisor_agent, sample_task, workflow_state
+):
     """Test supervisor detecting task failure and analyzing failure type."""
     result = ExecutionResult(
         task_id=sample_task.task_id,
@@ -121,7 +128,7 @@ async def test_supervisor_task_failure_detection(supervisor_agent, sample_task, 
 
 @pytest.mark.asyncio
 async def test_supervisor_dependency_failure_detection(supervisor_agent):
-    """Test supervisor detecting upstream task failure blocking dependent downstream tasks."""
+    """Test supervisor detecting upstream failure blocking downstream tasks."""
     workflow_id = uuid.uuid4()
     task_a_id = uuid.uuid4()
     task_b_id = uuid.uuid4()
@@ -175,4 +182,8 @@ async def test_supervisor_dependency_failure_detection(supervisor_agent):
 
     # Verify task A is FAILED and tracked in failed tasks
     assert state.tasks[task_a_id].status == TaskStatus.FAILED
-    assert task_a_id in state.failed_tasks or state.tasks[task_b_id].status != TaskStatus.COMPLETED
+    is_failed_or_incomplete = (
+        task_a_id in state.failed_tasks
+        or state.tasks[task_b_id].status != TaskStatus.COMPLETED
+    )
+    assert is_failed_or_incomplete

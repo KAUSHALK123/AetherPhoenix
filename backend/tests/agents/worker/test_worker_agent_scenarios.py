@@ -1,16 +1,15 @@
-import pytest
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from shared.contracts.artifact import Artifact, ArtifactType
-from shared.contracts.execution import ExecutionResult, TaskError
-from shared.contracts.task import Task, TaskCategory, TaskStatus, TaskType
+from shared.contracts.execution import ExecutionResult
+from shared.contracts.task import Task, TaskCategory, TaskType
 from shared.contracts.tool import Tool, ToolState
 
 from app.agents.worker.agent import WorkerAgent
-from app.core.exceptions import ToolNotFoundException, PermissionDeniedException
-from app.tools.registry import ToolRegistry
 from app.tools.adapter import BaseToolAdapter
+from app.tools.registry import ToolRegistry
 
 
 class MockToolAdapter(BaseToolAdapter):
@@ -21,7 +20,7 @@ class MockToolAdapter(BaseToolAdapter):
     async def execute(self, task: Task, *args, **kwargs) -> ExecutionResult:
         if self.should_fail:
             raise RuntimeError("Tool execution failed internally in adapter")
-        
+
         artifacts = []
         if self.fail_artifact:
             artifacts.append(
@@ -138,8 +137,10 @@ async def test_worker_invalid_tool_unregistered_tool(worker_agent):
 
 
 @pytest.mark.asyncio
-async def test_worker_invalid_tool_unregistered_adapter(worker_agent, tool_registry):
-    """Test task execution failure when tool adapter is not registered in WorkerAgent."""
+async def test_worker_invalid_tool_unregistered_adapter(
+    worker_agent, tool_registry
+):
+    """Test task failure when adapter is not registered in WorkerAgent."""
     tool = Tool(
         name="no_adapter_tool",
         version="1.0.0",
@@ -163,7 +164,7 @@ async def test_worker_invalid_tool_unregistered_adapter(worker_agent, tool_regis
 
     assert result.success is False
     assert result.error is not None
-    assert "adapter 'unregistered_adapter' is not registered" in result.error.error_message
+    assert "not registered in WorkerAgent" in result.error.error_message
 
 
 @pytest.mark.asyncio
@@ -200,7 +201,7 @@ async def test_worker_tool_execution_failure(worker_agent):
 
 @pytest.mark.asyncio
 async def test_worker_artifact_generation_failure(worker_agent):
-    """Test handling when artifact storage fails during execution artifact registration."""
+    """Test handling when artifact storage fails during execution registration."""
     artifact_failing_adapter = MockToolAdapter(should_fail=False, fail_artifact=True)
     worker_agent.register_adapter("artifact_adapter", artifact_failing_adapter)
 

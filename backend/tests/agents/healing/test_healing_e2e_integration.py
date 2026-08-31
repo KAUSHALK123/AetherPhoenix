@@ -1,18 +1,18 @@
-import pytest
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-from shared.contracts.execution import ExecutionResult, TaskError, HealingResult
+import pytest
+from shared.contracts.execution import ExecutionResult, TaskError
 from shared.contracts.task import Task, TaskCategory, TaskStatus, TaskType
 from shared.contracts.tool import Tool, ToolState
 from shared.contracts.workflow import SharedWorkflowState, WorkflowMetadata
 
-from app.agents.healing.self_healing_loop import SelfHealingLoop, HealingState
 from app.agents.healing.retry_engine import RetryEngine
+from app.agents.healing.self_healing_loop import HealingState, SelfHealingLoop
 from app.agents.supervisor.agent import SupervisorAgent
 from app.agents.worker.agent import WorkerAgent
-from app.tools.registry import ToolRegistry
 from app.tools.adapter import BaseToolAdapter
+from app.tools.registry import ToolRegistry
 
 
 class FlakyToolAdapter(BaseToolAdapter):
@@ -49,7 +49,7 @@ class FlakyToolAdapter(BaseToolAdapter):
 def healing_env():
     tool_registry = ToolRegistry()
     flaky_adapter = FlakyToolAdapter(fail_count=1)
-    
+
     tool = Tool(
         name="flaky_tool",
         version="1.0.0",
@@ -94,10 +94,12 @@ def healing_env():
 
 
 @pytest.mark.asyncio
-async def test_e2e_healing_worker_failure_supervisor_detection_healing_recovery(healing_env):
-    """
-    Verify complete self-healing integration loop:
-    Worker Failure -> Supervisor Detection -> Healing Agent Recovery -> Worker Re-execution
+async def test_e2e_healing_worker_failure_supervisor_detection_healing_recovery(
+    healing_env,
+):
+    """Verify complete self-healing integration loop.
+
+    Worker Failure -> Supervisor Detection -> Healing -> Worker Re-execution
     """
     worker = healing_env["worker"]
     supervisor = healing_env["supervisor"]
@@ -135,7 +137,8 @@ async def test_e2e_healing_worker_failure_supervisor_detection_healing_recovery(
     )
 
     assert healing_result is not None
-    assert healing_agent.current_state in (HealingState.COMPLETED, HealingState.RETRYING, HealingState.IDLE)
+    valid_states = (HealingState.COMPLETED, HealingState.RETRYING, HealingState.IDLE)
+    assert healing_agent.current_state in valid_states
 
     # 4. Worker re-execution following recovery
     task.retry_count += 1
@@ -153,9 +156,7 @@ async def test_e2e_healing_worker_failure_supervisor_detection_healing_recovery(
 
 @pytest.mark.asyncio
 async def test_healing_retry_limits_and_permanent_failure(healing_env):
-    """
-    Verify retry limits are enforced and permanent failures do not cause infinite loops.
-    """
+    """Verify retry limits are enforced and permanent failures do not cause loops."""
     worker = healing_env["worker"]
     healing_agent = healing_env["healing_agent"]
     flaky_adapter = healing_env["flaky_adapter"]
@@ -189,4 +190,9 @@ async def test_healing_retry_limits_and_permanent_failure(healing_env):
     )
 
     assert healing_result.success is False
-    assert healing_agent.current_state in (HealingState.EXHAUSTED, HealingState.ESCALATED, HealingState.FAILED)
+    terminal_states = (
+        HealingState.EXHAUSTED,
+        HealingState.ESCALATED,
+        HealingState.FAILED,
+    )
+    assert healing_agent.current_state in terminal_states
