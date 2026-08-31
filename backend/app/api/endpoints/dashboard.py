@@ -795,6 +795,16 @@ async def get_dashboard_ui():
             }
         }
 
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         async function updateEvents() {
             try {
                 const res = await fetch('/api/v1/dashboard/events');
@@ -815,11 +825,16 @@ async def get_dashboard_ui():
                     const date = new Date(e.timestamp);
                     const timeStr = date.toTimeString().split(' ')[0];
 
+                    const safeTime = escapeHtml(timeStr);
+                    const safeSource = escapeHtml(e.source_component);
+                    const safeType = escapeHtml(e.event_type);
+                    const safeMsg = escapeHtml(JSON.stringify(e.payload));
+
                     row.innerHTML = `
-                        <span class="log-time">[${timeStr}]</span>
-                        <span class="log-source ${e.source_component}">${e.source_component}</span>
-                        <span class="log-type">${e.event_type}</span>
-                        <span class="log-message">${JSON.stringify(e.payload)}</span>
+                        <span class="log-time">[${safeTime}]</span>
+                        <span class="log-source ${safeSource}">${safeSource}</span>
+                        <span class="log-type">${safeType}</span>
+                        <span class="log-message">${safeMsg}</span>
                     `;
                     container.appendChild(row);
                 });
