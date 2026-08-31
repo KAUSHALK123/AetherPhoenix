@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 
 from fastapi import APIRouter, HTTPException
@@ -30,8 +31,10 @@ async def generate_plan(request: GeneratePlanRequest):
             session_id=session_id, message=request.goal, context={}
         )
 
-        # Process request synchronously using the agent pipeline
-        response = planner_agent.process_request(planner_request)
+        # Process request offloaded to thread to avoid blocking event loop
+        response = await asyncio.to_thread(
+            planner_agent.process_request, planner_request
+        )
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

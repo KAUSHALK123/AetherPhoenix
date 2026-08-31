@@ -14,8 +14,10 @@ export const AppLayout: React.FC = () => {
   useEffect(() => {
     fetchPending();
     const interval = setInterval(() => {
-      fetchPending();
-    }, 3000);
+      if (document.visibilityState === 'visible') {
+        fetchPending();
+      }
+    }, 5000);
     return () => clearInterval(interval);
   }, [fetchPending]);
 
