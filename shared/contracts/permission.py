@@ -23,6 +23,7 @@ class PermissionType(str, Enum):
     MICROPHONE = "MICROPHONE"
     DESKTOP_AUTOMATION = "DESKTOP_AUTOMATION"
     SCREEN_CAPTURE = "SCREEN_CAPTURE"
+    GIT_OPERATIONS = "GIT_OPERATIONS"
 
 
 class PermissionStatus(str, Enum):
