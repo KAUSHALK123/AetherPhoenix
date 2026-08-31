@@ -35,10 +35,12 @@ describe('notificationStore useNotificationStore', () => {
   it('addNotification adds notification and increases unreadCount and toastQueue', () => {
     const mockNotification: Notification = {
       id: 'notif-1',
+      event_type: 'test-event',
       title: 'New Notification',
       message: 'Workflow started',
       read: false,
       category: 'WORKFLOW',
+      severity: 'INFO',
       timestamp: new Date().toISOString(),
     };
 
@@ -54,10 +56,12 @@ describe('notificationStore useNotificationStore', () => {
   it('addNotification avoids duplicate notification IDs', () => {
     const mockNotification: Notification = {
       id: 'notif-dup',
+      event_type: 'test-event',
       title: 'Dup Title',
       message: 'Dup Message',
       read: false,
-      category: 'SYSTEM',
+      category: 'WORKFLOW',
+      severity: 'INFO',
       timestamp: new Date().toISOString(),
     };
 
@@ -72,10 +76,12 @@ describe('notificationStore useNotificationStore', () => {
   it('removeToast removes notification from toastQueue', () => {
     const mockNotification: Notification = {
       id: 'notif-toast',
+      event_type: 'test-event',
       title: 'New Notification',
       message: 'Workflow started',
       read: false,
       category: 'WORKFLOW',
+      severity: 'INFO',
       timestamp: new Date().toISOString(),
     };
 
@@ -89,10 +95,12 @@ describe('notificationStore useNotificationStore', () => {
   it('markAsRead updates notification status and unreadCount', async () => {
     const mockNotification: Notification = {
       id: 'notif-read',
+      event_type: 'test-event',
       title: 'New Notification',
       message: 'Workflow started',
       read: false,
       category: 'WORKFLOW',
+      severity: 'INFO',
       timestamp: new Date().toISOString(),
     };
 
@@ -112,18 +120,22 @@ describe('notificationStore useNotificationStore', () => {
   it('markAllAsRead updates all notifications and resets unreadCount', async () => {
     const n1: Notification = {
       id: 'n1',
+      event_type: 'test-event',
       title: 'n1',
       message: 'm1',
       read: false,
-      category: 'SYSTEM',
+      category: 'WORKFLOW',
+      severity: 'INFO',
       timestamp: new Date().toISOString(),
     };
     const n2: Notification = {
       id: 'n2',
+      event_type: 'test-event',
       title: 'n2',
       message: 'm2',
       read: false,
-      category: 'SYSTEM',
+      category: 'WORKFLOW',
+      severity: 'INFO',
       timestamp: new Date().toISOString(),
     };
 
