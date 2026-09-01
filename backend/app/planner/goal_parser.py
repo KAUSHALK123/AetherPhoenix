@@ -41,6 +41,12 @@ class GoalParser:
         "remove": "Removed target resource",
         "fix": "Resolved issue or defect",
         "organize": "Organized structure",
+        "run": "Executed command or script",
+        "exec": "Executed command",
+        "execute": "Executed command",
+        "open": "Opened application or target path",
+        "launch": "Launched application",
+        "extract": "Extracted target content or text",
     }
 
     def parse_intent(self, text: str) -> IntentCategory:
@@ -59,12 +65,17 @@ class GoalParser:
                 "remove",
                 "fix",
                 "install",
+                "run",
+                "exec",
+                "execute",
+                "open",
+                "launch",
             ]
         ):
             return IntentCategory.SYSTEM_MODIFICATION
         elif any(
             word in lower_text
-            for word in ["get", "find", "search", "read", "show", "fetch", "check"]
+            for word in ["get", "find", "search", "read", "show", "fetch", "check", "extract"]
         ):
             return IntentCategory.DATA_RETRIEVAL
         elif any(

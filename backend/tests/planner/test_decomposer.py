@@ -30,7 +30,6 @@ def test_decompose_presentation_goal(decomposer):
 
     for t in plan.tasks:
         assert t.status == TaskStatus.CREATED
-        assert t.required_tool == ""
 
 
 def test_decompose_research_goal(decomposer):

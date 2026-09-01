@@ -53,10 +53,20 @@ class TerminalToolAdapter(BaseToolAdapter):
         Executes a terminal command based on the task parameters.
         """
         try:
-            # Parse inputs
-            input_data = TerminalToolInput(**task.inputs)
-            command = input_data.command
-            working_directory = input_data.working_directory
+            command = None
+            working_directory = None
+            if task.inputs and isinstance(task.inputs, dict):
+                command = task.inputs.get("command")
+                working_directory = task.inputs.get("working_directory")
+
+            if not command:
+                command = task.description or task.task_name
+                for prefix in ["Execute Command:", "Run command:", "Run ", "Execute "]:
+                    if command.lower().startswith(prefix.lower()):
+                        command = command[len(prefix):].strip()
+                        break
+                if " on my laptop" in command.lower():
+                    command = command.lower().replace(" on my laptop", "").strip()
 
             risk_level = self._assess_risk(command)
             logger.info(f"Assessed risk level {risk_level} for command: {command}")

@@ -96,8 +96,9 @@ class BrowserController:
         self,
         workflow_id: Optional[UUID | str] = None,
         task_id: Optional[UUID | str] = None,
+        headless: bool = True,
     ) -> BrowserResult:
-        """Starts a headless Playwright Chromium instance."""
+        """Starts a Playwright Chromium instance with configurable headless mode."""
         await self._check_permission(
             action="start_session",
             workflow_id=workflow_id,
@@ -108,10 +109,10 @@ class BrowserController:
             logger.warning("Browser session already running.")
             return BrowserResult(success=False, error="Session already running")
 
-        logger.info("Starting browser session...")
+        logger.info(f"Starting browser session (headless={headless})...")
         try:
             self._playwright = await async_playwright().start()
-            self._browser = await self._playwright.chromium.launch(headless=True)
+            self._browser = await self._playwright.chromium.launch(headless=headless)
             self._page = await self._browser.new_page()
 
             self._session = BrowserSession(

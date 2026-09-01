@@ -85,7 +85,26 @@ class TaskDecompositionEngine:
         lower_goal = goal.lower()
 
         # Categorize goal to apply tailored decomposition template
-        if any(w in lower_goal for w in ["ppt", "presentation", "slides"]):
+        if any(
+            w in lower_goal
+            for w in [
+                "ipconfig",
+                "powershell",
+                "terminal",
+                "cmd",
+                "command",
+                "ping",
+                "netstat",
+                "whoami",
+                "hostname",
+                "systeminfo",
+                "run command",
+                "exec",
+                "shell",
+            ]
+        ):
+            return self._decompose_system_goal(goal, workflow_id)
+        elif any(w in lower_goal for w in ["ppt", "presentation", "powerpoint", "slides", "deck"]):
             return self._decompose_presentation_goal(goal, workflow_id)
         elif any(
             w in lower_goal
@@ -110,6 +129,13 @@ class TaskDecompositionEngine:
                 "keyboard type",
                 "type text",
                 "launch app",
+                "open notepad",
+                "open vs code",
+                "open code",
+                "vscode",
+                "vs code",
+                "calculator",
+                "calc",
             ]
         ):
             return self._decompose_desktop_goal(goal, workflow_id)
@@ -134,6 +160,8 @@ class TaskDecompositionEngine:
                 "picture",
                 "read image",
                 "extract text",
+                "extract the text",
+                "uploaded image",
                 "image text",
                 "visual text",
             ]
@@ -150,6 +178,8 @@ class TaskDecompositionEngine:
                 "folder",
                 "directory",
                 "downloads",
+                "open folder",
+                "file explorer",
             ]
         ):
             return self._decompose_filesystem_goal(goal, workflow_id)
@@ -238,7 +268,7 @@ class TaskDecompositionEngine:
             task_name="Build PPTX Deck",
             description="Create presentation slides with formatting and visuals",
             assigned_agent="WorkerAgent",
-            required_tool="",
+            required_tool="ppt_tool",
             category=TaskCategory.PPT_GENERATION,
             priority=TaskPriority.HIGH,
             dependencies=[subtask_outline.task_id],
@@ -430,7 +460,7 @@ class TaskDecompositionEngine:
         return [phase_root, task_design, task_code, task_verify]
 
     def _decompose_system_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
-        """Decomposes a system modification/repair goal."""
+        """Decomposes a system command / repair goal into terminal tasks."""
         phase_root = Task(
             workflow_id=workflow_id,
             task_name="Phase 1: System Operation",
@@ -444,43 +474,45 @@ class TaskDecompositionEngine:
             priority=TaskPriority.HIGH,
             risk_level="MEDIUM",
             dependencies=[],
-            expected_output="Completed system modification",
-            estimated_duration_seconds=180,
+            expected_output="Completed system command execution",
+            estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
         )
 
         task_inspect = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
-            task_name="Inspect System Status",
-            description="Gather environment details and system status",
+            task_name="Inspect Environment Details",
+            description=f"Gather system environment details for: {goal}",
             assigned_agent="WorkerAgent",
-            required_tool="",
+            required_tool="terminal_tool",
             category=TaskCategory.POWERSHELL,
             priority=TaskPriority.HIGH,
             dependencies=[],
-            expected_output="System status logs",
-            success_criteria=["Status logs generated"],
-            failure_criteria=["Command execution failed"],
-            estimated_duration_seconds=60,
+            expected_output="Environment details log",
+            success_criteria=["Environment details inspected"],
+            failure_criteria=["Inspection failed"],
+            inputs={"command": goal},
+            estimated_duration_seconds=15,
             status=TaskStatus.CREATED,
         )
 
         task_execute = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
-            task_name="Execute System Modification",
-            description="Apply necessary system or configuration updates",
+            task_name=f"Execute Command: {goal}",
+            description=f"Run command in local environment shell: {goal}",
             assigned_agent="WorkerAgent",
-            required_tool="",
+            required_tool="terminal_tool",
             category=TaskCategory.POWERSHELL,
             priority=TaskPriority.HIGH,
-            risk_level="MEDIUM",
+            risk_level="LOW",
             dependencies=[task_inspect.task_id],
-            expected_output="Modification execution output",
-            success_criteria=["System modification applied without errors"],
-            failure_criteria=["Modification script returned error code"],
-            estimated_duration_seconds=120,
+            expected_output="Command execution output log",
+            success_criteria=["Terminal command executed successfully"],
+            failure_criteria=["Command execution returned non-zero exit code"],
+            inputs={"command": goal},
+            estimated_duration_seconds=30,
             status=TaskStatus.CREATED,
         )
 
@@ -511,7 +543,7 @@ class TaskDecompositionEngine:
             task_name="Inspect Target Directory",
             description="List and categorize existing files",
             assigned_agent="WorkerAgent",
-            required_tool="",
+            required_tool="file_explorer",
             category=TaskCategory.FILE_SYSTEM,
             priority=TaskPriority.MEDIUM,
             dependencies=[],
@@ -528,7 +560,7 @@ class TaskDecompositionEngine:
             task_name="Determine Organization Strategy",
             description="Define how files should be categorized or moved",
             assigned_agent="WorkerAgent",
-            required_tool="",
+            required_tool="file_explorer",
             category=TaskCategory.OTHER,
             priority=TaskPriority.MEDIUM,
             dependencies=[task_inspect.task_id],
@@ -545,7 +577,7 @@ class TaskDecompositionEngine:
             task_name="Execute File Operations",
             description="Move or copy files based on the strategy",
             assigned_agent="WorkerAgent",
-            required_tool="",
+            required_tool="file_explorer",
             category=TaskCategory.FILE_SYSTEM,
             priority=TaskPriority.MEDIUM,
             dependencies=[task_determine.task_id],
@@ -764,6 +796,17 @@ class TaskDecompositionEngine:
 
     def _decompose_desktop_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
         """Decomposes a desktop automation goal into structured tasks."""
+        lower_goal = goal.lower()
+        app_name = "notepad"
+        if "vs code" in lower_goal or "vscode" in lower_goal or "open code" in lower_goal:
+            app_name = "code"
+        elif "calc" in lower_goal or "calculator" in lower_goal:
+            app_name = "calc"
+        elif "explorer" in lower_goal or "folder" in lower_goal:
+            app_name = "explorer"
+        elif "paint" in lower_goal:
+            app_name = "mspaint"
+
         phase = Task(
             workflow_id=workflow_id,
             task_name="Phase 1: Desktop Application Control",
@@ -776,25 +819,25 @@ class TaskDecompositionEngine:
             category=TaskCategory.DESKTOP,
             priority=TaskPriority.HIGH,
             dependencies=[],
-            expected_output="Desktop application state or text typed",
+            expected_output="Desktop application launched and active",
             status=TaskStatus.CREATED,
         )
 
         app_task = Task(
             workflow_id=workflow_id,
-            task_name="Launch and Type in Application",
-            description=f"Interact with desktop application for: {goal}",
+            task_name=f"Launch Application ({app_name})",
+            description=f"Launch desktop application '{app_name}' for goal: {goal}",
             task_type=TaskType.LEAF,
             assigned_agent="WorkerAgent",
             parent_task_id=phase.task_id,
-            success_criteria=["Application launched and input dispatched"],
-            failure_criteria=["Application or input failure"],
+            success_criteria=["Application launched successfully"],
+            failure_criteria=["Application launch failed"],
             required_tool="desktop_automation",
             category=TaskCategory.DESKTOP,
             priority=TaskPriority.HIGH,
             dependencies=[],
-            expected_output="Application typed text",
-            inputs={"action": "keyboard_type", "text": "Hello"},
+            expected_output=f"Active process info for '{app_name}'",
+            inputs={"action": "launch_app", "app_name": app_name},
             status=TaskStatus.CREATED,
         )
 
@@ -827,7 +870,7 @@ class TaskDecompositionEngine:
             parent_task_id=phase.task_id,
             success_criteria=["Readable text extracted successfully from input"],
             failure_criteria=["Failed to extract readable text"],
-            required_tool="",
+            required_tool="ocr",
             category=TaskCategory.OCR,
             priority=TaskPriority.HIGH,
             dependencies=[],
