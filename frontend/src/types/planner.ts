@@ -16,6 +16,13 @@ export type PlannerStatus =
   | 'completed'
   | 'error';
 
+export interface TerminalOutputData {
+  command: string;
+  stdout: string;
+  stderr?: string;
+  status: 'COMPLETED' | 'FAILED';
+}
+
 export interface Message {
   id: string;
   role: MessageRole;
@@ -27,6 +34,7 @@ export interface Message {
   permissionData?: PermissionRequest;
   artifactData?: ArtifactItem;
   workflowData?: Partial<WorkflowState>;
+  terminalOutputData?: TerminalOutputData;
 }
 
 export interface PlannerTask {
