@@ -23,6 +23,34 @@ export interface TerminalOutputData {
   status: 'COMPLETED' | 'FAILED';
 }
 
+export interface FileExplorerItem {
+  name: string;
+  size: string;
+  type: 'folder' | 'file';
+  dateModified: string;
+}
+
+export interface FileExplorerData {
+  path: string;
+  action: 'opened_folder' | 'opened_file' | 'created_folder' | 'revealed_artifact';
+  status: 'COMPLETED' | 'FAILED';
+  items?: FileExplorerItem[];
+}
+
+export interface DesktopAppData {
+  appName: string;
+  executablePath?: string;
+  pid?: number;
+  status: 'LAUNCHED' | 'ACTIVE' | 'CLOSED';
+}
+
+export interface WebResearchData {
+  query: string;
+  sourcesCount: number;
+  summary: string;
+  topResults: { title: string; url: string; snippet: string }[];
+}
+
 export interface Message {
   id: string;
   role: MessageRole;
@@ -35,6 +63,9 @@ export interface Message {
   artifactData?: ArtifactItem;
   workflowData?: Partial<WorkflowState>;
   terminalOutputData?: TerminalOutputData;
+  fileExplorerData?: FileExplorerData;
+  desktopAppData?: DesktopAppData;
+  webResearchData?: WebResearchData;
 }
 
 export interface PlannerTask {

@@ -7,6 +7,8 @@ import { ArtifactPopcard } from '../components/chat/ArtifactPopcard';
 import { WorkflowStatusPopcard } from '../components/chat/WorkflowStatusPopcard';
 
 import { TerminalPopcard } from '../components/chat/TerminalPopcard';
+import { FileExplorerPopcard } from '../components/chat/FileExplorerPopcard';
+import { DesktopAppPopcard } from '../components/chat/DesktopAppPopcard';
 
 export const ChatPage: React.FC = () => {
   const messages = useChatStore((state) => state.messages);
@@ -164,6 +166,16 @@ export const ChatPage: React.FC = () => {
                       <TerminalPopcard terminalData={msg.terminalOutputData} />
                     )}
 
+                    {/* File Explorer Popcard */}
+                    {msg.role !== 'user' && msg.fileExplorerData && (
+                      <FileExplorerPopcard data={msg.fileExplorerData} />
+                    )}
+
+                    {/* Desktop App Popcard */}
+                    {msg.role !== 'user' && msg.desktopAppData && (
+                      <DesktopAppPopcard data={msg.desktopAppData} />
+                    )}
+
                     {/* Artifact Popcard */}
                     {msg.role !== 'user' && msg.artifactData && (
                       <ArtifactPopcard artifact={msg.artifactData} />
@@ -176,6 +188,8 @@ export const ChatPage: React.FC = () => {
                       !msg.workflowData &&
                       !msg.artifactData &&
                       !msg.terminalOutputData &&
+                      !msg.fileExplorerData &&
+                      !msg.desktopAppData &&
                       msg.status !== 'clarifying' && (
                         <div className="bg-slate-900/90 backdrop-blur-md border border-slate-800 text-slate-200 px-5 py-3.5 rounded-2xl rounded-tl-sm text-sm leading-relaxed whitespace-pre-wrap shadow-md">
                           {msg.content}

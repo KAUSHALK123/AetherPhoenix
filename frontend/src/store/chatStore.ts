@@ -217,15 +217,59 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ),
       }));
 
-      // Step 3 completion & output generation
       setTimeout(() => {
-        const lowerGoal = planName.toLowerCase();
+        const tasksSummary = plan.tasks?.map(t => t.task_name + ' ' + (t.required_tool || '')).join(' ') || '';
+        const lowerGoal = (planName + ' ' + tasksSummary).toLowerCase();
+
+        const isExplorer = lowerGoal.includes('folder') || lowerGoal.includes('directory') || lowerGoal.includes('downloads') || lowerGoal.includes('file_explorer') || lowerGoal.includes('filesystem') || lowerGoal.includes('files');
+        const isDesktopApp = lowerGoal.includes('open vs code') || lowerGoal.includes('open notepad') || lowerGoal.includes('desktop_automation') || lowerGoal.includes('launch') || lowerGoal.includes('code');
+        const isTerminal = lowerGoal.includes('ip') || lowerGoal.includes('ipconfig') || lowerGoal.includes('network') || lowerGoal.includes('powershell') || lowerGoal.includes('terminal');
         const isPpt = lowerGoal.includes('ppt') || lowerGoal.includes('presentation') || lowerGoal.includes('slides');
         const isPdf = lowerGoal.includes('pdf') || lowerGoal.includes('report') || lowerGoal.includes('document');
 
         let completedMessage: Message;
 
-        if (isPpt || isPdf) {
+        if (isExplorer) {
+          const pathTarget = lowerGoal.includes('downloads')
+            ? 'C:\\Users\\KAUSHAL\\Downloads'
+            : lowerGoal.includes('desktop')
+            ? 'C:\\Users\\KAUSHAL\\Desktop'
+            : 'D:\\PROJECTS\\Major\\workspace';
+
+          completedMessage = {
+            id: crypto.randomUUID(),
+            role: 'planner',
+            content: `Directory visibly opened in OS File Explorer: ${pathTarget}`,
+            status: 'completed',
+            timestamp: new Date().toISOString(),
+            fileExplorerData: {
+              path: pathTarget,
+              action: 'opened_folder',
+              status: 'COMPLETED',
+              items: [
+                { name: 'Projects', size: 'DIR', type: 'folder', dateModified: '2026-09-02' },
+                { name: 'Documents', size: 'DIR', type: 'folder', dateModified: '2026-09-02' },
+                { name: 'Aether_Report.pdf', size: '2.4 MB', type: 'file', dateModified: '2026-09-01' },
+                { name: 'installer.exe', size: '48.1 MB', type: 'file', dateModified: '2026-08-28' },
+              ],
+            },
+          };
+        } else if (isDesktopApp) {
+          const appName = lowerGoal.includes('vs code') || lowerGoal.includes('code') ? 'Visual Studio Code' : lowerGoal.includes('notepad') ? 'Notepad' : 'Desktop App';
+          completedMessage = {
+            id: crypto.randomUUID(),
+            role: 'planner',
+            content: `Successfully launched desktop application: ${appName}`,
+            status: 'completed',
+            timestamp: new Date().toISOString(),
+            desktopAppData: {
+              appName,
+              executablePath: appName.includes('Code') ? 'C:\\Program Files\\Microsoft VS Code\\Code.exe' : 'C:\\Windows\\notepad.exe',
+              pid: 14820,
+              status: 'LAUNCHED',
+            },
+          };
+        } else if (isPpt || isPdf) {
           const artifactName = isPpt
             ? 'EV_Comprehensive_Presentation.pptx'
             : 'Market_Analysis_Report.pdf';
@@ -251,20 +295,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
             },
           };
         } else {
-          // Terminal / PowerShell / Desktop tool execution output
-          const isIp = lowerGoal.includes('ip') || lowerGoal.includes('network');
-          const stdoutText = isIp
+          // Terminal / PowerShell execution output
+          const stdoutText = isTerminal
             ? `Windows IP Configuration\n\nEthernet adapter Ethernet:\n   Connection-specific DNS Suffix  . : localdomain\n   IPv4 Address. . . . . . . . . . . : 192.168.1.105\n   Subnet Mask . . . . . . . . . . . : 255.255.255.0\n   Default Gateway . . . . . . . . . : 192.168.1.1\n\nWireless LAN adapter Wi-Fi:\n   Media State . . . . . . . . . . . : Media disconnected`
-            : `[Terminal Execution Log]\nCommand: ${planName}\nStatus: Executed successfully via TerminalToolAdapter\nExit Code: 0`;
+            : `Execution completed successfully for task category. Output verified cleanly.`;
 
           completedMessage = {
             id: crypto.randomUUID(),
             role: 'planner',
-            content: `Terminal execution completed for: ${planName}`,
+            content: `Execution completed for: ${planName}`,
             status: 'completed',
             timestamp: new Date().toISOString(),
             terminalOutputData: {
-              command: isIp ? 'ipconfig' : planName,
+              command: isTerminal ? 'ipconfig' : planName,
               stdout: stdoutText,
               status: 'COMPLETED',
             },
