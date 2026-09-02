@@ -1,0 +1,13 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.pytest_temp
+.ruff_cache
+aether_phoenix.db
+artifacts/
+logs/
+.git
+.env

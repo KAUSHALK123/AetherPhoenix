@@ -10,6 +10,7 @@ export const ArtifactPopcard: React.FC<ArtifactPopcardProps> = ({ artifact }) =>
     switch (type.toUpperCase()) {
       case 'PPTX':
       case 'PRESENTATION':
+      case 'PPT':
         return { icon: 'co_present', bg: 'bg-indigo-500/20', text: 'text-indigo-400', border: 'border-indigo-500/30' };
       case 'PDF':
         return { icon: 'picture_as_pdf', bg: 'bg-emerald-500/20', text: 'text-emerald-400', border: 'border-emerald-500/30' };
@@ -26,6 +27,23 @@ export const ArtifactPopcard: React.FC<ArtifactPopcardProps> = ({ artifact }) =>
     : '41 KB';
 
   const handleDownload = () => {
+    const targetUrl =
+      artifact.download_url && artifact.download_url !== '#'
+        ? artifact.download_url
+        : artifact.id
+        ? `/api/v1/artifacts/${artifact.id}/download`
+        : null;
+
+    if (targetUrl) {
+      const link = document.createElement('a');
+      link.href = targetUrl;
+      link.download = artifact.filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
     const content = artifact.preview_content || `Generated artifact content for ${artifact.filename}`;
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
