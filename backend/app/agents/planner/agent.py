@@ -71,7 +71,7 @@ class PlannerAgent:
                 name="web_searcher",
                 description="Searches the web for information",
                 category=TaskCategory.WEB_RESEARCH,
-                required_tools=["web_search_tool"],
+                required_tools=["web_research_tool"],
             )
         )
         cap_reg.register(
@@ -95,7 +95,7 @@ class PlannerAgent:
                 name="pdf_generator",
                 description="Generates PDF presentations",
                 category=TaskCategory.PDF_GENERATION,
-                required_tools=["pdf_tool"],
+                required_tools=["pdf_generator"],
             )
         )
         cap_reg.register(
@@ -103,7 +103,7 @@ class PlannerAgent:
                 name="powershell_executor",
                 description="Executes powershell commands",
                 category=TaskCategory.POWERSHELL,
-                required_tools=["powershell"],
+                required_tools=["terminal_tool"],
             )
         )
         cap_reg.register(

@@ -50,7 +50,41 @@ class DesktopToolAdapter(BaseToolAdapter):
         # Infer action if not explicitly specified
         if not action:
             task_name_lower = task.task_name.lower()
-            if "move" in task_name_lower:
+            desc_lower = (task.description or "").lower()
+            combined = f"{task_name_lower} {desc_lower}"
+            if any(
+                w in combined
+                for w in [
+                    "open notepad",
+                    "notepad",
+                    "vs code",
+                    "vscode",
+                    "open code",
+                    "launch app",
+                    "open app",
+                    "calculator",
+                    "calc",
+                    "explorer",
+                ]
+            ):
+                action = "launch_app"
+                if "notepad" in combined and "app_name" not in inputs:
+                    inputs["app_name"] = "notepad"
+                elif (
+                    "vs code" in combined
+                    or "vscode" in combined
+                    or "open code" in combined
+                ) and "app_name" not in inputs:
+                    inputs["app_name"] = "code"
+                elif (
+                    "calc" in combined or "calculator" in combined
+                ) and "app_name" not in inputs:
+                    inputs["app_name"] = "calc"
+                elif (
+                    "explorer" in combined or "folder" in combined
+                ) and "app_name" not in inputs:
+                    inputs["app_name"] = "explorer"
+            elif "move" in task_name_lower:
                 action = "mouse_move"
             elif "right click" in task_name_lower or "right_click" in task_name_lower:
                 action = "mouse_right_click"

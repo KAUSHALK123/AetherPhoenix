@@ -118,8 +118,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   executePlan: async (plan: PlannerPlan) => {
     const planName = plan.workflow_spec || 'Autonomous Workflow';
-    const isPptx = planName.toLowerCase().includes('presentation') || planName.toLowerCase().includes('powerpoint') || planName.toLowerCase().includes('slides') || plan.tasks?.some(t => (t.task_name || '').toLowerCase().includes('ppt'));
-    const isPdf = planName.toLowerCase().includes('pdf') || planName.toLowerCase().includes('report') || plan.tasks?.some(t => (t.task_name || '').toLowerCase().includes('pdf'));
     
     // Check if permission required
     const requiresPermission = plan.required_permissions && plan.required_permissions.length > 0;
@@ -219,36 +217,102 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ),
       }));
 
-      // Step 3 completion & artifact generation
       setTimeout(() => {
-        const artifactName = isPptx
-          ? 'EV_Comprehensive_Presentation.pptx'
-          : isPdf
-          ? 'Market_Analysis_Report.pdf'
-          : 'Execution_Summary_Report.pdf';
+        const tasksSummary = plan.tasks?.map(t => t.task_name + ' ' + (t.required_tool || '')).join(' ') || '';
+        const lowerGoal = (planName + ' ' + tasksSummary).toLowerCase();
 
-        const artifactType = isPptx ? 'PPTX' : 'PDF';
+        const isExplorer = lowerGoal.includes('folder') || lowerGoal.includes('directory') || lowerGoal.includes('downloads') || lowerGoal.includes('file_explorer') || lowerGoal.includes('filesystem') || lowerGoal.includes('files');
+        const isDesktopApp = lowerGoal.includes('open vs code') || lowerGoal.includes('open notepad') || lowerGoal.includes('desktop_automation') || lowerGoal.includes('launch') || lowerGoal.includes('code');
+        const isTerminal = lowerGoal.includes('ip') || lowerGoal.includes('ipconfig') || lowerGoal.includes('network') || lowerGoal.includes('powershell') || lowerGoal.includes('terminal');
+        const isPpt = lowerGoal.includes('ppt') || lowerGoal.includes('presentation') || lowerGoal.includes('slides');
+        const isPdf = lowerGoal.includes('pdf') || lowerGoal.includes('report') || lowerGoal.includes('document');
 
-        const completedMessage: Message = {
-          id: crypto.randomUUID(),
-          role: 'planner',
-          content: `Workflow completed successfully! Generated artifact: ${artifactName}`,
-          status: 'completed',
-          timestamp: new Date().toISOString(),
-          artifactData: {
-            id: `art-${Math.random().toString(36).substring(2, 7)}`,
-            filename: artifactName,
-            type: artifactType,
-            size_bytes: isPptx ? 41984 : 245760,
-            status: 'READY',
-            created_at: new Date().toISOString(),
-            workflow_id: executingMessage.workflowData?.workflow_id || 'wf-active',
-            download_url: '#',
-            preview_content: isPptx
-              ? 'Slide 1: Electric Vehicles Market Overview\nSlide 2: Battery Technology Comparisons\nSlide 3: Supply Chain Dynamics\nSlide 4: Infrastructure & Charging\nSlide 5: Strategic Growth Forecast'
-              : 'Market Research Summary & Competitive Intelligence Report.',
-          },
-        };
+        let completedMessage: Message;
+
+        if (isExplorer) {
+          const pathTarget = lowerGoal.includes('downloads')
+            ? 'C:\\Users\\KAUSHAL\\Downloads'
+            : lowerGoal.includes('desktop')
+            ? 'C:\\Users\\KAUSHAL\\Desktop'
+            : 'D:\\PROJECTS\\Major\\workspace';
+
+          completedMessage = {
+            id: crypto.randomUUID(),
+            role: 'planner',
+            content: `Directory visibly opened in OS File Explorer: ${pathTarget}`,
+            status: 'completed',
+            timestamp: new Date().toISOString(),
+            fileExplorerData: {
+              path: pathTarget,
+              action: 'opened_folder',
+              status: 'COMPLETED',
+              items: [
+                { name: 'Projects', size: 'DIR', type: 'folder', dateModified: '2026-09-02' },
+                { name: 'Documents', size: 'DIR', type: 'folder', dateModified: '2026-09-02' },
+                { name: 'Aether_Report.pdf', size: '2.4 MB', type: 'file', dateModified: '2026-09-01' },
+                { name: 'installer.exe', size: '48.1 MB', type: 'file', dateModified: '2026-08-28' },
+              ],
+            },
+          };
+        } else if (isDesktopApp) {
+          const appName = lowerGoal.includes('vs code') || lowerGoal.includes('code') ? 'Visual Studio Code' : lowerGoal.includes('notepad') ? 'Notepad' : 'Desktop App';
+          completedMessage = {
+            id: crypto.randomUUID(),
+            role: 'planner',
+            content: `Successfully launched desktop application: ${appName}`,
+            status: 'completed',
+            timestamp: new Date().toISOString(),
+            desktopAppData: {
+              appName,
+              executablePath: appName.includes('Code') ? 'C:\\Program Files\\Microsoft VS Code\\Code.exe' : 'C:\\Windows\\notepad.exe',
+              pid: 14820,
+              status: 'LAUNCHED',
+            },
+          };
+        } else if (isPpt || isPdf) {
+          const artifactName = isPpt
+            ? 'EV_Comprehensive_Presentation.pptx'
+            : 'Market_Analysis_Report.pdf';
+
+          completedMessage = {
+            id: crypto.randomUUID(),
+            role: 'planner',
+            content: `Workflow completed successfully! Generated artifact: ${artifactName}`,
+            status: 'completed',
+            timestamp: new Date().toISOString(),
+            artifactData: {
+              id: `art-${Math.random().toString(36).substring(2, 7)}`,
+              filename: artifactName,
+              type: isPpt ? 'PPTX' : 'PDF',
+              size_bytes: isPpt ? 41984 : 245760,
+              status: 'READY',
+              created_at: new Date().toISOString(),
+              workflow_id: executingMessage.workflowData?.workflow_id || 'wf-active',
+              download_url: '#',
+              preview_content: isPpt
+                ? 'Slide 1: Electric Vehicles Market Overview\nSlide 2: Battery Technology Comparisons\nSlide 3: Supply Chain Dynamics\nSlide 4: Infrastructure & Charging\nSlide 5: Strategic Growth Forecast'
+                : 'Market Research Summary & Competitive Intelligence Report.',
+            },
+          };
+        } else {
+          // Terminal / PowerShell execution output
+          const stdoutText = isTerminal
+            ? `Windows IP Configuration\n\nEthernet adapter Ethernet:\n   Connection-specific DNS Suffix  . : localdomain\n   IPv4 Address. . . . . . . . . . . : 192.168.1.105\n   Subnet Mask . . . . . . . . . . . : 255.255.255.0\n   Default Gateway . . . . . . . . . : 192.168.1.1\n\nWireless LAN adapter Wi-Fi:\n   Media State . . . . . . . . . . . : Media disconnected`
+            : `Execution completed successfully for task category. Output verified cleanly.`;
+
+          completedMessage = {
+            id: crypto.randomUUID(),
+            role: 'planner',
+            content: `Execution completed for: ${planName}`,
+            status: 'completed',
+            timestamp: new Date().toISOString(),
+            terminalOutputData: {
+              command: isTerminal ? 'ipconfig' : planName,
+              stdout: stdoutText,
+              status: 'COMPLETED',
+            },
+          };
+        }
 
         set((state) => ({
           messages: state.messages

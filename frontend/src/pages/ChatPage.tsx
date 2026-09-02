@@ -6,6 +6,10 @@ import { PermissionPopcard } from '../components/chat/PermissionPopcard';
 import { ArtifactPopcard } from '../components/chat/ArtifactPopcard';
 import { WorkflowStatusPopcard } from '../components/chat/WorkflowStatusPopcard';
 
+import { TerminalPopcard } from '../components/chat/TerminalPopcard';
+import { FileExplorerPopcard } from '../components/chat/FileExplorerPopcard';
+import { DesktopAppPopcard } from '../components/chat/DesktopAppPopcard';
+
 export const ChatPage: React.FC = () => {
   const messages = useChatStore((state) => state.messages);
   const loading = useChatStore((state) => state.loading);
@@ -20,6 +24,9 @@ export const ChatPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Active terminal or tool output payload for right side inspector panel
+  const latestTerminalData = [...messages].reverse().find((m) => m.terminalOutputData)?.terminalOutputData;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -59,140 +66,197 @@ export const ChatPage: React.FC = () => {
         backgroundPosition: 'center',
       }}
     >
-      {/* Scrollable Conversation Area without ugly scrollbar */}
-      <div
-        ref={chatContainerRef}
-        className="flex-1 overflow-y-auto w-full px-4 sm:px-6 md:px-8 pt-16 pb-6 z-10 space-y-6 max-w-4xl mx-auto no-scrollbar"
-      >
-        {messages.length === 0 ? (
-          /* Empty State / Copilot Stitch View */
-          <div className="min-h-[calc(100vh-14rem)] flex flex-col items-center justify-center space-y-8 my-auto py-8">
-            {/* Greeting */}
-            <div className="text-center space-y-3">
-              <div className="w-20 h-20 rounded-3xl bg-white border border-slate-200 p-2 mx-auto mb-4 shadow-2xl shadow-black/30 flex items-center justify-center hover:scale-105 transition-transform">
-                <img src="/logo.png" alt="AetherPhoenix" className="w-16 h-16 object-contain drop-shadow" />
+      {/* Split View Container: Left Chat + Right Live Tool Output Inspector Panel */}
+      <div className="flex-1 flex w-full overflow-hidden z-10 pt-16">
+        {/* Left Column: Chat Conversation Stream */}
+        <div
+          ref={chatContainerRef}
+          className="flex-1 overflow-y-auto w-full px-4 sm:px-6 md:px-8 pb-6 space-y-6 max-w-4xl mx-auto no-scrollbar"
+        >
+          {messages.length === 0 ? (
+            /* Empty State / Copilot Stitch View */
+            <div className="min-h-[calc(100vh-14rem)] flex flex-col items-center justify-center space-y-8 my-auto py-8">
+              {/* Greeting */}
+              <div className="text-center space-y-3">
+                <div className="w-20 h-20 rounded-3xl bg-white border border-slate-200 p-2 mx-auto mb-4 shadow-2xl shadow-black/30 flex items-center justify-center hover:scale-105 transition-transform">
+                  <img src="/logo.png" alt="AetherPhoenix" className="w-16 h-16 object-contain drop-shadow" />
+                </div>
+                <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+                  How can AetherPhoenix help today?
+                </h2>
+                <p className="text-sm text-slate-300 max-w-md mx-auto drop-shadow">
+                  Decomposes complex requests into real executable tasks with permissions, telemetry, and artifacts.
+                </p>
               </div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-                How can AetherPhoenix help today?
-              </h2>
-              <p className="text-sm text-slate-300 max-w-md mx-auto drop-shadow">
-                Decomposes complex requests into real executable tasks with permissions, telemetry, and artifacts.
-              </p>
-            </div>
 
-            {/* Quick Action Pills - Glassmorphism style with see-through transparency */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 w-full max-w-2xl pt-2">
-              {realCapabilities.map((cap, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => handleSend(cap.query)}
-                  className="flex flex-col items-start p-4 rounded-2xl glass-card-hover text-left cursor-pointer active:scale-98"
+              {/* Quick Action Pills - Glassmorphism style with see-through transparency */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 w-full max-w-2xl pt-2">
+                {realCapabilities.map((cap, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSend(cap.query)}
+                    className="flex flex-col items-start p-4 rounded-2xl glass-card-hover text-left cursor-pointer active:scale-98"
+                  >
+                    <span className="text-xs font-bold text-white group-hover:text-cyan-200 transition-colors drop-shadow">
+                      {cap.label}
+                    </span>
+                    <span className="text-[11px] text-slate-200/80 truncate w-full mt-1.5 font-normal">
+                      {cap.query}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            /* Live Messages Stream */
+            <div className="space-y-6 pt-2 pb-6">
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`flex gap-3.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'} w-full`}
                 >
-                  <span className="text-xs font-bold text-white group-hover:text-cyan-200 transition-colors drop-shadow">
-                    {cap.label}
-                  </span>
-                  <span className="text-[11px] text-slate-200/80 truncate w-full mt-1.5 font-normal">
-                    {cap.query}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          /* Live Messages Stream */
-          <div className="space-y-6 pt-2 pb-6">
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex gap-3.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'} w-full`}
-              >
-                {msg.role !== 'user' && (
-                  <div className="w-8 h-8 rounded-xl bg-slate-900 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow mt-1">
-                    <img src="/logo.png" alt="Agent" className="w-5 h-5 object-contain" />
-                  </div>
-                )}
-
-                <div className={`space-y-3 max-w-[90%] sm:max-w-[80%]`}>
-                  {/* User Bubble */}
-                  {msg.role === 'user' && (
-                    <div className="bg-indigo-600 text-white px-5 py-3 rounded-2xl rounded-tr-sm shadow-md text-sm leading-relaxed whitespace-pre-wrap">
-                      {msg.content}
+                  {msg.role !== 'user' && (
+                    <div className="w-8 h-8 rounded-xl bg-slate-900 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow mt-1">
+                      <img src="/logo.png" alt="Agent" className="w-5 h-5 object-contain" />
                     </div>
                   )}
 
-                  {/* Clarification Popcard */}
-                  {msg.role !== 'user' && msg.status === 'clarifying' && (
-                    <ClarificationPopcard
-                      question={msg.content}
-                      options={msg.options}
-                      onSubmit={(ans) => submitClarification(ans)}
-                    />
-                  )}
-
-                  {/* Plan Popcard */}
-                  {msg.role !== 'user' && msg.planData && msg.status === 'ready' && (
-                    <PlanPopcard
-                      plan={msg.planData}
-                      onApprove={(plan) => executePlan(plan)}
-                      onEdit={(instruction) => handleSend(`Modify the plan: ${instruction}`)}
-                    />
-                  )}
-
-                  {/* Permission Popcard */}
-                  {msg.role !== 'user' && msg.permissionData && (
-                    <PermissionPopcard
-                      permission={msg.permissionData}
-                      onApprove={(reqId) => approvePermission(reqId)}
-                      onReject={(reqId) => rejectPermission(reqId)}
-                    />
-                  )}
-
-                  {/* Workflow Live Progress Popcard */}
-                  {msg.role !== 'user' && msg.workflowData && (
-                    <WorkflowStatusPopcard workflow={msg.workflowData} />
-                  )}
-
-                  {/* Artifact Popcard */}
-                  {msg.role !== 'user' && msg.artifactData && (
-                    <ArtifactPopcard artifact={msg.artifactData} />
-                  )}
-
-                  {/* Standard Agent Text Message (if not a popcard or in addition) */}
-                  {msg.role !== 'user' &&
-                    !msg.planData &&
-                    !msg.permissionData &&
-                    !msg.workflowData &&
-                    !msg.artifactData &&
-                    msg.status !== 'clarifying' && (
-                      <div className="bg-slate-900/90 backdrop-blur-md border border-slate-800 text-slate-200 px-5 py-3.5 rounded-2xl rounded-tl-sm text-sm leading-relaxed whitespace-pre-wrap shadow-md">
+                  <div className={`space-y-3 max-w-[90%] sm:max-w-[80%]`}>
+                    {/* User Bubble */}
+                    {msg.role === 'user' && (
+                      <div className="bg-indigo-600 text-white px-5 py-3 rounded-2xl rounded-tr-sm shadow-md text-sm leading-relaxed whitespace-pre-wrap">
                         {msg.content}
                       </div>
                     )}
-                </div>
 
-                {msg.role === 'user' && (
-                  <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0 shadow text-slate-300 mt-1">
-                    <span className="material-symbols-outlined text-sm">person</span>
+                    {/* Clarification Popcard */}
+                    {msg.role !== 'user' && msg.status === 'clarifying' && (
+                      <ClarificationPopcard
+                        question={msg.content}
+                        options={msg.options}
+                        onSubmit={(ans) => submitClarification(ans)}
+                      />
+                    )}
+
+                    {/* Plan Popcard */}
+                    {msg.role !== 'user' && msg.planData && msg.status === 'ready' && (
+                      <PlanPopcard
+                        plan={msg.planData}
+                        onApprove={(plan) => executePlan(plan)}
+                        onEdit={(instruction) => handleSend(`Modify the plan: ${instruction}`)}
+                      />
+                    )}
+
+                    {/* Permission Popcard */}
+                    {msg.role !== 'user' && msg.permissionData && (
+                      <PermissionPopcard
+                        permission={msg.permissionData}
+                        onApprove={(reqId) => approvePermission(reqId)}
+                        onReject={(reqId) => rejectPermission(reqId)}
+                      />
+                    )}
+
+                    {/* Workflow Live Progress Popcard */}
+                    {msg.role !== 'user' && msg.workflowData && (
+                      <WorkflowStatusPopcard workflow={msg.workflowData} />
+                    )}
+
+                    {/* Terminal Output Popcard */}
+                    {msg.role !== 'user' && msg.terminalOutputData && (
+                      <TerminalPopcard terminalData={msg.terminalOutputData} />
+                    )}
+
+                    {/* File Explorer Popcard */}
+                    {msg.role !== 'user' && msg.fileExplorerData && (
+                      <FileExplorerPopcard data={msg.fileExplorerData} />
+                    )}
+
+                    {/* Desktop App Popcard */}
+                    {msg.role !== 'user' && msg.desktopAppData && (
+                      <DesktopAppPopcard data={msg.desktopAppData} />
+                    )}
+
+                    {/* Artifact Popcard */}
+                    {msg.role !== 'user' && msg.artifactData && (
+                      <ArtifactPopcard artifact={msg.artifactData} />
+                    )}
+
+                    {/* Standard Agent Text Message */}
+                    {msg.role !== 'user' &&
+                      !msg.planData &&
+                      !msg.permissionData &&
+                      !msg.workflowData &&
+                      !msg.artifactData &&
+                      !msg.terminalOutputData &&
+                      !msg.fileExplorerData &&
+                      !msg.desktopAppData &&
+                      msg.status !== 'clarifying' && (
+                        <div className="bg-slate-900/90 backdrop-blur-md border border-slate-800 text-slate-200 px-5 py-3.5 rounded-2xl rounded-tl-sm text-sm leading-relaxed whitespace-pre-wrap shadow-md">
+                          {msg.content}
+                        </div>
+                      )}
                   </div>
-                )}
-              </div>
-            ))}
 
-            {loading && (
-              <div className="flex gap-3.5 items-center">
-                <div className="w-8 h-8 rounded-xl bg-slate-900 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow">
-                  <img src="/logo.png" alt="Agent" className="w-5 h-5 object-contain animate-pulse" />
+                  {msg.role === 'user' && (
+                    <div className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0 shadow text-slate-300 mt-1">
+                      <span className="material-symbols-outlined text-sm">person</span>
+                    </div>
+                  )}
                 </div>
-                <div className="bg-slate-900/90 border border-slate-800 px-4 py-3 rounded-2xl flex items-center gap-2 shadow">
-                  <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" />
-                  <div className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce [animation-delay:0.2s]" />
-                  <div className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce [animation-delay:0.4s]" />
-                  <span className="text-xs text-slate-400 font-mono ml-2">Planner formulating response...</span>
-                </div>
-              </div>
-            )}
+              ))}
 
-            <div ref={messagesEndRef} />
+              {loading && (
+                <div className="flex gap-3.5 items-center">
+                  <div className="w-8 h-8 rounded-xl bg-slate-900 border border-indigo-500/30 flex items-center justify-center shrink-0 shadow">
+                    <img src="/logo.png" alt="Agent" className="w-5 h-5 object-contain animate-pulse" />
+                  </div>
+                  <div className="bg-slate-900/90 border border-slate-800 px-4 py-3 rounded-2xl flex items-center gap-2 shadow">
+                    <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" />
+                    <div className="w-2 h-2 rounded-full bg-indigo-400 animate-bounce [animation-delay:0.2s]" />
+                    <div className="w-2 h-2 rounded-full bg-indigo-300 animate-bounce [animation-delay:0.4s]" />
+                    <span className="text-xs text-slate-400 font-mono ml-2">Planner formulating response...</span>
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+
+        {/* Right Column: Live External Tool & Terminal Execution Inspector Workspace (Right Red Box) */}
+        {latestTerminalData && (
+          <div className="hidden lg:flex flex-col w-96 mr-6 mb-6 bg-slate-950/90 backdrop-blur-2xl border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4 shrink-0 h-[calc(100vh-10rem)]">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping" />
+                <h3 className="text-xs font-bold font-mono text-emerald-400 uppercase tracking-wider">
+                  Live Tool Execution Inspector
+                </h3>
+              </div>
+              <span className="text-[10px] font-mono text-slate-500 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                ACTIVE DOM / SHELL
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-300 font-mono">
+                <span>Tool Target:</span>
+                <span className="text-indigo-400 font-bold">TerminalToolAdapter</span>
+              </div>
+              <div className="flex items-center justify-between text-xs text-slate-300 font-mono">
+                <span>Executed Command:</span>
+                <span className="text-emerald-400 font-bold">{latestTerminalData.command}</span>
+              </div>
+            </div>
+
+            <div className="flex-1 bg-black/95 rounded-2xl p-4 border border-slate-900 font-mono text-xs text-emerald-300/90 overflow-y-auto leading-relaxed whitespace-pre-wrap">
+              {latestTerminalData.stdout}
+            </div>
+
+            <div className="text-[11px] font-mono text-slate-400 text-center bg-slate-900/60 p-2 rounded-xl border border-slate-800/60">
+              ✓ Direct live output capture complete
+            </div>
           </div>
         )}
       </div>

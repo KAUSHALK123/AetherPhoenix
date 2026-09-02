@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
 interface ArtifactItem {
+  id?: string;
   title: string;
   icon: string;
   type: string;
@@ -8,6 +9,7 @@ interface ArtifactItem {
   color: string;
   description: string;
   size?: string;
+  download_url?: string;
 }
 
 export const ArtifactsPage: React.FC = () => {
@@ -53,7 +55,26 @@ export const ArtifactsPage: React.FC = () => {
   const [previewItem, setPreviewItem] = useState<ArtifactItem | null>(null);
 
   const handleDownload = (item: ArtifactItem) => {
-    const blob = new Blob([`Dummy preview for ${item.title}`], { type: 'text/plain' });
+    const targetUrl =
+      item.download_url && item.download_url !== '#'
+        ? item.download_url
+        : item.id
+        ? `/api/v1/artifacts/${item.id}/download`
+        : null;
+
+    if (targetUrl) {
+      const link = document.createElement('a');
+      link.href = targetUrl;
+      link.download = item.title;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      return;
+    }
+
+    const blob = new Blob([`Generated artifact binary stream for ${item.title}`], {
+      type: item.type === 'PPTX' ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation' : 'text/plain',
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;

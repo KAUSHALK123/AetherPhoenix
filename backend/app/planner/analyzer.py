@@ -31,15 +31,36 @@ class RequirementAnalyzer:
                 "open",
                 "launch",
                 "click",
+                "run",
+                "exec",
+                "execute",
+                "ipconfig",
+                "powershell",
+                "terminal",
+                "cmd",
+                "install",
             ]
         ):
             return IntentCategory.SYSTEM_MODIFICATION
         elif any(
             word in lower_text
-            for word in ["get", "find", "search", "read", "show", "browse"]
+            for word in [
+                "get",
+                "find",
+                "search",
+                "read",
+                "show",
+                "browse",
+                "extract",
+                "fetch",
+                "check",
+            ]
         ):
             return IntentCategory.DATA_RETRIEVAL
-        elif any(word in lower_text for word in ["write", "generate", "draft"]):
+        elif any(
+            word in lower_text
+            for word in ["write", "generate", "draft", "build", "ppt", "pdf", "slides"]
+        ):
             return IntentCategory.CONTENT_GENERATION
         return IntentCategory.UNKNOWN
 
