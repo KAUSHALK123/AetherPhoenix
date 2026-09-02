@@ -30,7 +30,7 @@ class TerminalToolAdapter(BaseToolAdapter):
         cmd_lower = command.lower()
 
         # High risk keywords
-        high_risk = ["del ", "rm ", "rmdir ", "sudo ", "drop-item ", "remove-item "]
+        high_risk = ["del ", "rm ", "rmdir ", "sudo ", "drop-item ", "remove-item ", "ipconfig", "ip address"]
         if any(keyword in cmd_lower for keyword in high_risk):
             return "HIGH"
 
@@ -67,6 +67,9 @@ class TerminalToolAdapter(BaseToolAdapter):
                         break
                 if " on my laptop" in command.lower():
                     command = command.lower().replace(" on my laptop", "").strip()
+
+            if any(k in command.lower() for k in ["ip address", "my ip", "what is my ip"]):
+                command = "ipconfig"
 
             risk_level = self._assess_risk(command)
             logger.info(f"Assessed risk level {risk_level} for command: {command}")

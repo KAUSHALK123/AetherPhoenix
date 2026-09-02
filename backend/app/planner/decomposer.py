@@ -89,6 +89,9 @@ class TaskDecompositionEngine:
             w in lower_goal
             for w in [
                 "ipconfig",
+                "ip address",
+                "ip",
+                "my ip",
                 "powershell",
                 "terminal",
                 "cmd",
