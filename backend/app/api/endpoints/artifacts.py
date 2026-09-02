@@ -2,7 +2,7 @@ import mimetypes
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from shared.contracts.artifact import Artifact, ArtifactType
 
@@ -63,7 +63,10 @@ async def download_artifact(artifact_id: UUID) -> FileResponse:
     if not filepath.exists():
         raise HTTPException(
             status_code=404,
-            detail=f"File for artifact '{art.name}' does not exist on disk at '{filepath}'.",
+            detail=(
+                f"File for artifact '{art.name}' does not exist on disk at"
+                f" '{filepath}'."
+            ),
         )
 
     # Determine MIME type
@@ -71,7 +74,7 @@ async def download_artifact(artifact_id: UUID) -> FileResponse:
     if not mime_type:
         ext = filepath.suffix.lower()
         if ext == ".pptx":
-            mime_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            mime_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"  # noqa: E501
         elif ext == ".pdf":
             mime_type = "application/pdf"
         elif ext == ".csv":

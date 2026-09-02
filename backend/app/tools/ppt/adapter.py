@@ -107,51 +107,111 @@ class PPTToolAdapter(BaseToolAdapter):
                         subtitle="Executive Briefing & Strategic Overview",
                         slide_type=SlideType.TITLE,
                         bullets=[],
-                        speaker_notes="Welcome everyone. Today we will review our comprehensive analysis and strategic recommendations.",
+                        speaker_notes=(
+                            "Welcome everyone. Today we will review our comprehensive"
+                            " analysis and strategic recommendations."
+                        ),
                     ),
                     SlideContent(
                         title="1. Executive Summary & Context",
                         slide_type=SlideType.CONTENT,
                         bullets=[
-                            "Overview of core objectives and market landscape analysis.",
-                            "Key challenges identified across deployment and operational workflows.",
-                            "Strategic intent: Drive efficiency, scalability, and robust fault-tolerance.",
-                            "Quantifiable impact and success criteria established for execution.",
+                            (
+                                "Overview of core objectives and market landscape"
+                                " analysis."
+                            ),
+                            (
+                                "Key challenges identified across deployment and"
+                                " operational workflows."
+                            ),
+                            (
+                                "Strategic intent: Drive efficiency, scalability,"
+                                " and robust fault-tolerance."
+                            ),
+                            (
+                                "Quantifiable impact and success criteria"
+                                " established for execution."
+                            ),
                         ],
-                        speaker_notes="This summary highlights our key objectives and background context.",
+                        speaker_notes=(
+                            "This summary highlights our key objectives and"
+                            " background context."
+                        ),
                     ),
                     SlideContent(
                         title="2. Key Capabilities & Technical Features",
                         slide_type=SlideType.CONTENT,
                         bullets=[
-                            "Multi-agent autonomous coordination across Planner, Worker, and Supervisor.",
-                            "Automated document and artifact compilation (PPTX, PDF, CSV, JSON).",
-                            "Strict permission verification and isolated safe-mode execution.",
-                            "Self-healing execution pipeline with real-time error recovery.",
+                            (
+                                "Multi-agent autonomous coordination across Planner,"
+                                " Worker, and Supervisor."
+                            ),
+                            (
+                                "Automated document and artifact compilation"
+                                " (PPTX, PDF, CSV, JSON)."
+                            ),
+                            (
+                                "Strict permission verification and isolated"
+                                " safe-mode execution."
+                            ),
+                            (
+                                "Self-healing execution pipeline with real-time error"
+                                " recovery."
+                            ),
                         ],
-                        speaker_notes="Here are the key technical capabilities delivered in this phase.",
+                        speaker_notes=(
+                            "Here are the key technical capabilities delivered in"
+                            " this phase."
+                        ),
                     ),
                     SlideContent(
                         title="3. System Architecture & Performance",
                         slide_type=SlideType.CONTENT,
                         bullets=[
-                            "Event-driven DAG workflow orchestrator with dependency management.",
-                            "Sub-second execution overhead and automated validation checks.",
-                            "Unified export engine supporting native binary formats.",
-                            "End-to-end telemetry, structured logging, and observability.",
+                            (
+                                "Event-driven DAG workflow orchestrator with"
+                                " dependency management."
+                            ),
+                            (
+                                "Sub-second execution overhead and automated"
+                                " validation checks."
+                            ),
+                            (
+                                "Unified export engine supporting native binary"
+                                " formats."
+                            ),
+                            (
+                                "End-to-end telemetry, structured logging, and"
+                                " observability."
+                            ),
                         ],
-                        speaker_notes="Detailed architecture demonstrating high availability and low latency.",
+                        speaker_notes=(
+                            "Detailed architecture demonstrating high availability"
+                            " and low latency."
+                        ),
                     ),
                     SlideContent(
                         title="4. Conclusion & Next Steps",
                         slide_type=SlideType.CONTENT,
                         bullets=[
-                            "Final release verification completed with all unit & integration tests passing.",
-                            "Deployment orchestration configured via Docker & local runtime.",
-                            "Next milestones: Remote multi-node worker scaling and plugin ecosystem.",
+                            (
+                                "Final release verification completed with all unit"
+                                " & integration tests passing."
+                            ),
+                            (
+                                "Deployment orchestration configured via Docker &"
+                                " local runtime."
+                            ),
+                            (
+                                "Next milestones: Remote multi-node worker scaling"
+                                " and plugin ecosystem."
+                            ),
                             "Open Q&A and discussion.",
                         ],
-                        speaker_notes="Summary of conclusions, rollout plan, and open discussion.",
+                        speaker_notes=(
+                            "Summary of conclusions, rollout plan, and open"
+                            " discussion."
+                        ),
                     ),
                 ],
             )

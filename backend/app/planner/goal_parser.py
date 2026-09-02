@@ -75,7 +75,16 @@ class GoalParser:
             return IntentCategory.SYSTEM_MODIFICATION
         elif any(
             word in lower_text
-            for word in ["get", "find", "search", "read", "show", "fetch", "check", "extract"]
+            for word in [
+                "get",
+                "find",
+                "search",
+                "read",
+                "show",
+                "fetch",
+                "check",
+                "extract",
+            ]
         ):
             return IntentCategory.DATA_RETRIEVAL
         elif any(

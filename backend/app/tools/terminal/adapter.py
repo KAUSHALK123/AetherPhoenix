@@ -8,7 +8,6 @@ from shared.contracts.task import Task
 
 from app.core.permissions.manager import PermissionManager
 from app.tools.adapter import BaseToolAdapter
-from app.tools.terminal.tool import TerminalToolInput
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +29,16 @@ class TerminalToolAdapter(BaseToolAdapter):
         cmd_lower = command.lower()
 
         # High risk keywords
-        high_risk = ["del ", "rm ", "rmdir ", "sudo ", "drop-item ", "remove-item ", "ipconfig", "ip address"]
+        high_risk = [
+            "del ",
+            "rm ",
+            "rmdir ",
+            "sudo ",
+            "drop-item ",
+            "remove-item ",
+            "ipconfig",
+            "ip address",
+        ]
         if any(keyword in cmd_lower for keyword in high_risk):
             return "HIGH"
 
@@ -63,12 +71,14 @@ class TerminalToolAdapter(BaseToolAdapter):
                 command = task.description or task.task_name
                 for prefix in ["Execute Command:", "Run command:", "Run ", "Execute "]:
                     if command.lower().startswith(prefix.lower()):
-                        command = command[len(prefix):].strip()
+                        command = command[len(prefix) :].strip()
                         break
                 if " on my laptop" in command.lower():
                     command = command.lower().replace(" on my laptop", "").strip()
 
-            if any(k in command.lower() for k in ["ip address", "my ip", "what is my ip"]):
+            if any(
+                k in command.lower() for k in ["ip address", "my ip", "what is my ip"]
+            ):
                 command = "ipconfig"
 
             risk_level = self._assess_risk(command)

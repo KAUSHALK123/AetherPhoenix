@@ -90,7 +90,7 @@ def test_routing_open_downloads(decomposer, planner_agent):
 
 
 def test_routing_open_vscode(decomposer, planner_agent):
-    """TEST 5: 'Open VS Code.' must route to desktop_automation / DESKTOP with app_name='code'."""
+    """TEST 5: 'Open VS Code.' must route to desktop_automation with app_name='code'."""
     workflow_id = uuid4()
     plan = decomposer.decompose_goal("Open VS Code.", workflow_id)
     assert len(plan.tasks) >= 2
@@ -101,7 +101,7 @@ def test_routing_open_vscode(decomposer, planner_agent):
 
 
 def test_routing_ppt_generation(decomposer, planner_agent):
-    """TEST 1: 'Create a 5-slide PPT about electric vehicles.' must route to ppt_tool / PPT_GENERATION."""
+    """TEST 1: 'Create a 5-slide PPT...' must route to ppt_tool / PPT_GENERATION."""
     workflow_id = uuid4()
     plan = decomposer.decompose_goal(
         "Create a 5-slide PPT about electric vehicles.", workflow_id

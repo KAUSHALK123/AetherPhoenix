@@ -107,7 +107,10 @@ class TaskDecompositionEngine:
             ]
         ):
             return self._decompose_system_goal(goal, workflow_id)
-        elif any(w in lower_goal for w in ["ppt", "presentation", "powerpoint", "slides", "deck"]):
+        elif any(
+            w in lower_goal
+            for w in ["ppt", "presentation", "powerpoint", "slides", "deck"]
+        ):
             return self._decompose_presentation_goal(goal, workflow_id)
         elif any(
             w in lower_goal
@@ -801,7 +804,11 @@ class TaskDecompositionEngine:
         """Decomposes a desktop automation goal into structured tasks."""
         lower_goal = goal.lower()
         app_name = "notepad"
-        if "vs code" in lower_goal or "vscode" in lower_goal or "open code" in lower_goal:
+        if (
+            "vs code" in lower_goal
+            or "vscode" in lower_goal
+            or "open code" in lower_goal
+        ):
             app_name = "code"
         elif "calc" in lower_goal or "calculator" in lower_goal:
             app_name = "calc"
