@@ -1,0 +1,234 @@
+{
+  "benchmark": "Task Success Rate under Injected Faults",
+  "methodology": "arXiv:2606.01416",
+  "total_runs": 12,
+  "results": [
+    {
+      "configuration": "HealingAgent Enabled",
+      "config_key": "healing_enabled",
+      "fault_intensity_pct": 0,
+      "total_tasks": 101,
+      "faulted_tasks": 0,
+      "completed_tasks": 91,
+      "failed_tasks": 10,
+      "success_rate_pct": 90.1,
+      "total_duration_ms": 5391.55,
+      "mean_latency_per_task_ms": 53.38
+    },
+    {
+      "configuration": "Retry-Only Baseline",
+      "config_key": "retry_only",
+      "fault_intensity_pct": 0,
+      "total_tasks": 101,
+      "faulted_tasks": 0,
+      "completed_tasks": 91,
+      "failed_tasks": 10,
+      "success_rate_pct": 90.1,
+      "total_duration_ms": 5376.9,
+      "mean_latency_per_task_ms": 53.24
+    },
+    {
+      "configuration": "No Recovery Baseline",
+      "config_key": "no_recovery",
+      "fault_intensity_pct": 0,
+      "total_tasks": 101,
+      "faulted_tasks": 0,
+      "completed_tasks": 91,
+      "failed_tasks": 10,
+      "success_rate_pct": 90.1,
+      "total_duration_ms": 2803.33,
+      "mean_latency_per_task_ms": 27.76
+    },
+    {
+      "configuration": "HealingAgent Enabled",
+      "config_key": "healing_enabled",
+      "fault_intensity_pct": 10,
+      "total_tasks": 101,
+      "faulted_tasks": 10,
+      "completed_tasks": 88,
+      "failed_tasks": 11,
+      "success_rate_pct": 87.13,
+      "total_duration_ms": 4910.16,
+      "mean_latency_per_task_ms": 48.62
+    },
+    {
+      "configuration": "Retry-Only Baseline",
+      "config_key": "retry_only",
+      "fault_intensity_pct": 10,
+      "total_tasks": 101,
+      "faulted_tasks": 10,
+      "completed_tasks": 86,
+      "failed_tasks": 13,
+      "success_rate_pct": 85.15,
+      "total_duration_ms": 5071.69,
+      "mean_latency_per_task_ms": 50.21
+    },
+    {
+      "configuration": "No Recovery Baseline",
+      "config_key": "no_recovery",
+      "fault_intensity_pct": 10,
+      "total_tasks": 101,
+      "faulted_tasks": 10,
+      "completed_tasks": 81,
+      "failed_tasks": 20,
+      "success_rate_pct": 80.2,
+      "total_duration_ms": 3059.85,
+      "mean_latency_per_task_ms": 30.3
+    },
+    {
+      "configuration": "HealingAgent Enabled",
+      "config_key": "healing_enabled",
+      "fault_intensity_pct": 25,
+      "total_tasks": 101,
+      "faulted_tasks": 25,
+      "completed_tasks": 79,
+      "failed_tasks": 18,
+      "success_rate_pct": 78.22,
+      "total_duration_ms": 4705.87,
+      "mean_latency_per_task_ms": 46.59
+    },
+    {
+      "configuration": "Retry-Only Baseline",
+      "config_key": "retry_only",
+      "fault_intensity_pct": 25,
+      "total_tasks": 101,
+      "faulted_tasks": 25,
+      "completed_tasks": 76,
+      "failed_tasks": 20,
+      "success_rate_pct": 75.25,
+      "total_duration_ms": 4204.85,
+      "mean_latency_per_task_ms": 41.63
+    },
+    {
+      "configuration": "No Recovery Baseline",
+      "config_key": "no_recovery",
+      "fault_intensity_pct": 25,
+      "total_tasks": 101,
+      "faulted_tasks": 25,
+      "completed_tasks": 63,
+      "failed_tasks": 38,
+      "success_rate_pct": 62.38,
+      "total_duration_ms": 2289.54,
+      "mean_latency_per_task_ms": 22.67
+    },
+    {
+      "configuration": "HealingAgent Enabled",
+      "config_key": "healing_enabled",
+      "fault_intensity_pct": 50,
+      "total_tasks": 101,
+      "faulted_tasks": 50,
+      "completed_tasks": 61,
+      "failed_tasks": 29,
+      "success_rate_pct": 60.4,
+      "total_duration_ms": 3923.37,
+      "mean_latency_per_task_ms": 38.85
+    },
+    {
+      "configuration": "Retry-Only Baseline",
+      "config_key": "retry_only",
+      "fault_intensity_pct": 50,
+      "total_tasks": 101,
+      "faulted_tasks": 50,
+      "completed_tasks": 57,
+      "failed_tasks": 32,
+      "success_rate_pct": 56.44,
+      "total_duration_ms": 2646.56,
+      "mean_latency_per_task_ms": 26.2
+    },
+    {
+      "configuration": "No Recovery Baseline",
+      "config_key": "no_recovery",
+      "fault_intensity_pct": 50,
+      "total_tasks": 101,
+      "faulted_tasks": 50,
+      "completed_tasks": 41,
+      "failed_tasks": 60,
+      "success_rate_pct": 40.59,
+      "total_duration_ms": 1541.56,
+      "mean_latency_per_task_ms": 15.26
+    }
+  ],
+  "category_recovery_stats": {
+    "healing_enabled": {
+      "TIMEOUT": {
+        "total": 23,
+        "faulted": 23,
+        "recovered": 17
+      },
+      "FILE_NOT_FOUND": {
+        "total": 17,
+        "faulted": 17,
+        "recovered": 0
+      },
+      "SYNTAX_ERROR": {
+        "total": 15,
+        "faulted": 15,
+        "recovered": 6
+      },
+      "INVALID_ARGUMENTS": {
+        "total": 14,
+        "faulted": 14,
+        "recovered": 5
+      },
+      "PERMISSION_DENIED": {
+        "total": 16,
+        "faulted": 16,
+        "recovered": 0
+      }
+    },
+    "retry_only": {
+      "TIMEOUT": {
+        "total": 23,
+        "faulted": 23,
+        "recovered": 18
+      },
+      "FILE_NOT_FOUND": {
+        "total": 17,
+        "faulted": 17,
+        "recovered": 0
+      },
+      "SYNTAX_ERROR": {
+        "total": 15,
+        "faulted": 15,
+        "recovered": 0
+      },
+      "INVALID_ARGUMENTS": {
+        "total": 14,
+        "faulted": 14,
+        "recovered": 0
+      },
+      "PERMISSION_DENIED": {
+        "total": 16,
+        "faulted": 16,
+        "recovered": 0
+      }
+    },
+    "no_recovery": {
+      "TIMEOUT": {
+        "total": 23,
+        "faulted": 23,
+        "recovered": 0
+      },
+      "FILE_NOT_FOUND": {
+        "total": 17,
+        "faulted": 17,
+        "recovered": 0
+      },
+      "SYNTAX_ERROR": {
+        "total": 15,
+        "faulted": 15,
+        "recovered": 0
+      },
+      "INVALID_ARGUMENTS": {
+        "total": 14,
+        "faulted": 14,
+        "recovered": 0
+      },
+      "PERMISSION_DENIED": {
+        "total": 16,
+        "faulted": 16,
+        "recovered": 0
+      }
+    }
+  }
+}

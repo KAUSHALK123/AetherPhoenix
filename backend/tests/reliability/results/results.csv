@@ -1,0 +1,13 @@
+configuration,config_key,fault_intensity_pct,total_tasks,faulted_tasks,completed_tasks,failed_tasks,success_rate_pct,total_duration_ms,mean_latency_per_task_ms
+HealingAgent Enabled,healing_enabled,0,101,0,91,10,90.1,5391.55,53.38
+Retry-Only Baseline,retry_only,0,101,0,91,10,90.1,5376.9,53.24
+No Recovery Baseline,no_recovery,0,101,0,91,10,90.1,2803.33,27.76
+HealingAgent Enabled,healing_enabled,10,101,10,88,11,87.13,4910.16,48.62
+Retry-Only Baseline,retry_only,10,101,10,86,13,85.15,5071.69,50.21
+No Recovery Baseline,no_recovery,10,101,10,81,20,80.2,3059.85,30.3
+HealingAgent Enabled,healing_enabled,25,101,25,79,18,78.22,4705.87,46.59
+Retry-Only Baseline,retry_only,25,101,25,76,20,75.25,4204.85,41.63
+No Recovery Baseline,no_recovery,25,101,25,63,38,62.38,2289.54,22.67
+HealingAgent Enabled,healing_enabled,50,101,50,61,29,60.4,3923.37,38.85
+Retry-Only Baseline,retry_only,50,101,50,57,32,56.44,2646.56,26.2
+No Recovery Baseline,no_recovery,50,101,50,41,60,40.59,1541.56,15.26
