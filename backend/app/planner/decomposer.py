@@ -90,25 +90,17 @@ class TaskDecompositionEngine:
         if any(
             w in lower_goal
             for w in [
-                "ipconfig",
-                "ip address",
-                "ip",
-                "my ip",
-                "powershell",
-                "terminal",
-                "cmd",
-                "command",
-                "ping",
-                "netstat",
-                "whoami",
-                "hostname",
-                "systeminfo",
-                "run command",
-                "exec",
-                "shell",
+                "github",
+                "gitlab",
+                "create issue",
+                "open issue",
+                "new issue",
+                "pull request",
+                "post issue",
+                "submit issue",
             ]
-        ):
-            return self._decompose_system_goal(goal, workflow_id)
+        ) or ("issue" in lower_goal and ("repo" in lower_goal or "git" in lower_goal)):
+            return self._decompose_github_goal(goal, workflow_id)
         elif any(
             w in lower_goal
             for w in ["ppt", "presentation", "powerpoint", "slides", "deck"]
@@ -141,6 +133,7 @@ class TaskDecompositionEngine:
                 "search youtube",
                 "search for",
                 "search on",
+                "web search",
             ]
         ):
             return self._decompose_browser_goal(goal, workflow_id)
@@ -165,8 +158,13 @@ class TaskDecompositionEngine:
             ]
         ):
             return self._decompose_desktop_goal(goal, workflow_id)
+        elif re.search(
+            r"\b(ipconfig|powershell|terminal|cmd|ping|netstat|whoami|hostname|systeminfo|run command|exec|shell)\b",
+            lower_goal,
+        ) or "my ip" in lower_goal or "ip address" in lower_goal:
+            return self._decompose_system_goal(goal, workflow_id)
         elif any(
-            w in lower_goal for w in ["research", "search", "investigate", "find"]
+            w in lower_goal for w in ["research", "investigate", "find info"]
         ):
             return self._decompose_research_goal(goal, workflow_id)
         elif any(
@@ -174,7 +172,7 @@ class TaskDecompositionEngine:
         ):
             return self._decompose_coding_goal(goal, workflow_id)
         elif any(
-            w in lower_goal for w in ["system", "fix", "repair", "driver", "config"]
+            w in lower_goal for w in ["system", "repair", "driver", "config"]
         ):
             return self._decompose_system_goal(goal, workflow_id)
         elif any(
@@ -200,14 +198,13 @@ class TaskDecompositionEngine:
                 "move",
                 "copy",
                 "delete",
-                "file",
                 "folder",
                 "directory",
                 "downloads",
                 "open folder",
                 "file explorer",
             ]
-        ):
+        ) or ("file" in lower_goal and "create" not in lower_goal and "code" not in lower_goal):
             return self._decompose_filesystem_goal(goal, workflow_id)
         else:
             return self._decompose_generic_goal(goal, workflow_id)
@@ -615,6 +612,142 @@ class TaskDecompositionEngine:
         )
 
         return [phase_root, task_inspect, task_determine, task_execute]
+
+    def _decompose_github_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
+        """Decomposes a GitHub repository, issue creation, or PR goal into structured browser tasks."""
+        lower_goal = goal.lower()
+
+        # 1. Extract repository owner/name
+        repo_match = re.search(r"([a-zA-Z0-9_-]+/[a-zA-Z0-9_.-]+)", goal)
+        if repo_match:
+            repo = repo_match.group(1)
+        elif "aetherphoenix" in lower_goal or "aether" in lower_goal:
+            repo = "KAUSHALK123/AetherPhoenix"
+        else:
+            repo = "KAUSHALK123/AetherPhoenix"
+
+        # 2. Extract title if creating an issue
+        title = ""
+        title_match = re.search(r"(?:titled|title|named)\s+['\"]([^'\"]+)['\"]", goal, re.IGNORECASE)
+        if not title_match:
+            title_match = re.search(r"(?:titled|title)\s+([^,]+?)(?:\s+with\s+description|\s+and\s+description|\s+description|\s+and\s+body|\s+with\s+body|\s+and\s+post|$)", goal, re.IGNORECASE)
+        if title_match:
+            title = title_match.group(1).strip()
+        else:
+            title = "New Issue Report"
+
+        # 3. Extract description / body
+        body = ""
+        body_match = re.search(r"(?:description|body)\s+['\"]([^'\"]+)['\"]", goal, re.IGNORECASE)
+        if not body_match:
+            body_match = re.search(r"(?:with\s+description|and\s+description|description|with\s+body|and\s+body)\s+['\"]?([^'\".,]+)['\"]?", goal, re.IGNORECASE)
+        if body_match:
+            body = body_match.group(1).strip()
+        else:
+            body = f"Automated issue reported via AetherPhoenix for: {goal}"
+
+        # 4. Construct Target URL
+        is_issue = any(w in lower_goal for w in ["issue", "bug", "feature", "ticket", "post issue", "create issue", "submit issue"])
+        if is_issue:
+            query_params = urllib.parse.urlencode({"title": title, "body": body})
+            target_url = f"https://github.com/{repo}/issues/new?{query_params}"
+        elif "pull" in lower_goal or "pr" in lower_goal:
+            target_url = f"https://github.com/{repo}/pulls"
+        else:
+            target_url = f"https://github.com/{repo}"
+
+        phase_root = Task(
+            workflow_id=workflow_id,
+            task_name=f"Phase 1: GitHub Operation ({repo})",
+            description=f"Automate GitHub actions for: '{goal}'",
+            task_type=TaskType.PHASE,
+            assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
+            required_tool="",
+            category=TaskCategory.BROWSER,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output=f"GitHub operation completed on {target_url}",
+            estimated_duration_seconds=120,
+            status=TaskStatus.CREATED,
+        )
+
+        task_nav = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name=f"Navigate to GitHub ({repo})" + (" - New Issue Form" if is_issue else ""),
+            description=f"Open active browser tab to {target_url}",
+            assigned_agent="WorkerAgent",
+            required_tool="browser_extension",
+            category=TaskCategory.BROWSER,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output=f"GitHub page loaded: {target_url}",
+            success_criteria=["Page loaded successfully in browser"],
+            failure_criteria=["Navigation failed or timed out"],
+            inputs={
+                "action": "navigate",
+                "url": target_url,
+                "repo": repo,
+                "issue_title": title if is_issue else "",
+                "issue_body": body if is_issue else "",
+            },
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        tasks = [phase_root, task_nav]
+
+        if is_issue:
+            task_fill = Task(
+                parent_task_id=phase_root.task_id,
+                workflow_id=workflow_id,
+                task_name=f"Populate Issue Fields ('{title}')",
+                description="Fill title and markdown description on GitHub issue form",
+                assigned_agent="WorkerAgent",
+                required_tool="browser_extension",
+                category=TaskCategory.BROWSER,
+                priority=TaskPriority.HIGH,
+                dependencies=[task_nav.task_id],
+                expected_output="Issue form fields populated with title and description",
+                success_criteria=["Title and body fields populated"],
+                failure_criteria=["Form elements not found"],
+                inputs={
+                    "action": "interact",
+                    "title_selector": "input[name='issue[title]'], #issue_title",
+                    "title_value": title,
+                    "body_selector": "textarea[name='issue[body]'], #issue_body",
+                    "body_value": body,
+                },
+                estimated_duration_seconds=30,
+                status=TaskStatus.CREATED,
+            )
+
+            task_submit = Task(
+                parent_task_id=phase_root.task_id,
+                workflow_id=workflow_id,
+                task_name="Submit Issue & Confirm Creation",
+                description="Click 'Submit new issue' button and verify issue URL in active browser",
+                assigned_agent="WorkerAgent",
+                required_tool="browser_extension",
+                category=TaskCategory.BROWSER,
+                priority=TaskPriority.HIGH,
+                dependencies=[task_fill.task_id],
+                expected_output="New GitHub issue created and published",
+                success_criteria=["Issue submitted and created"],
+                failure_criteria=["Submission button failed"],
+                inputs={
+                    "action": "interact",
+                    "interaction_action": "click",
+                    "selector": "button.btn-primary[type='submit']",
+                },
+                estimated_duration_seconds=30,
+                status=TaskStatus.CREATED,
+            )
+            tasks.extend([task_fill, task_submit])
+
+        return tasks
 
     def _decompose_browser_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
         """Decomposes a browser automation / navigation / search goal into tasks."""

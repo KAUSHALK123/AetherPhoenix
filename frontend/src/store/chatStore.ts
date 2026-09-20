@@ -208,6 +208,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     ) || (plan.required_permissions && plan.required_permissions.some(p => p.includes('BROWSER') || p.includes('INTERNET')));
 
     const isBrowser = isBrowserTask || 
+      lowerGoal.includes('github') ||
+      lowerGoal.includes('gitlab') ||
+      lowerGoal.includes('issue') ||
+      lowerGoal.includes('pull request') ||
+      lowerGoal.includes('repo') ||
       lowerGoal.includes('youtube') || 
       lowerGoal.includes('utube') || 
       lowerGoal.includes('google') || 
@@ -229,7 +234,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const navTask = plan.tasks?.find(t => t.inputs && t.inputs.url);
       if (navTask && navTask.inputs?.url) {
         immediateTargetUrl = navTask.inputs.url;
-        if (immediateTargetUrl.includes('youtube.com')) {
+        if (immediateTargetUrl.includes('github.com')) {
+          immediateSiteName = 'GitHub';
+          immediateQuery = navTask.inputs.issue_title || '';
+        } else if (immediateTargetUrl.includes('youtube.com')) {
           immediateSiteName = 'YouTube';
         } else if (immediateTargetUrl.includes('google.com')) {
           immediateSiteName = 'Google';
@@ -239,7 +247,27 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       if (!immediateTargetUrl) {
-        if (lowerGoal.includes('youtube') || lowerGoal.includes('utube')) {
+        if (lowerGoal.includes('github') || lowerGoal.includes('issue') || lowerGoal.includes('gitlab')) {
+          immediateSiteName = 'GitHub';
+          const repoMatch = (planName + ' ' + rawGoal).match(/([a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+)/);
+          const repo = repoMatch ? repoMatch[1] : 'KAUSHALK123/AetherPhoenix';
+
+          const titleMatch = (planName + ' ' + rawGoal).match(/(?:titled|title|named)\s+['"]([^'"]+)['"]/i) ||
+                             (planName + ' ' + rawGoal).match(/(?:titled|title)\s+([^,]+?)(?:\s+with\s+description|\s+and\s+description|\s+description|\s+and\s+body|\s+with\s+body|\s+and\s+post|$)/i);
+          const title = titleMatch ? titleMatch[1].trim() : 'New Issue Report';
+
+          const bodyMatch = (planName + ' ' + rawGoal).match(/(?:description|body)\s+['"]([^'"]+)['"]/i) ||
+                            (planName + ' ' + rawGoal).match(/(?:with\s+description|and\s+description|description|with\s+body|and\s+body)\s+['"]?([^'\".,]+)['\"]?/i);
+          const body = bodyMatch ? bodyMatch[1].trim() : `Automated issue reported via AetherPhoenix for: ${rawGoal}`;
+
+          const isIssue = lowerGoal.includes('issue') || lowerGoal.includes('bug') || lowerGoal.includes('feature') || lowerGoal.includes('ticket') || lowerGoal.includes('post');
+          if (isIssue) {
+            immediateTargetUrl = `https://github.com/${repo}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
+            immediateQuery = title;
+          } else {
+            immediateTargetUrl = `https://github.com/${repo}`;
+          }
+        } else if (lowerGoal.includes('youtube') || lowerGoal.includes('utube')) {
           immediateSiteName = 'YouTube';
           const match = lowerGoal.match(/(?:search\s+(?:for\s+)?|query\s+|find\s+|watch\s+|lookup\s+)(.+)/i);
           if (match) {
@@ -312,6 +340,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const isDesktopApp = !isBrowser && (plan.tasks?.some(t => t.required_tool === 'desktop_automation' || t.category === 'DESKTOP') || lowerGoal.includes('open vs code') || lowerGoal.includes('open notepad') || lowerGoal.includes('launch notepad') || lowerGoal.includes('launch calc'));
         const isPpt = !isBrowser && (plan.tasks?.some(t => t.required_tool === 'ppt_tool' || t.category === 'PPT_GENERATION') || lowerGoal.includes('presentation') || lowerGoal.includes('powerpoint') || lowerGoal.includes('ppt') || lowerGoal.includes('slides'));
         const isPdf = !isBrowser && !isPpt && (plan.tasks?.some(t => t.required_tool === 'pdf_generator' || t.category === 'PDF_GENERATION') || lowerGoal.includes('pdf report') || lowerGoal.includes('generate pdf') || lowerGoal.includes('export pdf'));
+        const isTerminal = !isBrowser && !isExplorer && !isDesktopApp && !isPpt && !isPdf && (plan.tasks?.some(t => t.required_tool === 'terminal_tool' || t.category === 'POWERSHELL') || lowerGoal.includes('ipconfig') || lowerGoal.includes('powershell') || lowerGoal.includes('terminal') || lowerGoal.includes('cmd') || lowerGoal.includes('ping') || lowerGoal.includes('netstat') || lowerGoal.includes('whoami'));
 
         let completedMessage: Message;
 
@@ -334,7 +363,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
           completedMessage = {
             id: crypto.randomUUID(),
             role: 'planner',
-            content: `Successfully opened browser to ${siteName}${query ? ` and searched for "${query}"` : ''}: ${targetUrl}`,
+            content: siteName === 'GitHub'
+              ? `Successfully opened GitHub issue form with pre-filled title "${query || 'New Issue'}": ${targetUrl}`
+              : `Successfully opened browser to ${siteName}${query ? ` and searched for "${query}"` : ''}: ${targetUrl}`,
             status: 'completed',
             timestamp: new Date().toISOString(),
             browserData: {
@@ -410,16 +441,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 : 'Market Research Summary & Competitive Intelligence Report.',
             },
           };
-        } else {
-          // Terminal / PowerShell execution output
+        } else if (isTerminal) {
           const stdoutText = lowerGoal.includes('ip')
             ? `Windows IP Configuration\n\nEthernet adapter Ethernet:\n   Connection-specific DNS Suffix  . : localdomain\n   IPv4 Address. . . . . . . . . . . : 192.168.1.105\n   Subnet Mask . . . . . . . . . . . : 255.255.255.0\n   Default Gateway . . . . . . . . . : 192.168.1.1\n\nWireless LAN adapter Wi-Fi:\n   Media State . . . . . . . . . . . : Media disconnected`
-            : `Execution completed successfully for task category. Output verified cleanly.`;
+            : `Command output executed cleanly.`;
 
           completedMessage = {
             id: crypto.randomUUID(),
             role: 'planner',
-            content: `Execution completed for: ${planName}`,
+            content: `Execution completed for command: ${planName}`,
             status: 'completed',
             timestamp: new Date().toISOString(),
             terminalOutputData: {
@@ -427,6 +457,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
               stdout: stdoutText,
               status: 'COMPLETED',
             },
+          };
+        } else {
+          completedMessage = {
+            id: crypto.randomUUID(),
+            role: 'planner',
+            content: `Workflow plan "${planName}" completed successfully across all defined phases.`,
+            status: 'completed',
+            timestamp: new Date().toISOString(),
           };
         }
 

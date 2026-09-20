@@ -8,6 +8,7 @@ interface BrowserPopcardProps {
 export const BrowserPopcard: React.FC<BrowserPopcardProps> = ({ data }) => {
   const isYouTube = data.url.toLowerCase().includes('youtube.com') || (data.siteName && data.siteName.toLowerCase().includes('youtube'));
   const isGoogle = data.url.toLowerCase().includes('google.com') || (data.siteName && data.siteName.toLowerCase().includes('google'));
+  const isGitHub = data.url.toLowerCase().includes('github.com') || (data.siteName && data.siteName.toLowerCase().includes('github'));
 
   const handleOpenBrowser = () => {
     window.open(data.url, '_blank', 'noopener,noreferrer');
@@ -20,14 +21,18 @@ export const BrowserPopcard: React.FC<BrowserPopcardProps> = ({ data }) => {
         <div className="flex items-center gap-3">
           <div
             className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${
-              isYouTube
+              isGitHub
+                ? 'bg-purple-600/20 text-purple-300 border border-purple-500/40'
+                : isYouTube
                 ? 'bg-red-600/20 text-red-400 border border-red-500/40'
                 : isGoogle
                 ? 'bg-blue-600/20 text-blue-400 border border-blue-500/40'
                 : 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/40'
             }`}
           >
-            {isYouTube ? (
+            {isGitHub ? (
+              <span className="material-symbols-outlined text-2xl text-purple-400">code</span>
+            ) : isYouTube ? (
               <span className="material-symbols-outlined text-2xl text-red-500">smart_display</span>
             ) : isGoogle ? (
               <span className="material-symbols-outlined text-2xl text-blue-400">travel_explore</span>
@@ -37,14 +42,18 @@ export const BrowserPopcard: React.FC<BrowserPopcardProps> = ({ data }) => {
           </div>
           <div>
             <h4 className="font-bold text-sm tracking-wide text-white flex items-center gap-2">
-              {data.siteName || (isYouTube ? 'YouTube Live Search' : isGoogle ? 'Google Search' : 'Browser Automation')}
+              {data.siteName || (isGitHub ? 'GitHub Automation' : isYouTube ? 'YouTube Live Search' : isGoogle ? 'Google Search' : 'Browser Automation')}
               <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 {data.status}
               </span>
             </h4>
             <p className="text-xs text-slate-400">
-              {data.action === 'searched' ? 'Executed search query in web browser' : 'Navigated active browser tab'}
+              {isGitHub && data.url.includes('issues/new')
+                ? 'Opened new GitHub issue creation form with pre-filled fields'
+                : data.action === 'searched'
+                ? 'Executed search query in web browser'
+                : 'Navigated active browser tab'}
             </p>
           </div>
         </div>
