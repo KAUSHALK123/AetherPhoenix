@@ -18,6 +18,15 @@ class NavigateRequest(BaseModel):
     task_id: str | None = None
 
 
+class InteractRequest(BaseModel):
+    selector: str
+    action: str = "click"
+    value: str | None = None
+    timeout_ms: float = 10000.0
+    workflow_id: str | None = None
+    task_id: str | None = None
+
+
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """
@@ -56,6 +65,26 @@ async def navigate_browser(request: NavigateRequest):
     controller = BrowserExtensionController()
     result = await controller.navigate(
         url=request.url,
+        workflow_id=request.workflow_id,
+        task_id=request.task_id,
+    )
+    return {"success": result.success, "data": result.data, "error": result.error}
+
+
+@router.post("/interact")
+async def interact_browser(request: InteractRequest):
+    """
+    Executes in-page DOM interaction (click button, fill input, submit)
+    via the connected Chrome Browser Extension.
+    """
+    from app.tools.browser_extension.controller import BrowserExtensionController
+
+    controller = BrowserExtensionController()
+    result = await controller.interact(
+        selector=request.selector,
+        action=request.action,
+        value=request.value,
+        timeout_ms=request.timeout_ms,
         workflow_id=request.workflow_id,
         task_id=request.task_id,
     )

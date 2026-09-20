@@ -617,6 +617,67 @@ class TaskDecompositionEngine:
         """Decomposes a GitHub repository, issue creation, or PR goal into structured browser tasks."""
         lower_goal = goal.lower()
 
+        # Handle direct submit button click follow-ups
+        is_direct_submit = any(w in lower_goal for w in ["press submit", "click submit", "submit the issue", "submit new issue", "submit issue", "press the submit", "click the submit"])
+        if is_direct_submit:
+            phase_root = Task(
+                workflow_id=workflow_id,
+                task_name="Phase 1: GitHub Issue Submission",
+                description=f"Submit GitHub issue form for: '{goal}'",
+                task_type=TaskType.PHASE,
+                assigned_agent="System",
+                success_criteria=["All child leaf tasks completed successfully"],
+                failure_criteria=["One or more child tasks failed"],
+                required_tool="",
+                category=TaskCategory.BROWSER,
+                priority=TaskPriority.HIGH,
+                dependencies=[],
+                expected_output="GitHub issue submitted",
+                estimated_duration_seconds=30,
+                status=TaskStatus.CREATED,
+            )
+
+            task_submit = Task(
+                parent_task_id=phase_root.task_id,
+                workflow_id=workflow_id,
+                task_name="Click 'Submit new issue' Button",
+                description="Trigger submit action on active GitHub tab via browser extension",
+                assigned_agent="WorkerAgent",
+                required_tool="browser_extension",
+                category=TaskCategory.BROWSER,
+                priority=TaskPriority.HIGH,
+                dependencies=[],
+                expected_output="Issue submitted successfully",
+                success_criteria=["Submit button clicked"],
+                failure_criteria=["Submit button not found"],
+                inputs={
+                    "action": "interact",
+                    "interaction_action": "click",
+                    "selector": "button.btn-primary[type='submit'], button:has-text('Submit new issue')",
+                },
+                estimated_duration_seconds=15,
+                status=TaskStatus.CREATED,
+            )
+
+            task_verify = Task(
+                parent_task_id=phase_root.task_id,
+                workflow_id=workflow_id,
+                task_name="Verify Published Issue URL",
+                description="Detect active tab URL and confirm published issue",
+                assigned_agent="WorkerAgent",
+                required_tool="browser_extension",
+                category=TaskCategory.BROWSER,
+                priority=TaskPriority.MEDIUM,
+                dependencies=[task_submit.task_id],
+                expected_output="Published issue URL",
+                success_criteria=["Active issue URL confirmed"],
+                failure_criteria=["Navigation failed"],
+                inputs={"action": "detect_active_tab"},
+                estimated_duration_seconds=15,
+                status=TaskStatus.CREATED,
+            )
+            return [phase_root, task_submit, task_verify]
+
         # 1. Extract repository owner/name
         repo_match = re.search(r"([a-zA-Z0-9_-]+/[a-zA-Z0-9_.-]+)", goal)
         if repo_match:

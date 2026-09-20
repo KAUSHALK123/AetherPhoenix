@@ -55,7 +55,7 @@ export interface BrowserAutomationData {
   url: string;
   siteName?: string;
   query?: string;
-  action: 'opened_url' | 'searched' | 'navigated';
+  action: 'opened_url' | 'searched' | 'navigated' | 'interacted' | 'clicked submit';
   status: 'COMPLETED' | 'RUNNING' | 'FAILED';
 }
 

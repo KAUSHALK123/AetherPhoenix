@@ -349,21 +349,43 @@ export const useChatStore = create<ChatState>((set, get) => ({
           const siteName = immediateSiteName || 'Web Browser';
           const query = immediateQuery;
 
-          // Command backend to launch system browser or send to connected extension
-          try {
-            await fetch('/api/v1/browser-extension/navigate', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ url: targetUrl, workflow_id: executingMessage.workflowData?.workflow_id }),
-            });
-          } catch (err) {
-            console.warn('Backend browser navigate API call failed:', err);
+          // 1. Command backend to launch/navigate or interact
+          const interactTask = plan.tasks?.find(t => t.inputs && t.inputs.action === 'interact');
+          if (interactTask && interactTask.inputs) {
+            try {
+              await fetch('/api/v1/browser-extension/interact', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  selector: interactTask.inputs.selector || "button.btn-primary[type='submit']",
+                  action: interactTask.inputs.interaction_action || 'click',
+                  value: interactTask.inputs.value,
+                  workflow_id: executingMessage.workflowData?.workflow_id,
+                }),
+              });
+            } catch (err) {
+              console.warn('Backend browser interact API call failed:', err);
+            }
+          } else if (targetUrl) {
+            try {
+              await fetch('/api/v1/browser-extension/navigate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: targetUrl, workflow_id: executingMessage.workflowData?.workflow_id }),
+              });
+            } catch (err) {
+              console.warn('Backend browser navigate API call failed:', err);
+            }
           }
+
+          const isSubmitAction = lowerGoal.includes('press submit') || lowerGoal.includes('click submit') || lowerGoal.includes('submit issue') || lowerGoal.includes('submit new issue');
 
           completedMessage = {
             id: crypto.randomUUID(),
             role: 'planner',
-            content: siteName === 'GitHub'
+            content: isSubmitAction
+              ? 'Dispatched click interaction to "Submit new issue" button on your active GitHub tab!'
+              : siteName === 'GitHub'
               ? `Successfully opened GitHub issue form with pre-filled title "${query || 'New Issue'}": ${targetUrl}`
               : `Successfully opened browser to ${siteName}${query ? ` and searched for "${query}"` : ''}: ${targetUrl}`,
             status: 'completed',
@@ -372,7 +394,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               url: targetUrl,
               siteName,
               query: query || undefined,
-              action: query ? 'searched' : 'navigated',
+              action: isSubmitAction ? 'clicked submit' : query ? 'searched' : 'navigated',
               status: 'COMPLETED',
             },
           };
