@@ -47,6 +47,9 @@ class GoalParser:
         "open": "Opened application or target path",
         "launch": "Launched application",
         "extract": "Extracted target content or text",
+        "press": "Pressed or submitted target button",
+        "click": "Clicked target element",
+        "submit": "Submitted form or request",
     }
 
     def parse_intent(self, text: str) -> IntentCategory:
@@ -70,6 +73,11 @@ class GoalParser:
                 "execute",
                 "open",
                 "launch",
+                "click",
+                "press",
+                "submit",
+                "tap",
+                "select",
             ]
         ):
             return IntentCategory.SYSTEM_MODIFICATION
