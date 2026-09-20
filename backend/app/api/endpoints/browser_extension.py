@@ -1,4 +1,5 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 from shared.contracts.browser_extension import ExtensionConnectionStatus
 
 from app.core.logging import get_logger
@@ -9,6 +10,12 @@ from app.tools.browser_extension.connection_manager import (
 logger = get_logger(__name__)
 
 router = APIRouter()
+
+
+class NavigateRequest(BaseModel):
+    url: str
+    workflow_id: str | None = None
+    task_id: str | None = None
 
 
 @router.websocket("/ws")
@@ -36,3 +43,20 @@ async def get_extension_status():
     """Returns current connection status of the Chrome Browser Extension."""
     manager = get_connection_manager()
     return manager.get_status()
+
+
+@router.post("/navigate")
+async def navigate_browser(request: NavigateRequest):
+    """
+    Commands browser to navigate to the target URL.
+    Uses connected Chrome Extension if active, or launches system desktop browser.
+    """
+    from app.tools.browser_extension.controller import BrowserExtensionController
+
+    controller = BrowserExtensionController()
+    result = await controller.navigate(
+        url=request.url,
+        workflow_id=request.workflow_id,
+        task_id=request.task_id,
+    )
+    return {"success": result.success, "data": result.data, "error": result.error}

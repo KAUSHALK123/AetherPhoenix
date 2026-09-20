@@ -200,8 +200,17 @@ class BrowserExtensionController:
                 err_msg = res.error or f"Failed to navigate to {url}"
                 return BrowserResult(success=False, error=err_msg)
             return BrowserResult(success=True, data=res.data)
-        except ExtensionNotConnectedError as e:
-            return BrowserResult(success=False, error=str(e))
+        except ExtensionNotConnectedError:
+            logger.info(f"Extension not connected; opening URL in system browser: {url}")
+            try:
+                import webbrowser
+                webbrowser.open(url)
+                return BrowserResult(
+                    success=True,
+                    data={"url": url, "status": "opened_in_system_browser", "target": url},
+                )
+            except Exception as ex:
+                return BrowserResult(success=False, error=str(ex))
         except Exception as e:
             logger.error(f"navigate to {url} failed: {e}")
             return BrowserResult(success=False, error=str(e))
@@ -233,8 +242,17 @@ class BrowserExtensionController:
                 err_msg = res.error or f"Failed to open new tab with {url}"
                 return BrowserResult(success=False, error=err_msg)
             return BrowserResult(success=True, data=res.data)
-        except ExtensionNotConnectedError as e:
-            return BrowserResult(success=False, error=str(e))
+        except ExtensionNotConnectedError:
+            logger.info(f"Extension not connected; opening new tab in system browser: {url}")
+            try:
+                import webbrowser
+                webbrowser.open(url)
+                return BrowserResult(
+                    success=True,
+                    data={"url": url, "status": "opened_in_system_browser", "target": url},
+                )
+            except Exception as ex:
+                return BrowserResult(success=False, error=str(ex))
         except Exception as e:
             logger.error(f"open_new_tab failed: {e}")
             return BrowserResult(success=False, error=str(e))

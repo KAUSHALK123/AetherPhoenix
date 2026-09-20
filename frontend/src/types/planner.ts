@@ -51,6 +51,14 @@ export interface WebResearchData {
   topResults: { title: string; url: string; snippet: string }[];
 }
 
+export interface BrowserAutomationData {
+  url: string;
+  siteName?: string;
+  query?: string;
+  action: 'opened_url' | 'searched' | 'navigated';
+  status: 'COMPLETED' | 'RUNNING' | 'FAILED';
+}
+
 export interface Message {
   id: string;
   role: MessageRole;
@@ -66,14 +74,18 @@ export interface Message {
   fileExplorerData?: FileExplorerData;
   desktopAppData?: DesktopAppData;
   webResearchData?: WebResearchData;
+  browserData?: BrowserAutomationData;
 }
 
 export interface PlannerTask {
   task_id: string;
   task_name: string;
   description: string;
+  category?: string;
   assigned_agent?: string;
   required_tool?: string;
+  inputs?: Record<string, any>;
+  input_parameters?: Record<string, any>;
   priority?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   risk_level?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   estimated_duration_seconds?: number;
@@ -88,6 +100,8 @@ export interface PlannerMetadata {
   planner_model?: string;
   execution_mode?: 'SAFE' | 'ASSISTED' | 'AUTONOMOUS';
   session_id?: string;
+  workflow_id?: string;
+  goal?: string;
 }
 
 export interface PlannerPlan {

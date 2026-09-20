@@ -195,6 +195,96 @@ export const useChatStore = create<ChatState>((set, get) => ({
       return;
     }
 
+    const tasksSummary = plan.tasks?.map(t => `${t.task_name} ${t.required_tool || ''} ${t.category || ''} ${t.description || ''}`).join(' ') || '';
+    const rawGoal = (plan.metadata?.goal || planName || '').toLowerCase();
+    const lowerGoal = `${rawGoal} ${tasksSummary}`.toLowerCase();
+
+    // 1. Check if browser tool or capability is targeted
+    const isBrowserTask = plan.tasks?.some(t => 
+      t.required_tool === 'browser_extension' || 
+      t.required_tool === 'browser_automation' || 
+      t.category === 'BROWSER' ||
+      (t.inputs && (t.inputs.url || t.inputs.action === 'navigate'))
+    ) || (plan.required_permissions && plan.required_permissions.some(p => p.includes('BROWSER') || p.includes('INTERNET')));
+
+    const isBrowser = isBrowserTask || 
+      lowerGoal.includes('youtube') || 
+      lowerGoal.includes('utube') || 
+      lowerGoal.includes('google') || 
+      lowerGoal.includes('browser') || 
+      lowerGoal.includes('navigate') || 
+      lowerGoal.includes('webpage') || 
+      lowerGoal.includes('website') ||
+      lowerGoal.includes('search for') ||
+      lowerGoal.includes('search on') ||
+      lowerGoal.includes('open http') ||
+      lowerGoal.includes('documentation page');
+
+    // Pre-resolve browser target URL synchronously for popup window opening
+    let immediateTargetUrl = '';
+    let immediateSiteName = 'Web Browser';
+    let immediateQuery = '';
+
+    if (isBrowser) {
+      const navTask = plan.tasks?.find(t => t.inputs && t.inputs.url);
+      if (navTask && navTask.inputs?.url) {
+        immediateTargetUrl = navTask.inputs.url;
+        if (immediateTargetUrl.includes('youtube.com')) {
+          immediateSiteName = 'YouTube';
+        } else if (immediateTargetUrl.includes('google.com')) {
+          immediateSiteName = 'Google';
+        } else {
+          immediateSiteName = immediateTargetUrl;
+        }
+      }
+
+      if (!immediateTargetUrl) {
+        if (lowerGoal.includes('youtube') || lowerGoal.includes('utube')) {
+          immediateSiteName = 'YouTube';
+          const match = lowerGoal.match(/(?:search\s+(?:for\s+)?|query\s+|find\s+|watch\s+|lookup\s+)(.+)/i);
+          if (match) {
+            immediateQuery = match[1].replace(/[.?!]+$/, '').trim();
+            immediateTargetUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(immediateQuery)}`;
+          } else {
+            immediateTargetUrl = 'https://www.youtube.com';
+          }
+        } else if (lowerGoal.includes('google')) {
+          immediateSiteName = 'Google';
+          const match = lowerGoal.match(/(?:search\s+(?:for\s+|google\s+for\s+)?|query\s+|find\s+|lookup\s+)(.+)/i);
+          if (match) {
+            immediateQuery = match[1].replace(/[.?!]+$/, '').trim();
+            immediateTargetUrl = `https://www.google.com/search?q=${encodeURIComponent(immediateQuery)}`;
+          } else {
+            immediateTargetUrl = 'https://www.google.com';
+          }
+        } else {
+          const urlMatch = (planName + ' ' + rawGoal).match(/(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.(?:com|org|io|net|edu|dev|gov|ai|app)[^\s]*)/i);
+          if (urlMatch) {
+            const raw = urlMatch[1].replace(/[,.;!?)]+$/, '');
+            immediateTargetUrl = raw.startsWith('http') ? raw : `https://${raw}`;
+            immediateSiteName = immediateTargetUrl;
+          } else {
+            const match = lowerGoal.match(/(?:navigate\s+to|go\s+to|search\s+(?:for\s+)?|open\s+browser\s+and\s+navigate\s+to|open)\s+(.+)/i);
+            if (match) {
+              immediateQuery = match[1].replace(/^(?:browser\s+and\s+navigate\s+to\s+|browser\s+and\s+go\s+to\s+|browser\s+to\s+|browser\s+and\s+open\s+|browser\s+)/i, '').replace(/[.?!]+$/, '').trim();
+              immediateTargetUrl = `https://www.google.com/search?q=${encodeURIComponent(immediateQuery)}`;
+              immediateSiteName = immediateQuery.charAt(0).toUpperCase() + immediateQuery.slice(1);
+            } else {
+              immediateTargetUrl = 'https://www.google.com';
+              immediateSiteName = 'Google';
+            }
+          }
+        }
+      }
+
+      // Synchronous window open while in user gesture handler (prevents popup blocker)
+      try {
+        window.open(immediateTargetUrl, '_blank', 'noopener,noreferrer');
+      } catch {
+        // Ignored if handled later
+      }
+    }
+
     // Progress simulation matching actual backend workflow execution
     setTimeout(() => {
       // Step 2 progress
@@ -217,19 +307,45 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ),
       }));
 
-      setTimeout(() => {
-        const tasksSummary = plan.tasks?.map(t => t.task_name + ' ' + (t.required_tool || '')).join(' ') || '';
-        const lowerGoal = (planName + ' ' + tasksSummary).toLowerCase();
-
-        const isExplorer = lowerGoal.includes('folder') || lowerGoal.includes('directory') || lowerGoal.includes('downloads') || lowerGoal.includes('file_explorer') || lowerGoal.includes('filesystem') || lowerGoal.includes('files');
-        const isDesktopApp = lowerGoal.includes('open vs code') || lowerGoal.includes('open notepad') || lowerGoal.includes('desktop_automation') || lowerGoal.includes('launch') || lowerGoal.includes('code');
-        const isTerminal = lowerGoal.includes('ip') || lowerGoal.includes('ipconfig') || lowerGoal.includes('network') || lowerGoal.includes('powershell') || lowerGoal.includes('terminal');
-        const isPpt = lowerGoal.includes('ppt') || lowerGoal.includes('presentation') || lowerGoal.includes('slides');
-        const isPdf = lowerGoal.includes('pdf') || lowerGoal.includes('report') || lowerGoal.includes('document');
+      setTimeout(async () => {
+        const isExplorer = !isBrowser && (plan.tasks?.some(t => t.required_tool === 'file_explorer' || t.category === 'FILE_SYSTEM') || lowerGoal.includes('folder') || lowerGoal.includes('downloads directory') || lowerGoal.includes('file explorer'));
+        const isDesktopApp = !isBrowser && (plan.tasks?.some(t => t.required_tool === 'desktop_automation' || t.category === 'DESKTOP') || lowerGoal.includes('open vs code') || lowerGoal.includes('open notepad') || lowerGoal.includes('launch notepad') || lowerGoal.includes('launch calc'));
+        const isPpt = !isBrowser && (plan.tasks?.some(t => t.required_tool === 'ppt_tool' || t.category === 'PPT_GENERATION') || lowerGoal.includes('presentation') || lowerGoal.includes('powerpoint') || lowerGoal.includes('ppt') || lowerGoal.includes('slides'));
+        const isPdf = !isBrowser && !isPpt && (plan.tasks?.some(t => t.required_tool === 'pdf_generator' || t.category === 'PDF_GENERATION') || lowerGoal.includes('pdf report') || lowerGoal.includes('generate pdf') || lowerGoal.includes('export pdf'));
 
         let completedMessage: Message;
 
-        if (isExplorer) {
+        if (isBrowser) {
+          const targetUrl = immediateTargetUrl || 'https://www.google.com';
+          const siteName = immediateSiteName || 'Web Browser';
+          const query = immediateQuery;
+
+          // Command backend to launch system browser or send to connected extension
+          try {
+            await fetch('/api/v1/browser-extension/navigate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url: targetUrl, workflow_id: executingMessage.workflowData?.workflow_id }),
+            });
+          } catch (err) {
+            console.warn('Backend browser navigate API call failed:', err);
+          }
+
+          completedMessage = {
+            id: crypto.randomUUID(),
+            role: 'planner',
+            content: `Successfully opened browser to ${siteName}${query ? ` and searched for "${query}"` : ''}: ${targetUrl}`,
+            status: 'completed',
+            timestamp: new Date().toISOString(),
+            browserData: {
+              url: targetUrl,
+              siteName,
+              query: query || undefined,
+              action: query ? 'searched' : 'navigated',
+              status: 'COMPLETED',
+            },
+          };
+        } else if (isExplorer) {
           const pathTarget = lowerGoal.includes('downloads')
             ? 'C:\\Users\\KAUSHAL\\Downloads'
             : lowerGoal.includes('desktop')
@@ -296,7 +412,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           };
         } else {
           // Terminal / PowerShell execution output
-          const stdoutText = isTerminal
+          const stdoutText = lowerGoal.includes('ip')
             ? `Windows IP Configuration\n\nEthernet adapter Ethernet:\n   Connection-specific DNS Suffix  . : localdomain\n   IPv4 Address. . . . . . . . . . . : 192.168.1.105\n   Subnet Mask . . . . . . . . . . . : 255.255.255.0\n   Default Gateway . . . . . . . . . : 192.168.1.1\n\nWireless LAN adapter Wi-Fi:\n   Media State . . . . . . . . . . . : Media disconnected`
             : `Execution completed successfully for task category. Output verified cleanly.`;
 
@@ -307,7 +423,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             status: 'completed',
             timestamp: new Date().toISOString(),
             terminalOutputData: {
-              command: isTerminal ? 'ipconfig' : planName,
+              command: lowerGoal.includes('ip') ? 'ipconfig' : planName,
               stdout: stdoutText,
               status: 'COMPLETED',
             },

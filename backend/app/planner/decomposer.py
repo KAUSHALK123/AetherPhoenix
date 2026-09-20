@@ -1,4 +1,6 @@
 import logging
+import re
+import urllib.parse
 from collections import defaultdict, deque
 from typing import Any, Dict, List, Optional
 from uuid import UUID
@@ -115,12 +117,30 @@ class TaskDecompositionEngine:
         elif any(
             w in lower_goal
             for w in [
+                "http://",
+                "https://",
+                "www.",
+                ".com",
+                ".org",
+                ".io",
+                ".net",
+                ".dev",
+                ".ai",
+                ".app",
+                "youtube",
+                "utube",
+                "google",
                 "website",
                 "browser",
                 "webpage",
                 "navigate to",
                 "open url",
                 "scrape",
+                "open youtube",
+                "search on youtube",
+                "search youtube",
+                "search for",
+                "search on",
             ]
         ):
             return self._decompose_browser_goal(goal, workflow_id)
@@ -596,6 +616,230 @@ class TaskDecompositionEngine:
 
         return [phase_root, task_inspect, task_determine, task_execute]
 
+    def _decompose_browser_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
+        """Decomposes a browser automation / navigation / search goal into tasks."""
+        lower_goal = goal.lower()
+
+        target_url = "https://www.google.com"
+        site_name = "Web Browser"
+        query = ""
+
+        # 1. Direct URL detection
+        url_match = re.search(
+            r"(https?://[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.(?:com|org|io|net|edu|dev|gov|ai|app)[^\s]*)",
+            goal,
+        )
+        if url_match:
+            raw_url = url_match.group(1).rstrip(",.;!?)")
+            target_url = raw_url if raw_url.startswith("http") else f"https://{raw_url}"
+            site_name = target_url
+        elif "youtube" in lower_goal or "utube" in lower_goal:
+            site_name = "YouTube"
+            target_url = "https://www.youtube.com"
+            match = re.search(
+                r"(?:search\s+(?:for\s+)?|query\s+|find\s+|watch\s+|lookup\s+)(.+)",
+                goal,
+                re.IGNORECASE,
+            )
+            if match:
+                query = match.group(1).strip()
+                query = re.sub(r"[.?!]+$", "", query).strip()
+                encoded_q = urllib.parse.quote_plus(query)
+                target_url = f"https://www.youtube.com/results?search_query={encoded_q}"
+        elif "google" in lower_goal:
+            site_name = "Google"
+            target_url = "https://www.google.com"
+            match = re.search(
+                r"(?:search\s+(?:for\s+|google\s+for\s+)?|query\s+|find\s+|lookup\s+)(.+)",
+                goal,
+                re.IGNORECASE,
+            )
+            if match:
+                query = match.group(1).strip()
+                query = re.sub(r"[.?!]+$", "", query).strip()
+                encoded_q = urllib.parse.quote_plus(query)
+                target_url = f"https://www.google.com/search?q={encoded_q}"
+        elif "navigate to" in lower_goal or "open" in lower_goal or "go to" in lower_goal:
+            nav_match = re.search(
+                r"(?:navigate\s+to|go\s+to|open\s+browser\s+and\s+navigate\s+to|open\s+browser\s+and\s+go\s+to|open)\s+(.+)",
+                goal,
+                re.IGNORECASE,
+            )
+            if nav_match:
+                dest = nav_match.group(1).strip()
+                dest = re.sub(r"[.?!]+$", "", dest).strip()
+                dest_clean = re.sub(
+                    r"^(?:browser\s+and\s+navigate\s+to\s+|browser\s+and\s+go\s+to\s+|browser\s+to\s+|browser\s+and\s+open\s+|browser\s+)",
+                    "",
+                    dest,
+                    flags=re.IGNORECASE,
+                ).strip()
+                query = dest_clean
+                encoded_q = urllib.parse.quote_plus(dest_clean)
+                target_url = f"https://www.google.com/search?q={encoded_q}"
+                site_name = dest_clean.title()
+        else:
+            match = re.search(
+                r"(?:search\s+(?:for\s+)?|query\s+|find\s+|lookup\s+)(.+)",
+                goal,
+                re.IGNORECASE,
+            )
+            if match:
+                query = match.group(1).strip()
+                query = re.sub(r"[.?!]+$", "", query).strip()
+                encoded_q = urllib.parse.quote_plus(query)
+                target_url = f"https://www.google.com/search?q={encoded_q}"
+                site_name = "Web Search"
+
+        phase_root = Task(
+            workflow_id=workflow_id,
+            task_name="Phase 1: Browser Automation & Interaction",
+            description=f"Automate browser actions for: '{goal}'",
+            task_type=TaskType.PHASE,
+            assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
+            required_tool="",
+            category=TaskCategory.BROWSER,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output=f"Navigated to {site_name} and executed requested search",
+            estimated_duration_seconds=90,
+            status=TaskStatus.CREATED,
+        )
+
+        task_nav = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name=(
+                f"Navigate to {site_name}"
+                + (f" and Search for '{query}'" if query else "")
+            ),
+            description=f"Open active browser window and navigate to {target_url}",
+            assigned_agent="WorkerAgent",
+            required_tool="browser_extension",
+            category=TaskCategory.BROWSER,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output=f"Browser tab opened and navigated to {target_url}",
+            success_criteria=["Page loaded successfully in browser"],
+            failure_criteria=["Navigation failed or timed out"],
+            inputs={"action": "navigate", "url": target_url},
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        task_extract = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name="Verify & Extract Search Results",
+            description=f"Inspect page content and verify results for '{query or goal}'",
+            assigned_agent="WorkerAgent",
+            required_tool="browser_extension",
+            category=TaskCategory.BROWSER,
+            priority=TaskPriority.MEDIUM,
+            dependencies=[task_nav.task_id],
+            expected_output="Extracted search results list",
+            success_criteria=["Results extracted from active page"],
+            failure_criteria=["Failed to extract content"],
+            inputs={"action": "extract_content", "include_html": False},
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        return [phase_root, task_nav, task_extract]
+
+    def _decompose_desktop_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
+        """Decomposes a desktop application launch or GUI automation goal."""
+        lower_goal = goal.lower()
+        app_name = "Application"
+        if (
+            "vs code" in lower_goal
+            or "vscode" in lower_goal
+            or "open code" in lower_goal
+        ):
+            app_name = "Visual Studio Code"
+        elif "notepad" in lower_goal:
+            app_name = "Notepad"
+        elif "calc" in lower_goal:
+            app_name = "Calculator"
+
+        phase_root = Task(
+            workflow_id=workflow_id,
+            task_name="Phase 1: Desktop Application Control",
+            description=f"Launch and interact with {app_name}",
+            task_type=TaskType.PHASE,
+            assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
+            required_tool="",
+            category=TaskCategory.DESKTOP,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output=f"{app_name} launched and active on desktop",
+            estimated_duration_seconds=60,
+            status=TaskStatus.CREATED,
+        )
+
+        task_launch = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name=f"Launch {app_name}",
+            description=f"Open {app_name} process on the host operating system",
+            assigned_agent="WorkerAgent",
+            required_tool="desktop_automation",
+            category=TaskCategory.DESKTOP,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output=f"{app_name} launched with active PID",
+            success_criteria=[f"{app_name} process is running"],
+            failure_criteria=[f"Failed to launch {app_name}"],
+            inputs={"app_name": app_name},
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        return [phase_root, task_launch]
+
+    def _decompose_ocr_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
+        """Decomposes an OCR / text extraction from image goal."""
+        phase_root = Task(
+            workflow_id=workflow_id,
+            task_name="Phase 1: Visual Text Extraction (OCR)",
+            description=f"Extract readable text from image for: '{goal}'",
+            task_type=TaskType.PHASE,
+            assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
+            required_tool="",
+            category=TaskCategory.OCR,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="Extracted text transcript",
+            estimated_duration_seconds=60,
+            status=TaskStatus.CREATED,
+        )
+
+        task_ocr = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name="Perform OCR Extraction",
+            description="Process image and extract visual textual content",
+            assigned_agent="WorkerAgent",
+            required_tool="ocr",
+            category=TaskCategory.OCR,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="Plaintext extracted from image",
+            success_criteria=["Text extracted with high confidence"],
+            failure_criteria=["Unable to detect readable text in image"],
+            inputs={"image_path": "uploaded_image.png"},
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        return [phase_root, task_ocr]
+
     def _decompose_generic_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
         """Generic fallback goal decomposition logic."""
         phase_root = Task(
@@ -762,131 +1006,3 @@ class TaskDecompositionEngine:
 
         return ordered
 
-    def _decompose_browser_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
-        """Decomposes a browser automation goal into structured tasks."""
-        phase = Task(
-            workflow_id=workflow_id,
-            task_name="Phase 1: Browser Navigation & Interaction",
-            description=f"Execute browser automation for goal: '{goal}'",
-            task_type=TaskType.PHASE,
-            assigned_agent="System",
-            success_criteria=["Browser tasks executed successfully"],
-            failure_criteria=["Browser action failed"],
-            required_tool="",
-            category=TaskCategory.BROWSER,
-            priority=TaskPriority.HIGH,
-            dependencies=[],
-            expected_output="Browser task result",
-            status=TaskStatus.CREATED,
-        )
-
-        nav_task = Task(
-            workflow_id=workflow_id,
-            task_name="Navigate and Search",
-            description=f"Open target web page and perform interactions for: {goal}",
-            task_type=TaskType.LEAF,
-            assigned_agent="WorkerAgent",
-            parent_task_id=phase.task_id,
-            success_criteria=["Page navigated and interaction completed"],
-            failure_criteria=["Navigation or extraction failed"],
-            required_tool="browser_automation",
-            category=TaskCategory.BROWSER,
-            priority=TaskPriority.HIGH,
-            dependencies=[],
-            expected_output="Target content or screenshot",
-            inputs={"action": "navigate", "url": "https://www.google.com"},
-            status=TaskStatus.CREATED,
-        )
-
-        return [phase, nav_task]
-
-    def _decompose_desktop_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
-        """Decomposes a desktop automation goal into structured tasks."""
-        lower_goal = goal.lower()
-        app_name = "notepad"
-        if (
-            "vs code" in lower_goal
-            or "vscode" in lower_goal
-            or "open code" in lower_goal
-        ):
-            app_name = "code"
-        elif "calc" in lower_goal or "calculator" in lower_goal:
-            app_name = "calc"
-        elif "explorer" in lower_goal or "folder" in lower_goal:
-            app_name = "explorer"
-        elif "paint" in lower_goal:
-            app_name = "mspaint"
-
-        phase = Task(
-            workflow_id=workflow_id,
-            task_name="Phase 1: Desktop Application Control",
-            description=f"Execute desktop automation for goal: '{goal}'",
-            task_type=TaskType.PHASE,
-            assigned_agent="System",
-            success_criteria=["Desktop tasks executed successfully"],
-            failure_criteria=["Desktop interaction failed"],
-            required_tool="",
-            category=TaskCategory.DESKTOP,
-            priority=TaskPriority.HIGH,
-            dependencies=[],
-            expected_output="Desktop application launched and active",
-            status=TaskStatus.CREATED,
-        )
-
-        app_task = Task(
-            workflow_id=workflow_id,
-            task_name=f"Launch Application ({app_name})",
-            description=f"Launch desktop application '{app_name}' for goal: {goal}",
-            task_type=TaskType.LEAF,
-            assigned_agent="WorkerAgent",
-            parent_task_id=phase.task_id,
-            success_criteria=["Application launched successfully"],
-            failure_criteria=["Application launch failed"],
-            required_tool="desktop_automation",
-            category=TaskCategory.DESKTOP,
-            priority=TaskPriority.HIGH,
-            dependencies=[],
-            expected_output=f"Active process info for '{app_name}'",
-            inputs={"action": "launch_app", "app_name": app_name},
-            status=TaskStatus.CREATED,
-        )
-
-        return [phase, app_task]
-
-    def _decompose_ocr_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
-        """Decomposes an OCR text extraction goal into structured tasks."""
-        phase = Task(
-            workflow_id=workflow_id,
-            task_name="Phase 1: OCR Text Extraction",
-            description=f"Perform optical character recognition for: '{goal}'",
-            task_type=TaskType.PHASE,
-            assigned_agent="System",
-            success_criteria=["OCR task executed successfully"],
-            failure_criteria=["OCR task failed"],
-            required_tool="",
-            category=TaskCategory.OCR,
-            priority=TaskPriority.HIGH,
-            dependencies=[],
-            expected_output="Extracted text output",
-            status=TaskStatus.CREATED,
-        )
-
-        ocr_task = Task(
-            workflow_id=workflow_id,
-            task_name="Extract Text from Visual Input",
-            description=f"Read image/document and extract readable text for: {goal}",
-            task_type=TaskType.LEAF,
-            assigned_agent="WorkerAgent",
-            parent_task_id=phase.task_id,
-            success_criteria=["Readable text extracted successfully from input"],
-            failure_criteria=["Failed to extract readable text"],
-            required_tool="ocr",
-            category=TaskCategory.OCR,
-            priority=TaskPriority.HIGH,
-            dependencies=[],
-            expected_output="Structured OCR result containing extracted text",
-            inputs={"goal": goal},
-            status=TaskStatus.CREATED,
-        )
-
-        return [phase, ocr_task]

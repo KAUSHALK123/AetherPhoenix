@@ -9,6 +9,7 @@ import { WorkflowStatusPopcard } from '../components/chat/WorkflowStatusPopcard'
 import { TerminalPopcard } from '../components/chat/TerminalPopcard';
 import { FileExplorerPopcard } from '../components/chat/FileExplorerPopcard';
 import { DesktopAppPopcard } from '../components/chat/DesktopAppPopcard';
+import { BrowserPopcard } from '../components/chat/BrowserPopcard';
 
 export const ChatPage: React.FC = () => {
   const messages = useChatStore((state) => state.messages);
@@ -49,9 +50,9 @@ export const ChatPage: React.FC = () => {
 
   // Real backend capabilities discovered from CapabilityDiscoveryEngine and ToolRegistry
   const realCapabilities = [
+    { label: 'YouTube Search Automation', query: 'Open YouTube and search for robotic arms' },
     { label: 'Create PowerPoint Presentation', query: 'Create a PowerPoint presentation about electric vehicles with 5 slides' },
     { label: 'Generate PDF Research Report', query: 'Generate a comprehensive PDF market research report on AI automation' },
-    { label: 'Search the Web & Scrape', query: 'Search the web for top renewable energy innovations in 2026' },
     { label: 'Local File Organizer', query: 'Organize files in the downloads directory by file type and date' },
     { label: 'Run PowerShell Command', query: 'List active system processes and resource usage via PowerShell' },
     { label: 'Browser Automation Task', query: 'Open browser and navigate to documentation page for verification' },
@@ -181,12 +182,18 @@ export const ChatPage: React.FC = () => {
                       <ArtifactPopcard artifact={msg.artifactData} />
                     )}
 
+                    {/* Browser Automation Popcard */}
+                    {msg.role !== 'user' && msg.browserData && (
+                      <BrowserPopcard data={msg.browserData} />
+                    )}
+
                     {/* Standard Agent Text Message */}
                     {msg.role !== 'user' &&
                       !msg.planData &&
                       !msg.permissionData &&
                       !msg.workflowData &&
                       !msg.artifactData &&
+                      !msg.browserData &&
                       !msg.terminalOutputData &&
                       !msg.fileExplorerData &&
                       !msg.desktopAppData &&
