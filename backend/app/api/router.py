@@ -5,6 +5,7 @@ from app.api.endpoints import (
     browser_extension,
     dashboard,
     export,
+    mcp_command,
     notifications,
     permissions,
     planner,
@@ -22,6 +23,9 @@ api_router.include_router(
 )
 api_router.include_router(
     browser_extension.router, prefix="/browser-extension", tags=["browser-extension"]
+)
+api_router.include_router(
+    mcp_command.router, prefix="/mcp/commands", tags=["mcp-commands"]
 )
 api_router.include_router(export.router, prefix="/export", tags=["export"])
 api_router.include_router(artifacts.router, prefix="/artifacts", tags=["artifacts"])
