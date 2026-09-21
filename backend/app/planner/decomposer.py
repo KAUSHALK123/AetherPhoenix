@@ -159,9 +159,29 @@ class TaskDecompositionEngine:
         ):
             return self._decompose_desktop_goal(goal, workflow_id)
         elif re.search(
-            r"\b(ipconfig|powershell|terminal|cmd|ping|netstat|whoami|hostname|systeminfo|run command|exec|shell)\b",
+            r"\b(ipconfig|powershell|terminal|cmd|ping|netstat|whoami|hostname|systeminfo|run command|exec|shell|uptime|disk|process|memory|ram|port|ports|env)\b",
             lower_goal,
-        ) or "my ip" in lower_goal or "ip address" in lower_goal:
+        ) or any(
+            w in lower_goal
+            for w in [
+                "chk my ip",
+                "check my ip",
+                "my ip",
+                "ip address",
+                "ipaddress",
+                "disk space",
+                "free space",
+                "running process",
+                "process list",
+                "memory usage",
+                "ram usage",
+                "open port",
+                "listening port",
+                "large file",
+                "system info",
+                "system uptime",
+            ]
+        ):
             return self._decompose_system_goal(goal, workflow_id)
         elif any(
             w in lower_goal for w in ["research", "investigate", "find info"]
@@ -483,10 +503,15 @@ class TaskDecompositionEngine:
         return [phase_root, task_design, task_code, task_verify]
 
     def _decompose_system_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
-        """Decomposes a system command / repair goal into terminal tasks."""
+        """Decomposes a system command / repair goal into resolved terminal tasks."""
+        from app.tools.terminal.command_resolver import CommandResolverEngine
+
+        resolver = CommandResolverEngine()
+        resolved = resolver.resolve(goal)
+
         phase_root = Task(
             workflow_id=workflow_id,
-            task_name="Phase 1: System Operation",
+            task_name=f"Phase 1: System Operation ({resolved.display_name})",
             description=f"System operation for: '{goal}'",
             task_type=TaskType.PHASE,
             assigned_agent="System",
@@ -495,9 +520,9 @@ class TaskDecompositionEngine:
             required_tool="",
             category=TaskCategory.POWERSHELL,
             priority=TaskPriority.HIGH,
-            risk_level="MEDIUM",
+            risk_level=resolved.risk_level,
             dependencies=[],
-            expected_output="Completed system command execution",
+            expected_output=f"Completed execution of '{resolved.command}'",
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
         )
@@ -506,7 +531,7 @@ class TaskDecompositionEngine:
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
             task_name="Inspect Environment Details",
-            description=f"Gather system environment details for: {goal}",
+            description=f"Verify shell environment for command: {resolved.command}",
             assigned_agent="WorkerAgent",
             required_tool="terminal_tool",
             category=TaskCategory.POWERSHELL,
@@ -515,7 +540,7 @@ class TaskDecompositionEngine:
             expected_output="Environment details log",
             success_criteria=["Environment details inspected"],
             failure_criteria=["Inspection failed"],
-            inputs={"command": goal},
+            inputs={"command": resolved.command, "raw_query": goal, "display_name": resolved.display_name},
             estimated_duration_seconds=15,
             status=TaskStatus.CREATED,
         )
@@ -523,18 +548,24 @@ class TaskDecompositionEngine:
         task_execute = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
-            task_name=f"Execute Command: {goal}",
-            description=f"Run command in local environment shell: {goal}",
+            task_name=f"Execute: {resolved.command}",
+            description=f"Run '{resolved.command}' ({resolved.description})",
             assigned_agent="WorkerAgent",
             required_tool="terminal_tool",
             category=TaskCategory.POWERSHELL,
             priority=TaskPriority.HIGH,
-            risk_level="LOW",
+            risk_level=resolved.risk_level,
             dependencies=[task_inspect.task_id],
-            expected_output="Command execution output log",
+            expected_output=f"Output from: {resolved.command}",
             success_criteria=["Terminal command executed successfully"],
             failure_criteria=["Command execution returned non-zero exit code"],
-            inputs={"command": goal},
+            inputs={
+                "command": resolved.command,
+                "raw_query": goal,
+                "display_name": resolved.display_name,
+                "category": resolved.category,
+                "description": resolved.description,
+            },
             estimated_duration_seconds=30,
             status=TaskStatus.CREATED,
         )

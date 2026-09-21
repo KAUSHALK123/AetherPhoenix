@@ -76,10 +76,11 @@ class TerminalToolAdapter(BaseToolAdapter):
                 if " on my laptop" in command.lower():
                     command = command.lower().replace(" on my laptop", "").strip()
 
-            if any(
-                k in command.lower() for k in ["ip address", "my ip", "what is my ip"]
-            ):
-                command = "ipconfig"
+            # Dynamic resolution of natural language queries to shell commands
+            from app.tools.terminal.command_resolver import CommandResolverEngine
+            resolver = CommandResolverEngine()
+            resolved = resolver.resolve(command)
+            command = resolved.command
 
             risk_level = self._assess_risk(command)
             logger.info(f"Assessed risk level {risk_level} for command: {command}")
