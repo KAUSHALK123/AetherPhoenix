@@ -345,6 +345,11 @@ class TaskDecompositionEngine:
             except Exception as e:
                 logger.warning(f"LLM planner fallback error: {e}")
 
+            # For actionable goals (e.g. security/user/system setup) or testing workflows,
+            # allow generic task decomposition so CapabilityDiscoveryEngine can map capabilities.
+            if any(w in lower_goal for w in ["user", "securely", "account", "permission", "login", "auth", "role"]):
+                return self._decompose_generic_goal(goal, workflow_id)
+
             # Do not emit a placeholder plan for unhandled requests!
             return []
 
