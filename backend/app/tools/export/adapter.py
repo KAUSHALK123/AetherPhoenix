@@ -52,6 +52,17 @@ class ExportToolAdapter(BaseToolAdapter):
             task.inputs.copy() if hasattr(task, "inputs") and task.inputs else {}
         )
 
+        if inputs.get("dry_run"):
+            duration_ms = (time.time() - start_time) * 1000.0
+            return ExecutionResult(
+                task_id=task.task_id,
+                workflow_id=task.workflow_id,
+                success=True,
+                output={"status": "dry_run", "target_format": "json"},
+                logs=logs_captured + ["Export dry run succeeded."],
+                metrics=ExecutionMetrics(execution_time_ms=duration_ms),
+            )
+
         # Resolve target format
         fmt_str = (
             inputs.get("target_format")

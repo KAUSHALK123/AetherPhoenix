@@ -86,6 +86,68 @@ class TaskDecompositionEngine:
         """
         lower_goal = goal.lower()
 
+        # 1. File Organization & Management Intent (Priority over file extensions)
+        is_organize_intent = any(
+            v in lower_goal
+            for v in ["organize", "sort", "group", "clean up", "cleanup", "move", "copy", "delete"]
+        ) and any(
+            n in lower_goal
+            for n in ["file", "files", "folder", "folders", "directory", "directories", "downloads", "desktop", "docs", "documents", ".ppt", ".pdf", ".jpg", ".png", ".txt"]
+        )
+        if is_organize_intent or any(
+            w in lower_goal
+            for w in [
+                "local file organizer",
+                "file organizer",
+                "organize downloads",
+                "sort files",
+                "organize files",
+                "clean up folder",
+                "clean up files",
+            ]
+        ):
+            return self._decompose_filesystem_goal(goal, workflow_id)
+
+        # 2. PDF Search / Text Extraction Intent (Priority over generic browser search)
+        if ("pdf" in lower_goal or ".pdf" in lower_goal) and any(
+            w in lower_goal
+            for w in [
+                "search",
+                "find",
+                "extract",
+                "read",
+                "query",
+                "lookup",
+                "scan",
+                "ocr",
+            ]
+        ):
+            return self._decompose_pdf_search_goal(goal, workflow_id)
+
+        # 3. PDF Generation Intent (Priority over generic system or coding)
+        if any(
+            w in lower_goal
+            for w in [
+                "generate pdf",
+                "create pdf",
+                "create a pdf",
+                "make pdf",
+                "make a pdf",
+                "build pdf",
+                "export pdf",
+                "pdf report",
+                "pdf document",
+            ]
+        ):
+            return self._decompose_pdf_goal(goal, workflow_id)
+
+        # 4. Presentation / PPT Generation Intent
+        if any(
+            w in lower_goal
+            for w in ["ppt", "presentation", "powerpoint", "slides", "deck"]
+        ):
+            return self._decompose_presentation_goal(goal, workflow_id)
+
         # Categorize goal to apply tailored decomposition template
         if any(
             w in lower_goal
@@ -101,11 +163,6 @@ class TaskDecompositionEngine:
             ]
         ) or ("issue" in lower_goal and ("repo" in lower_goal or "git" in lower_goal)):
             return self._decompose_github_goal(goal, workflow_id)
-        elif any(
-            w in lower_goal
-            for w in ["ppt", "presentation", "powerpoint", "slides", "deck"]
-        ):
-            return self._decompose_presentation_goal(goal, workflow_id)
         elif any(
             w in lower_goal
             for w in [
@@ -591,58 +648,61 @@ class TaskDecompositionEngine:
             status=TaskStatus.CREATED,
         )
 
-        task_inspect = Task(
+        task_list = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
-            task_name="Inspect Target Directory",
-            description="List and categorize existing files",
+            task_name="List files in source dir",
+            description="Scan and list files and metadata in the source directory",
             assigned_agent="WorkerAgent",
             required_tool="file_explorer",
             category=TaskCategory.FILE_SYSTEM,
             priority=TaskPriority.MEDIUM,
             dependencies=[],
-            expected_output="List of files and their metadata",
+            expected_output="List of files and their metadata in source directory",
             success_criteria=["File list retrieved successfully"],
             failure_criteria=["Target directory not found or inaccessible"],
             estimated_duration_seconds=30,
             status=TaskStatus.CREATED,
+            inputs={"action": "list_files", "path": "."},
         )
 
-        task_determine = Task(
+        task_create_dirs = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
-            task_name="Determine Organization Strategy",
-            description="Define how files should be categorized or moved",
-            assigned_agent="WorkerAgent",
-            required_tool="file_explorer",
-            category=TaskCategory.OTHER,
-            priority=TaskPriority.MEDIUM,
-            dependencies=[task_inspect.task_id],
-            expected_output="Mapping of source files to target destinations",
-            success_criteria=["Strategy defines mapping for all required files"],
-            failure_criteria=["Unable to determine file categories"],
-            estimated_duration_seconds=30,
-            status=TaskStatus.CREATED,
-        )
-
-        task_execute = Task(
-            parent_task_id=phase_root.task_id,
-            workflow_id=workflow_id,
-            task_name="Execute File Operations",
-            description="Move or copy files based on the strategy",
+            task_name="Create target categories/folders",
+            description="Create destination categories and folders for organization",
             assigned_agent="WorkerAgent",
             required_tool="file_explorer",
             category=TaskCategory.FILE_SYSTEM,
             priority=TaskPriority.MEDIUM,
-            dependencies=[task_determine.task_id],
-            expected_output="Operations log detailing moved files",
-            success_criteria=["All mapped operations succeeded"],
+            dependencies=[task_list.task_id],
+            expected_output="Target category directories created",
+            success_criteria=["Category folders created successfully"],
+            failure_criteria=["Failed to create category folders"],
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+            inputs={"action": "create_folder"},
+        )
+
+        task_move_copy = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name="Move/copy files into destination",
+            description="Move or copy files into destination category directories",
+            assigned_agent="WorkerAgent",
+            required_tool="file_explorer",
+            category=TaskCategory.FILE_SYSTEM,
+            priority=TaskPriority.MEDIUM,
+            dependencies=[task_create_dirs.task_id],
+            expected_output="Operations log detailing moved/copied files",
+            success_criteria=["All mapped files moved or copied to destination"],
             failure_criteria=["One or more file operations failed"],
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
+            inputs={"action": "move_file"},
         )
 
-        return [phase_root, task_inspect, task_determine, task_execute]
+        return [phase_root, task_list, task_create_dirs, task_move_copy]
 
     def _decompose_github_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
         """Decomposes a GitHub repository, issue creation, or PR goal into structured browser tasks."""
@@ -1064,6 +1124,98 @@ class TaskDecompositionEngine:
         )
 
         return [phase_root, task_ocr]
+
+    def _decompose_pdf_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
+        """Decomposes a PDF document generation goal."""
+        phase_root = Task(
+            workflow_id=workflow_id,
+            task_name="Phase 1: PDF Document Generation",
+            description=f"Compile and generate formatted PDF document for: '{goal}'",
+            task_type=TaskType.PHASE,
+            assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
+            required_tool="",
+            category=TaskCategory.PDF_GENERATION,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="Formatted PDF document (.pdf)",
+            estimated_duration_seconds=60,
+            status=TaskStatus.CREATED,
+        )
+
+        task_pdf = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name="Generate PDF Document",
+            description="Build structured PDF document with headers, paragraphs, and styling",
+            assigned_agent="WorkerAgent",
+            required_tool="pdf_generator",
+            category=TaskCategory.PDF_GENERATION,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="PDF document (.pdf)",
+            success_criteria=["PDF file created with valid magic bytes and non-empty content"],
+            failure_criteria=["Failed to generate or validate PDF document"],
+            inputs={"title": goal, "topic": goal},
+            estimated_duration_seconds=45,
+            status=TaskStatus.CREATED,
+        )
+
+        return [phase_root, task_pdf]
+
+    def _decompose_pdf_search_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
+        """Decomposes a PDF search or text extraction goal."""
+        import re
+
+        # Extract search query if present
+        query_match = re.search(r"(?:search|find|query|lookup)\s+(?:for\s+)?['\"]?([^'\"]+?)['\"]?\s+in\s+", goal, re.IGNORECASE)
+        query = query_match.group(1).strip() if query_match else None
+        if not query:
+            # Fallback regex
+            query_match2 = re.search(r"(?:search|find|extract)\s+['\"]?([^'\"]+?)['\"]?\s+(?:from|in)\s+pdf", goal, re.IGNORECASE)
+            query = query_match2.group(1).strip() if query_match2 else "search text"
+
+        # Extract file path if present
+        path_match = re.search(r"['\"]?([a-zA-Z0-9_\-\\/.]+\.pdf)['\"]?", goal, re.IGNORECASE)
+        target_path = path_match.group(1) if path_match else "document.pdf"
+
+        phase_root = Task(
+            workflow_id=workflow_id,
+            task_name="Phase 1: PDF Search & Extraction",
+            description=f"Extract and search content within PDF document for: '{goal}'",
+            task_type=TaskType.PHASE,
+            assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
+            required_tool="",
+            category=TaskCategory.OCR,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="Search results and extracted content",
+            estimated_duration_seconds=60,
+            status=TaskStatus.CREATED,
+        )
+
+        task_search = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name="Search & Extract PDF Content",
+            description=f"Parse PDF text and search for matching segments: '{query}'",
+            assigned_agent="WorkerAgent",
+            required_tool="ocr",
+            category=TaskCategory.OCR,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="Extracted text transcript and matching segments",
+            success_criteria=["Text extracted and query evaluated across segments"],
+            failure_criteria=["Failed to parse or search PDF document"],
+            inputs={"filepath": target_path, "query": query},
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        return [phase_root, task_search]
 
     def _decompose_generic_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
         """Generic fallback goal decomposition logic."""

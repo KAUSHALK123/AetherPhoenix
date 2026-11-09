@@ -51,6 +51,17 @@ class OCRToolAdapter(BaseToolAdapter):
             task.inputs.copy() if hasattr(task, "inputs") and task.inputs else {}
         )
 
+        if inputs.get("dry_run"):
+            duration_ms = (time.time() - start_time) * 1000.0
+            return ExecutionResult(
+                task_id=task.task_id,
+                workflow_id=task.workflow_id,
+                success=True,
+                output={"extracted_text": "Dry run OCR text", "confidence": 1.0},
+                logs=logs_captured + ["OCR dry run succeeded."],
+                metrics=ExecutionMetrics(execution_time_ms=duration_ms),
+            )
+
         # Resolve filepath from inputs
         filepath = (
             inputs.get("filepath")
@@ -59,6 +70,10 @@ class OCRToolAdapter(BaseToolAdapter):
             or inputs.get("path")
             or inputs.get("source_path")
             or inputs.get("file")
+            or inputs.get("pdf_path")
+            or inputs.get("file_path")
+            or inputs.get("document")
+            or inputs.get("target")
         )
 
         if not filepath:
@@ -84,6 +99,18 @@ class OCRToolAdapter(BaseToolAdapter):
                     ),
                 )
 
+        # Resolve relative path if needed
+        from pathlib import Path
+        import os
+        from app.core.config import get_config
+
+        path_obj = Path(filepath)
+        if not path_obj.exists() and not path_obj.is_absolute():
+            cfg = get_config()
+            resolved = Path(cfg.ARTIFACTS_DIR) / filepath
+            if resolved.exists():
+                filepath = str(resolved)
+
         language = inputs.get("language", "eng")
         extract_boxes = bool(inputs.get("extract_boxes", False))
 
@@ -105,6 +132,28 @@ class OCRToolAdapter(BaseToolAdapter):
             )
 
             output = ocr_result.model_dump()
+
+            # PDF / text search support if query is provided
+            query = (
+                inputs.get("query")
+                or inputs.get("search_query")
+                or inputs.get("search_term")
+                or inputs.get("keyword")
+            )
+            if query:
+                q_lower = str(query).lower()
+                matches = [
+                    seg.model_dump()
+                    for seg in ocr_result.segments
+                    if q_lower in seg.text.lower()
+                ]
+                output["query"] = query
+                output["matches"] = matches
+                output["found"] = len(matches) > 0 or q_lower in ocr_result.extracted_text.lower()
+                logs_captured.append(
+                    f"PDF search for '{query}': {'found' if output['found'] else 'not found'} ({len(matches)} matching segment(s))"
+                )
+
             artifacts = []
 
             return ExecutionResult(

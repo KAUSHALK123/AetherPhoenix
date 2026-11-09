@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 from shared.contracts.execution import ExecutionMetrics, ExecutionResult, TaskError
 from shared.contracts.permission import PermissionType
-from shared.contracts.task import Task, TaskStatus
+from shared.contracts.task import Task, TaskStatus, TaskType
 from shared.contracts.tool import ToolState
 
 from app.core.exceptions import PermissionDeniedException, ToolNotFoundException
@@ -97,8 +97,16 @@ class WorkerAgent(BaseAgent):
 
         try:
             # 2. Validation
-            if not task.required_tool:
-                raise ToolNotFoundException("Task is missing 'required_tool'")
+            if getattr(task, "task_type", None) == TaskType.PHASE or not task.required_tool:
+                duration_ms = (time.time() - start_time) * 1000.0
+                return ExecutionResult(
+                    task_id=task.task_id,
+                    workflow_id=task.workflow_id,
+                    success=True,
+                    output={"phase": task.task_name, "status": "COMPLETED"},
+                    logs=[f"Phase '{task.task_name}' processed."],
+                    metrics=ExecutionMetrics(execution_time_ms=duration_ms, exit_code=0),
+                )
 
             # 3. Tool Resolution
             tool_name = task.required_tool
@@ -113,7 +121,89 @@ class WorkerAgent(BaseAgent):
                     f"Tool '{tool_name}' is not ready (Status: {tool.status.value})"
                 )
 
-            adapter = self._adapters.get(tool.adapter)
+            adapter = (
+                self._adapters.get(tool.adapter)
+                or self._adapters.get(tool.name)
+                or self._adapters.get(tool.adapter.split(".")[-1])
+            )
+            if not adapter and tool.adapter:
+                # Dynamically load adapter if not explicitly registered
+                try:
+                    import importlib
+
+                    if "." in tool.adapter:
+                        module_name, class_name = tool.adapter.rsplit(".", 1)
+                        mod = importlib.import_module(module_name)
+                        cls = getattr(mod, class_name)
+                    else:
+                        adapter_map = {
+                            "OCRToolAdapter": ("app.tools.ocr.adapter", "OCRToolAdapter"),
+                            "ocr_tool": ("app.tools.ocr.adapter", "OCRToolAdapter"),
+                            "ocr": ("app.tools.ocr.adapter", "OCRToolAdapter"),
+                            "ExportToolAdapter": ("app.tools.export.adapter", "ExportToolAdapter"),
+                            "export": ("app.tools.export.adapter", "ExportToolAdapter"),
+                            "FileExplorerToolAdapter": ("app.tools.file_explorer.adapter", "FileExplorerToolAdapter"),
+                            "file_explorer": ("app.tools.file_explorer.adapter", "FileExplorerToolAdapter"),
+                            "file_manager_tool": ("app.tools.file_explorer.adapter", "FileExplorerToolAdapter"),
+                            "PDFToolAdapter": ("app.tools.pdf.tool", "PDFToolAdapter"),
+                            "pdf_generator": ("app.tools.pdf.tool", "PDFToolAdapter"),
+                            "pdf_tool": ("app.tools.pdf.tool", "PDFToolAdapter"),
+                            "PPTToolAdapter": ("app.tools.ppt.adapter", "PPTToolAdapter"),
+                            "ppt_tool": ("app.tools.ppt.adapter", "PPTToolAdapter"),
+                            "ppt_generator": ("app.tools.ppt.adapter", "PPTToolAdapter"),
+                            "TerminalToolAdapter": ("app.tools.terminal.adapter", "TerminalToolAdapter"),
+                            "terminal_tool_adapter": ("app.tools.terminal.adapter", "TerminalToolAdapter"),
+                            "terminal_tool": ("app.tools.terminal.adapter", "TerminalToolAdapter"),
+                            "GitToolAdapter": ("app.tools.git.adapter", "GitToolAdapter"),
+                            "git_tool_adapter": ("app.tools.git.adapter", "GitToolAdapter"),
+                            "git_tool": ("app.tools.git.adapter", "GitToolAdapter"),
+                            "DesktopToolAdapter": ("app.tools.desktop.interface", "DesktopToolAdapter"),
+                            "desktop_adapter": ("app.tools.desktop.interface", "DesktopToolAdapter"),
+                            "desktop_automation": ("app.tools.desktop.interface", "DesktopToolAdapter"),
+                            "ScreenshotToolAdapter": ("app.tools.screenshot.tool", "ScreenshotToolAdapter"),
+                            "screenshot_engine": ("app.tools.screenshot.tool", "ScreenshotToolAdapter"),
+                            "DocumentToolAdapter": ("app.tools.document.tool", "DocumentToolAdapter"),
+                            "document_generator": ("app.tools.document.tool", "DocumentToolAdapter"),
+                            "content_tool": ("app.tools.document.tool", "DocumentToolAdapter"),
+                            "BrowserAdapter": ("app.tools.browser.interface", "BrowserAdapter"),
+                            "browser_adapter": ("app.tools.browser.interface", "BrowserAdapter"),
+                            "browser_automation": ("app.tools.browser.interface", "BrowserAdapter"),
+                            "BrowserExtensionAdapter": ("app.tools.browser_extension.adapter", "BrowserExtensionAdapter"),
+                            "browser_extension_adapter": ("app.tools.browser_extension.adapter", "BrowserExtensionAdapter"),
+                            "browser_extension": ("app.tools.browser_extension.adapter", "BrowserExtensionAdapter"),
+                            "WebScrapingAdapter": ("app.tools.web_scraping.adapter", "WebScrapingAdapter"),
+                            "web_scraping_adapter": ("app.tools.web_scraping.adapter", "WebScrapingAdapter"),
+                            "web_scraping": ("app.tools.web_scraping.adapter", "WebScrapingAdapter"),
+                            "WebResearchToolAdapter": ("app.tools.web_research.adapter", "WebResearchToolAdapter"),
+                            "web_research_adapter": ("app.tools.web_research.adapter", "WebResearchToolAdapter"),
+                            "web_research": ("app.tools.web_research.adapter", "WebResearchToolAdapter"),
+                            "web_research_tool": ("app.tools.web_research.adapter", "WebResearchToolAdapter"),
+                        }
+                        target_key = tool.adapter if tool.adapter in adapter_map else tool.name
+                        if target_key in adapter_map:
+                            mod_name, cls_name = adapter_map[target_key]
+                            mod = importlib.import_module(mod_name)
+                            cls = getattr(mod, cls_name)
+                        else:
+                            cls = None
+
+                    if cls:
+                        try:
+                            adapter = cls(
+                                permission_manager=self.permission_manager,
+                                artifact_storage_service=self.artifact_storage_service,
+                            )
+                        except TypeError:
+                            try:
+                                adapter = cls(permission_manager=self.permission_manager)
+                            except TypeError:
+                                adapter = cls()
+                        self._adapters[tool.adapter] = adapter
+                except Exception as import_exc:
+                    logger.warning(
+                        f"Could not dynamically load adapter '{tool.adapter}': {import_exc}"
+                    )
+
             if not adapter:
                 raise ToolNotFoundException(
                     f"Tool adapter '{tool.adapter}' is not registered in WorkerAgent"

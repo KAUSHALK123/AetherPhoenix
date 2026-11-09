@@ -27,6 +27,19 @@ class WebScrapingAdapter(BaseToolAdapter):
         """
         logger.info(f"WebScrapingAdapter executing task {task.task_id}")
 
+        if hasattr(task, "inputs") and task.inputs and task.inputs.get("dry_run"):
+            return ExecutionResult(
+                task_id=task.task_id,
+                workflow_id=task.workflow_id,
+                success=True,
+                output={
+                    "status": "dry_run",
+                    "url": task.inputs.get("url", "https://example.com"),
+                },
+                logs=["Web scraping dry run succeeded."],
+                metrics=ExecutionMetrics(execution_time_ms=1.0),
+            )
+
         try:
             scrape_request = self._parse_task_to_request(task)
             scrape_result = await self.scraper.scrape(scrape_request)
@@ -79,6 +92,20 @@ class WebScrapingAdapter(BaseToolAdapter):
         """
         Extracts target URL and rules from task description or expected_output.
         """
+        # Check task.inputs first
+        if hasattr(task, "inputs") and task.inputs and "url" in task.inputs:
+            inputs = task.inputs
+            rules_raw = inputs.get("extraction_rules", inputs.get("rules", []))
+            rules = [
+                ExtractionRule(**r) if isinstance(r, dict) else r for r in rules_raw
+            ]
+            return ScrapeRequest(
+                url=inputs["url"],
+                extraction_rules=rules,
+                timeout_seconds=float(inputs.get("timeout_seconds", 10.0)),
+                parse_metadata=bool(inputs.get("parse_metadata", True)),
+            )
+
         desc = task.description.strip() if task.description else ""
 
         if desc.startswith("{") and desc.endswith("}"):

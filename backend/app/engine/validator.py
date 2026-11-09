@@ -67,6 +67,17 @@ class OutputValidationService:
         # Check task's designated artifact location
         if task.artifact_location:
             filepath = task.artifact_location
+            if not os.path.isabs(filepath) and not os.path.exists(filepath):
+                try:
+                    from app.core.config import get_config
+
+                    cfg = get_config()
+                    resolved = os.path.join(cfg.ARTIFACTS_DIR, filepath)
+                    if os.path.exists(resolved):
+                        filepath = resolved
+                except Exception:
+                    pass
+
             if not os.path.exists(filepath):
                 is_valid = False
                 issues.append(
@@ -79,12 +90,24 @@ class OutputValidationService:
         # Check result artifacts
         if result.artifacts:
             for artifact in result.artifacts:
-                if not os.path.exists(artifact.filepath):
+                art_path = artifact.filepath
+                if not os.path.isabs(art_path) and not os.path.exists(art_path):
+                    try:
+                        from app.core.config import get_config
+
+                        cfg = get_config()
+                        resolved = os.path.join(cfg.ARTIFACTS_DIR, art_path)
+                        if os.path.exists(resolved):
+                            art_path = resolved
+                    except Exception:
+                        pass
+
+                if not os.path.exists(art_path):
                     is_valid = False
                     issues.append(
                         f"Result artifact file not found: {artifact.filepath}"
                     )
-                elif os.path.getsize(artifact.filepath) == 0:
+                elif os.path.getsize(art_path) == 0:
                     is_valid = False
                     issues.append(
                         f"Result artifact file is empty (0 bytes): {artifact.filepath}"
