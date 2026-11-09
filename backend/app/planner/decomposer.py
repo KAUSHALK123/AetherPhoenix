@@ -86,7 +86,44 @@ class TaskDecompositionEngine:
         """
         lower_goal = goal.lower()
 
-        # 1. File Organization & Management Intent (Priority over file extensions)
+        # 1. Read-Only Directory & Drive Inspection Intent
+        is_read_only_dir_intent = (
+            any(
+                w in lower_goal
+                for w in [
+                    "what folders",
+                    "what files",
+                    "what's in",
+                    "whats in",
+                    "what is in",
+                    "tell me what folders",
+                    "tell me what files",
+                    "tell me what",
+                    "list folders",
+                    "list files",
+                    "check folders",
+                    "check files",
+                    "check d drive",
+                    "check c drive",
+                    "show folders",
+                    "show files",
+                    "browse folder",
+                    "browse directory",
+                    "view folders",
+                ]
+            )
+            or (
+                any(w in lower_goal for w in ["list", "show", "check", "browse", "view", "inspect", "explore", "what's in", "whats in"])
+                and any(d in lower_goal for d in ["drive", "folder", "directory", "directories", "d:", "c:", "e:", ":\\", ":/"])
+                and not any(a in lower_goal for a in ["organize", "sort", "clean up", "cleanup", "move", "copy", "delete"])
+            )
+            or bool(re.search(r"\b(check|show|list|browse|view|inspect)\s+[a-z]\s+drive\b", lower_goal))
+            or bool(re.search(r"\b(?:what|tell me)\s+(?:folders|files)\s+(?:are\s+)?in\s+[a-z]\s+drive\b", lower_goal))
+        )
+        if is_read_only_dir_intent:
+            return self._decompose_directory_inspection_goal(goal, workflow_id)
+
+        # 2. File Organization & Management Intent (Priority over file extensions)
         is_organize_intent = any(
             v in lower_goal
             for v in ["organize", "sort", "group", "clean up", "cleanup", "move", "copy", "delete"]
@@ -284,7 +321,32 @@ class TaskDecompositionEngine:
         ) or ("file" in lower_goal and "create" not in lower_goal and "code" not in lower_goal):
             return self._decompose_filesystem_goal(goal, workflow_id)
         else:
-            return self._decompose_generic_goal(goal, workflow_id)
+            # Fallback: query LLM planner with live ToolRegistry catalog
+            try:
+                import json
+                from app.planner.llm_planner import LLMPlanner
+                from shared.contracts.planner import PlannerRequest
+
+                if not hasattr(self, "llm_planner") or self.llm_planner is None:
+                    self.llm_planner = LLMPlanner()
+
+                if self.llm_planner.is_nonsense(goal):
+                    return []
+
+                resp = self.llm_planner.plan(
+                    PlannerRequest(session_id=str(workflow_id), message=goal),
+                    workflow_id=workflow_id,
+                )
+                if resp.status == "ready" and resp.reply:
+                    plan_dict = json.loads(resp.reply)
+                    task_dicts = plan_dict.get("tasks", [])
+                    if task_dicts:
+                        return [Task.model_validate(t) for t in task_dicts]
+            except Exception as e:
+                logger.warning(f"LLM planner fallback error: {e}")
+
+            # Do not emit a placeholder plan for unhandled requests!
+            return []
 
     def _decompose_presentation_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
         """Decomposes a presentation/PPT generation goal into a task hierarchy."""
@@ -628,6 +690,66 @@ class TaskDecompositionEngine:
         )
 
         return [phase_root, task_inspect, task_execute]
+
+    def _decompose_directory_inspection_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
+        """Decomposes a read-only directory or drive inspection goal into a file_explorer task."""
+        lower_goal = goal.lower()
+
+        # Extract target path
+        target_path = "."
+        drive_match = re.search(r"\b([a-zA-Z])\s+drive\b", lower_goal) or re.search(r"\bdrive\s+([a-zA-Z])\b", lower_goal)
+        if drive_match:
+            drive_letter = drive_match.group(1).upper()
+            target_path = f"{drive_letter}:\\"
+        elif re.search(r"\b([a-zA-Z]):[\\/]?", lower_goal):
+            m = re.search(r"\b([a-zA-Z]):([\\/][^ \t\n\r\"']*)?", goal)
+            if m:
+                target_path = m.group(0)
+                if not target_path.endswith("\\") and not target_path.endswith("/"):
+                    target_path += "\\"
+        elif "downloads" in lower_goal:
+            target_path = "downloads"
+        elif "desktop" in lower_goal:
+            target_path = "desktop"
+        elif "documents" in lower_goal:
+            target_path = "documents"
+
+        phase_root = Task(
+            workflow_id=workflow_id,
+            task_name="Phase 1: Directory Inspection",
+            description=f"Inspect and list directory contents for: '{target_path}'",
+            task_type=TaskType.PHASE,
+            assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
+            required_tool="",
+            category=TaskCategory.FILE_SYSTEM,
+            priority=TaskPriority.LOW,
+            dependencies=[],
+            expected_output=f"List of files and directories in '{target_path}'",
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        task_list = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name=f"List contents of {target_path}",
+            description=f"Inspect and list files and folders in '{target_path}'",
+            assigned_agent="WorkerAgent",
+            required_tool="file_explorer",
+            category=TaskCategory.FILE_SYSTEM,
+            priority=TaskPriority.LOW,
+            dependencies=[],
+            expected_output=f"List of files and directories in '{target_path}'",
+            success_criteria=[f"Directory contents for '{target_path}' retrieved successfully"],
+            failure_criteria=[f"Failed to access or list '{target_path}'"],
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+            inputs={"action": "list_files", "path": target_path},
+        )
+
+        return [phase_root, task_list]
 
     def _decompose_filesystem_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
         """Decomposes a file system management goal into tasks."""

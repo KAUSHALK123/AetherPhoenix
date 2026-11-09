@@ -31,6 +31,7 @@ class Tool(BaseModel):
 
     tool_id: UUID = Field(default_factory=uuid4)
     name: str = Field(..., description="Unique string identifier for the tool")
+    description: str = Field(default="", description="Description of the tool")
     version: str = Field(default="1.0.0")
     status: ToolState = Field(default=ToolState.INSTALLED)
     health: ToolHealth = Field(default=ToolHealth.UNKNOWN)

@@ -125,7 +125,8 @@ export interface GeneratePlanRequest {
 
 export interface PlannerResponse {
   session_id: string;
-  status: 'ready' | 'clarifying' | 'error' | string;
+  status: 'ready' | 'clarifying' | 'error' | 'chat' | string;
   reply: string;
   action?: string;
+  options?: string[];
 }

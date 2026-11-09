@@ -119,3 +119,4 @@ def test_multiturn_clarification_flow(planner):
     assert len(leaf_tasks) == 3
     for t in leaf_tasks:
         assert t["required_tool"] == "file_explorer"
+

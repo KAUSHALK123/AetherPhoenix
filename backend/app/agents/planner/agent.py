@@ -316,17 +316,46 @@ class PlannerAgent:
         else:
             combined_message = request.message
 
+        # Check if request is a pure conversational question needing no tools
+        from app.planner.llm_planner import LLMPlanner
+
+        if not hasattr(self, "llm_planner") or self.llm_planner is None:
+            self.llm_planner = LLMPlanner()
+
+        chat_reply = self.llm_planner.is_conversational_chat(request.message)
+        if chat_reply:
+            return PlannerResponse(
+                session_id=request.session_id,
+                status="chat",
+                reply=chat_reply,
+                action="reply",
+            )
+
+        # Check for nonsense requests
+        if self.llm_planner.is_nonsense(request.message):
+            self.active_sessions.pop(request.session_id, None)
+            return PlannerResponse(
+                session_id=request.session_id,
+                status="error",
+                reply="I cannot fulfill this request: unable to recognize a meaningful objective or actionable task from your input.",
+                action="await_user_input",
+            )
+
         # Stage 1 & 2: User Requirement Analysis
         user_req = self.requirement_analyzer.analyze_request(request)
+        from shared.contracts.planner import IntentCategory
+        is_read_only = user_req.intent == IntentCategory.DATA_RETRIEVAL
 
         # Stage 3: Clarification
         clarification = self.clarification_engine.evaluate_requirement(user_req)
-        if clarification.needs_clarification:
+        # Bias toward acting: low-risk read-only requests proceed without clarification
+        if clarification.needs_clarification and not is_read_only:
             self.active_sessions[request.session_id] = combined_message
             return PlannerResponse(
                 session_id=request.session_id,
                 status="clarifying",
                 reply=clarification.question,
+                options=clarification.options,
                 action="await_user_input",
             )
 
@@ -342,12 +371,13 @@ class PlannerAgent:
                 action="await_user_input",
             )
 
-        if goal_result.confidence_score < 0.6:
+        if goal_result.confidence_score < 0.6 and not is_read_only:
             self.active_sessions[request.session_id] = combined_message
             return PlannerResponse(
                 session_id=request.session_id,
                 status="clarifying",
                 reply="Your request is a bit too vague. Could you provide more specific details?",  # noqa: E501
+                options=None,
                 action="await_user_input",
             )
 
@@ -369,19 +399,29 @@ class PlannerAgent:
         )
         tasks = decomposition_plan.tasks
 
+        if not tasks:
+            self.active_sessions.pop(request.session_id, None)
+            return PlannerResponse(
+                session_id=request.session_id,
+                status="error",
+                reply="I cannot fulfill this request: no registered tools in the catalog can perform this action.",
+                action="await_user_input",
+            )
+
         # Capability Discovery
         tasks, unsupported_caps = self.capability_engine.discover_capabilities(
             tasks, unavailable_tools=unavailable_tools
         )
-        if unsupported_caps:
-            decomposition_plan.unsupported_capabilities = unsupported_caps
+        if unsupported_caps or decomposition_plan.unsupported_capabilities:
+            unsupported_all = list(set(unsupported_caps + decomposition_plan.unsupported_capabilities))
+            decomposition_plan.unsupported_capabilities = unsupported_all
             self.active_sessions.pop(request.session_id, None)
             return PlannerResponse(
                 session_id=request.session_id,
                 status="error",
                 reply=(
                     f"Unsupported capabilities detected: "
-                    f"{', '.join(unsupported_caps)}. Cannot execute this goal."
+                    f"{', '.join(unsupported_all)}. Cannot execute this goal."
                 ),
                 action="await_user_input",
             )

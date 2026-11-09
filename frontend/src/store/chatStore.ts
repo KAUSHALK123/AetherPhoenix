@@ -62,9 +62,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       const nextStatus = (response.status as PlannerStatus) || 'ready';
 
-      // Check if the reply is asking structured options
-      let structuredOptions: string[] | undefined = undefined;
-      if (nextStatus === 'clarifying') {
+      // Check if the reply provides structured options
+      let structuredOptions: string[] | undefined = response.options && response.options.length > 0 ? response.options : undefined;
+      if (!structuredOptions && nextStatus === 'clarifying') {
         const optionMatches = response.reply.match(/(?:(?:^|\n)(?:[-*•]|\d+\.)\s*([^\n]+))/g);
         if (optionMatches && optionMatches.length >= 2) {
           structuredOptions = optionMatches.map((m) => m.replace(/^[ -*•\d.]+\s*/, '').trim());

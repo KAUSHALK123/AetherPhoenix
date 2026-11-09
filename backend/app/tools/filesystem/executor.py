@@ -31,23 +31,35 @@ class FileSystemExecutor:
     def _resolve_and_validate_path(self, path: str) -> Path:
         """
         Resolves a given path against the workspace directory and validates
-        that it does not attempt path traversal outside the workspace.
+        that it does not attempt path traversal outside the workspace unless approved.
         """
-        # Resolve to absolute path, starting from workspace if relative
-        resolved_path = (self.workspace_dir / Path(path)).resolve()
+        p = Path(path)
+        if p.is_absolute():
+            resolved_path = p.resolve()
+        else:
+            resolved_path = (self.workspace_dir / p).resolve()
 
         # Check if the resolved path is a subpath of workspace_dir
-        if not str(resolved_path).startswith(str(self.workspace_dir)):
-            logger.error(
-                f"Path validation failed: {path} is outside "
-                f"workspace {self.workspace_dir}"
-            )
-            raise ValueError(
-                f"Access denied: path '{path}' is outside the "
-                f"permitted workspace directory."
-            )
+        if str(resolved_path).startswith(str(self.workspace_dir)):
+            return resolved_path
 
-        return resolved_path
+        # Check if out-of-sandbox access was granted via PermissionManager
+        if self.permission_manager:
+            for req in self.permission_manager.requests.values():
+                status_str = getattr(req.status, "value", str(req.status)).upper()
+                if status_str in ("GRANTED", "APPROVED"):
+                    req_path = getattr(req, "context", {}).get("path") if hasattr(req, "context") else None
+                    if req_path and (req_path == str(resolved_path) or str(resolved_path).startswith(req_path)):
+                        return resolved_path
+
+        logger.error(
+            f"Path validation failed: {path} is outside "
+            f"workspace {self.workspace_dir}"
+        )
+        raise ValueError(
+            f"Access denied: path '{path}' is outside the "
+            f"permitted workspace directory."
+        )
 
     async def list_files(self, request: ListFilesRequest) -> List[Dict[str, Any]]:
         """List files and directories in the specified path."""

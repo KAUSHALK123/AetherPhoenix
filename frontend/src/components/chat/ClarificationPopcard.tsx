@@ -9,11 +9,7 @@ export interface ClarificationPopcardProps {
 
 export const ClarificationPopcard: React.FC<ClarificationPopcardProps> = ({
   question,
-  options = [
-    'Create PowerPoint with 5 slides',
-    'Include comprehensive technical citations',
-    'Generate concise executive summary',
-  ],
+  options = [],
   onSubmit,
   isLoading = false,
 }) => {
