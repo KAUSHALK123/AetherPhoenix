@@ -57,3 +57,21 @@ def test_chat_message_directory_inspection():
     parsed = PlannerResponse.model_validate(data)
     assert parsed.status == "ready"
     assert parsed.action == "execute_plan"
+
+
+def test_chat_message_organize_files():
+    """
+    Tests the exact file organization message from the user's prompt
+    to ensure it parses, plans, and returns 200 OK with no NameError.
+    """
+    response = client.post(
+        "/api/v1/planner/generate",
+        json={"goal": "Organize files in the downloads directory by file type and date"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    parsed = PlannerResponse.model_validate(data)
+    assert parsed.status == "ready"
+    assert parsed.action == "execute_plan"
+
+
