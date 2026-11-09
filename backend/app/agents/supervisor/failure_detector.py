@@ -1,15 +1,16 @@
 import logging
 import os
+import re
 from typing import Any, Dict, List, Optional
 
-from shared.contracts.artifact import Artifact
+from shared.contracts.artifact import Artifact, ArtifactType
 from shared.contracts.execution import (
     ExecutionResult,
     FailureType,
     TaskError,
     TaskFailureReport,
 )
-from shared.contracts.task import Task, TaskStatus
+from shared.contracts.task import Task, TaskCategory, TaskStatus
 from shared.contracts.workflow import SharedWorkflowState
 
 from app.core.config import get_config
@@ -334,27 +335,76 @@ class FailureDetectorService:
             return False
 
         expected = task.expected_output.strip()
+        expected_lower = expected.lower()
+
+        # Extract file extension from expected if present, e.g. "Presentation deck (.pptx)" -> ".pptx"
+        ext_match = re.search(r"\.([a-zA-Z0-9]+)", expected)
+        expected_ext = f".{ext_match.group(1).lower()}" if ext_match else None
 
         # Check physical artifacts list first
         for artifact in result.artifacts:
-            if expected == artifact.name or expected in artifact.filepath:
+            art_filepath = artifact.filepath or ""
+            art_name = artifact.name or ""
+            filename = os.path.basename(art_filepath)
+
+            # Direct and substring matches
+            if expected == art_name or expected in art_filepath:
                 return False
+            if expected_lower in art_name.lower() or expected_lower in art_filepath.lower():
+                return False
+
             # Check filename base
-            filename = os.path.basename(artifact.filepath)
             if (
                 expected == filename
                 or os.path.splitext(expected)[0] == os.path.splitext(filename)[0]
             ):
                 return False
 
+            # Extension matching (e.g. (.pptx) matches presentation.pptx)
+            art_ext = os.path.splitext(filename)[1].lower()
+            if expected_ext and art_ext == expected_ext:
+                return False
+
+            # Semantic format matching
+            if "ppt" in expected_lower and (art_ext == ".pptx" or getattr(artifact, "artifact_type", None) == ArtifactType.PPT):
+                return False
+            if "pdf" in expected_lower and (art_ext == ".pdf" or getattr(artifact, "artifact_type", None) == ArtifactType.PDF):
+                return False
+
+            # Check if artifact base stem is in expected
+            art_stem = os.path.splitext(filename)[0].lower()
+            if art_stem and (art_stem in expected_lower or expected_lower in art_stem):
+                return False
+
         # Check raw output dict
         if isinstance(result.output, dict):
             if expected in result.output:
                 return False
+            # Check common output file path keys
+            for key in ("filepath", "output_path", "artifact_location", "presentation", "file_path"):
+                val = result.output.get(key)
+                if val and isinstance(val, str) and os.path.exists(val):
+                    val_ext = os.path.splitext(val)[1].lower()
+                    if expected_ext and val_ext == expected_ext:
+                        return False
+                    if "ppt" in expected_lower and val_ext == ".pptx":
+                        return False
+                    if "pdf" in expected_lower and val_ext == ".pdf":
+                        return False
+
             for val in result.output.values():
                 if isinstance(val, str) and expected.lower() in val.lower():
                     return False
                 if str(val) == expected:
+                    return False
+
+        # Task category compatibility check: if task succeeded and produced artifacts matching category
+        if result.success and result.artifacts:
+            if getattr(task, "category", None) == TaskCategory.PPT_GENERATION:
+                if any(os.path.splitext(a.filepath)[1].lower() == ".pptx" for a in result.artifacts):
+                    return False
+            elif getattr(task, "category", None) == TaskCategory.PDF_GENERATION:
+                if any(os.path.splitext(a.filepath)[1].lower() == ".pdf" for a in result.artifacts):
                     return False
 
         return True

@@ -211,36 +211,43 @@ class PipelineOrchestrator:
                                     f"Task {t.task_id} failed validation "
                                     "and is not retryable."
                                 )
-                                healing_res = None
-                                if self.healing:
-                                    logger.info(
-                                        f"Invoking Healing Agent for task {t.task_id}"
+                                if t.retry_count >= max_retries:
+                                    logger.error(
+                                        f"Task '{t.task_name}' ({t.task_id}) exhausted maximum retry budget "
+                                        f"(K_max={max_retries}). Halting retries and terminating workflow execution."
                                     )
-                                    healing_res = await self.healing.execute(
-                                        t, result=res, state=state
+                                    engine.update_task_status(t.task_id, TaskStatus.FAILED)
+                                else:
+                                    healing_res = None
+                                    if self.healing:
+                                        logger.info(
+                                            f"Invoking Healing Agent for task {t.task_id}"
+                                        )
+                                        healing_res = await self.healing.execute(
+                                            t, result=res, state=state
+                                        )
+
+                                    # Generate Planner Feedback
+                                    from app.agents.planner.feedback import (
+                                        PlannerFeedbackLoop,
                                     )
 
-                                # Generate Planner Feedback
-                                from app.agents.planner.feedback import (
-                                    PlannerFeedbackLoop,
-                                )
+                                    feedback_loop = PlannerFeedbackLoop(self.event_bus)
 
-                                feedback_loop = PlannerFeedbackLoop(self.event_bus)
-
-                                failure_report = (
-                                    self.supervisor.failure_detector.check_failure(
-                                        t, res, state
+                                    failure_report = (
+                                        self.supervisor.failure_detector.check_failure(
+                                            t, res, state
+                                        )
                                     )
-                                )
 
-                                feedback = (
-                                    await feedback_loop.process_and_publish_feedback(
-                                        state=state,
-                                        failure_report=failure_report,
-                                        healing_result=healing_res,
+                                    feedback = (
+                                        await feedback_loop.process_and_publish_feedback(
+                                            state=state,
+                                            failure_report=failure_report,
+                                            healing_result=healing_res,
+                                        )
                                     )
-                                )
-                                state.feedback = feedback
+                                    state.feedback = feedback
 
                         return validation
 

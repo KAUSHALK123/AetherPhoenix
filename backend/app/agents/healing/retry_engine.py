@@ -882,17 +882,25 @@ class RetryEngine:
                 root_cause_category,
                 desc,
             )
+            wf_task_key = (str(task.workflow_id), str(getattr(task, "task_name", "")))
 
             prior_count = self._failure_signature_counts.get(signature, 0)
+            wf_prior_count = self._failure_signature_counts.get(wf_task_key, 0)
             matching_counts = [
                 count
                 for (t_id, cat, _), count in self._failure_signature_counts.items()
                 if t_id == str(task.task_id) and cat == root_cause_category
             ]
-            if prior_count >= 3 or (matching_counts and max(matching_counts) >= 3):
+            if (
+                prior_count >= 3
+                or wf_prior_count >= 3
+                or task.retry_count >= 3
+                or (matching_counts and max(matching_counts) >= 3)
+            ):
                 logger.warning(
-                    "Infinite recovery loop detected for task %s.",
+                    "Recovery budget exhausted (K_max=3) for task %s ('%s').",
                     task.task_id,
+                    getattr(task, "task_name", ""),
                 )
 
                 return HealingResult(
@@ -906,6 +914,7 @@ class RetryEngine:
                 )
 
             self._failure_signature_counts[signature] = prior_count + 1
+            self._failure_signature_counts[wf_task_key] = wf_prior_count + 1
 
             engine = WorkflowEngine(state)
 

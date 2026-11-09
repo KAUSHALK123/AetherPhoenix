@@ -77,6 +77,13 @@ class PPTToolAdapter(BaseToolAdapter):
             output_dir.mkdir(parents=True, exist_ok=True)
             output_path = str(output_dir / "presentation.pptx")
 
+        # Always enforce .pptx extension
+        if not output_path.lower().endswith(".pptx"):
+            output_path = f"{output_path}.pptx"
+
+        # Ensure parent directory exists
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+
         # Build 5-slide PresentationSchema if explicit slides aren't provided
         slides_data = inputs.get("slides")
         if slides_data and isinstance(slides_data, list) and len(slides_data) > 0:
@@ -252,12 +259,19 @@ class PPTToolAdapter(BaseToolAdapter):
             duration_ms = (time.time() - start_time) * 1000.0
             download_url = f"/api/v1/artifacts/{saved_artifact.artifact_id}/download"
 
+            resolved_output_path = str(Path(output_path).resolve())
+            task.artifact_location = resolved_output_path
+
             output_payload = {
                 "artifact_id": str(saved_artifact.artifact_id),
-                "filepath": str(Path(output_path).resolve()),
+                "filepath": resolved_output_path,
+                "output_path": resolved_output_path,
+                "artifact_location": resolved_output_path,
                 "file_size": file_size,
                 "slide_count": len(presentation.slides),
                 "download_url": download_url,
+                "presentation": resolved_output_path,
+                "expected_output": getattr(task, "expected_output", None),
             }
 
             logs_captured.append(
