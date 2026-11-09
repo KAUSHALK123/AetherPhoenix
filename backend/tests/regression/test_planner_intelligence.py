@@ -161,3 +161,4 @@ async def test_file_explorer_out_of_sandbox_requests_permission_modal():
 
     assert "Access denied" in str(exc_info.value)
     mock_pm.check_permission.assert_called_once()
+
