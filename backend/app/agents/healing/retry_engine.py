@@ -882,7 +882,11 @@ class RetryEngine:
                 root_cause_category,
                 desc,
             )
-            wf_task_key = (str(task.workflow_id), str(getattr(task, "task_name", "")))
+            wf_task_key = (
+                str(task.workflow_id),
+                str(getattr(task, "task_name", "")),
+                "WORKFLOW_TASK_LIMIT",
+            )
 
             prior_count = self._failure_signature_counts.get(signature, 0)
             wf_prior_count = self._failure_signature_counts.get(wf_task_key, 0)

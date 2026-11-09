@@ -383,23 +383,75 @@ class OCREngine:
                             )
                         )
             except Exception:
-                # Pure binary line scanner fallback for simple text content
-                with open(filepath, "rb") as f:
-                    content = f.read().decode("latin-1", errors="ignore")
-                    import re
+                # Robust binary stream decompressor for ReportLab / FlateDecode / ASCII85 streams
+                import base64
+                import re
+                import zlib
 
-                    matches = re.findall(r"\((.*?)\)\s*Tj", content)
-                    if matches:
-                        clean_text = " ".join(matches).strip()
-                        text_pages.append(clean_text)
-                        segments.append(
-                            OCRTextSegment(
-                                text=clean_text,
-                                confidence=0.85,
-                                page_number=1,
+                with open(filepath, "rb") as f:
+                    raw_bytes = f.read()
+
+                # Count pages from page object headers
+                page_matches = re.findall(rb"/Type\s*/Page\b", raw_bytes)
+                total_pages = max(1, len(page_matches))
+
+                # Extract and decompress all PDF content streams
+                stream_pattern = re.compile(rb"stream(?:\r\n|\r|\n)(.*?)endstream", re.DOTALL)
+                page_idx = 1
+                for stream_match in stream_pattern.finditer(raw_bytes):
+                    stream_raw = stream_match.group(1).strip()
+                    decompressed_text = ""
+
+                    # Attempt ASCII85Decode + FlateDecode (standard ReportLab layout)
+                    try:
+                        a85_data = base64.a85decode(stream_raw, adobe=True)
+                        decompressed_text = zlib.decompress(a85_data).decode("latin-1", errors="ignore")
+                    except Exception:
+                        pass
+
+                    # Attempt direct FlateDecode
+                    if not decompressed_text:
+                        try:
+                            decompressed_text = zlib.decompress(stream_raw).decode("latin-1", errors="ignore")
+                        except Exception:
+                            pass
+
+                    # Attempt uncompressed ASCII85
+                    if not decompressed_text:
+                        try:
+                            decompressed_text = base64.a85decode(stream_raw, adobe=True).decode("latin-1", errors="ignore")
+                        except Exception:
+                            pass
+
+                    # Fallback to plain latin-1
+                    if not decompressed_text:
+                        decompressed_text = stream_raw.decode("latin-1", errors="ignore")
+
+                    # Extract string operators: (...) Tj and [(...) ...] TJ
+                    extracted_words: List[str] = []
+                    tj_matches = re.findall(r"\((.*?)\)\s*Tj", decompressed_text)
+                    if tj_matches:
+                        extracted_words.extend(tj_matches)
+
+                    tj_blocks = re.findall(r"\[(.*?)\]\s*TJ", decompressed_text)
+                    for block in tj_blocks:
+                        extracted_words.extend(re.findall(r"\((.*?)\)", block))
+
+                    if extracted_words:
+                        chunk_text = " ".join(extracted_words).strip()
+                        if chunk_text:
+                            text_pages.append(chunk_text)
+                            segments.append(
+                                OCRTextSegment(
+                                    text=chunk_text,
+                                    confidence=0.95,
+                                    page_number=page_idx,
+                                )
                             )
-                        )
-                total_pages = max(1, len(text_pages))
+                            page_idx += 1
+
+                if not total_pages:
+                    total_pages = max(1, len(text_pages))
 
             full_text = "\n\n".join(text_pages).strip()
             image_info = {
