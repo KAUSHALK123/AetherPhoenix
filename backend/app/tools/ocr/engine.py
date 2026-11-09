@@ -396,7 +396,9 @@ class OCREngine:
                 total_pages = max(1, len(page_matches))
 
                 # Extract and decompress all PDF content streams
-                stream_pattern = re.compile(rb"stream(?:\r\n|\r|\n)(.*?)endstream", re.DOTALL)
+                stream_pattern = re.compile(
+                    rb"stream(?:\r\n|\r|\n)(.*?)endstream", re.DOTALL
+                )
                 page_idx = 1
                 for stream_match in stream_pattern.finditer(raw_bytes):
                     stream_raw = stream_match.group(1).strip()
@@ -405,27 +407,35 @@ class OCREngine:
                     # Attempt ASCII85Decode + FlateDecode (standard ReportLab layout)
                     try:
                         a85_data = base64.a85decode(stream_raw, adobe=True)
-                        decompressed_text = zlib.decompress(a85_data).decode("latin-1", errors="ignore")
+                        decompressed_text = zlib.decompress(a85_data).decode(
+                            "latin-1", errors="ignore"
+                        )
                     except Exception:
                         pass
 
                     # Attempt direct FlateDecode
                     if not decompressed_text:
                         try:
-                            decompressed_text = zlib.decompress(stream_raw).decode("latin-1", errors="ignore")
+                            decompressed_text = zlib.decompress(stream_raw).decode(
+                                "latin-1", errors="ignore"
+                            )
                         except Exception:
                             pass
 
                     # Attempt uncompressed ASCII85
                     if not decompressed_text:
                         try:
-                            decompressed_text = base64.a85decode(stream_raw, adobe=True).decode("latin-1", errors="ignore")
+                            decompressed_text = base64.a85decode(
+                                stream_raw, adobe=True
+                            ).decode("latin-1", errors="ignore")
                         except Exception:
                             pass
 
                     # Fallback to plain latin-1
                     if not decompressed_text:
-                        decompressed_text = stream_raw.decode("latin-1", errors="ignore")
+                        decompressed_text = stream_raw.decode(
+                            "latin-1", errors="ignore"
+                        )
 
                     # Extract string operators: (...) Tj and [(...) ...] TJ
                     extracted_words: List[str] = []

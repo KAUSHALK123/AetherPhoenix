@@ -2,12 +2,13 @@
 
 import json
 import uuid
-import pytest
 from unittest.mock import MagicMock
 
-from app.agents.planner.agent import PlannerAgent
+import pytest
 from shared.contracts.planner import PlannerRequest
 from shared.contracts.task import TaskType
+
+from app.agents.planner.agent import PlannerAgent
 
 
 @pytest.fixture
@@ -29,25 +30,33 @@ def test_what_folders_are_in_d_drive_routes_to_file_explorer_no_ppt(planner):
     res = planner.process_request(req)
 
     # Must be ready (not clarifying or error)
-    assert res.status == "ready", f"Expected 'ready' status, got '{res.status}': {res.reply}"
+    assert (
+        res.status == "ready"
+    ), f"Expected 'ready' status, got '{res.status}': {res.reply}"
     assert res.reply is not None
 
     plan = json.loads(res.reply)
     tasks = plan.get("tasks", [])
-    leaf_tasks = [t for t in tasks if t.get("task_type") == TaskType.LEAF.value or t.get("task_type") == "LEAF"]
+    leaf_tasks = [
+        t
+        for t in tasks
+        if t.get("task_type") == TaskType.LEAF.value or t.get("task_type") == "LEAF"
+    ]
 
     assert len(leaf_tasks) >= 1, "Expected at least 1 leaf task"
     target_task = leaf_tasks[0]
-    assert target_task.get("required_tool") == "file_explorer", (
-        f"Expected required_tool to be 'file_explorer', got '{target_task.get('required_tool')}'"
-    )
+    assert (
+        target_task.get("required_tool") == "file_explorer"
+    ), f"Expected required_tool to be 'file_explorer', got '{target_task.get('required_tool')}'"
     assert target_task.get("inputs", {}).get("action") == "list_files"
     assert "D:" in target_task.get("inputs", {}).get("path", "")
 
     # Never mention presentation or PPT
     reply_lower = res.reply.lower()
     for forbidden in ["ppt", "pptx", "slide", "slides", "presentation", "powerpoint"]:
-        assert forbidden not in reply_lower, f"Forbidden '{forbidden}' found in reply: {res.reply}"
+        assert (
+            forbidden not in reply_lower
+        ), f"Forbidden '{forbidden}' found in reply: {res.reply}"
 
 
 def test_check_d_drive_produces_real_task_not_placeholder_plan(planner):
@@ -63,16 +72,26 @@ def test_check_d_drive_produces_real_task_not_placeholder_plan(planner):
     )
     res = planner.process_request(req)
 
-    assert res.status == "ready", f"Expected 'ready' status, got '{res.status}': {res.reply}"
+    assert (
+        res.status == "ready"
+    ), f"Expected 'ready' status, got '{res.status}': {res.reply}"
     plan = json.loads(res.reply)
     tasks = plan.get("tasks", [])
     task_names = [t.get("task_name") for t in tasks]
 
     # Prohibited placeholder tasks
-    assert "Evaluate Goal Context" not in task_names, "Generic placeholder task 'Evaluate Goal Context' detected"
-    assert "Execute Primary Action" not in task_names, "Generic placeholder task 'Execute Primary Action' detected"
+    assert (
+        "Evaluate Goal Context" not in task_names
+    ), "Generic placeholder task 'Evaluate Goal Context' detected"
+    assert (
+        "Execute Primary Action" not in task_names
+    ), "Generic placeholder task 'Execute Primary Action' detected"
 
-    leaf_tasks = [t for t in tasks if t.get("task_type") == "LEAF" or t.get("task_type") == TaskType.LEAF.value]
+    leaf_tasks = [
+        t
+        for t in tasks
+        if t.get("task_type") == "LEAF" or t.get("task_type") == TaskType.LEAF.value
+    ]
     assert len(leaf_tasks) >= 1
     for t in leaf_tasks:
         assert t.get("required_tool") != "", "Found leaf task with empty required_tool"
@@ -95,8 +114,14 @@ def test_nonsense_request_returns_honest_cant_do_this_response(planner):
         res = planner.process_request(req)
 
         # Must report error / unable to fulfill, NOT ready with placeholder plan
-        assert res.status == "error", f"Expected status 'error' for nonsense query '{query}', got '{res.status}'"
-        assert "cannot fulfill" in res.reply.lower() or "unable" in res.reply.lower() or "not" in res.reply.lower()
+        assert (
+            res.status == "error"
+        ), f"Expected status 'error' for nonsense query '{query}', got '{res.status}'"
+        assert (
+            "cannot fulfill" in res.reply.lower()
+            or "unable" in res.reply.lower()
+            or "not" in res.reply.lower()
+        )
 
 
 def test_make_a_5_slide_ppt_routes_to_ppt(planner):
@@ -110,12 +135,19 @@ def test_make_a_5_slide_ppt_routes_to_ppt(planner):
     )
     res = planner.process_request(req)
 
-    assert res.status == "ready", f"Expected 'ready' status, got '{res.status}': {res.reply}"
+    assert (
+        res.status == "ready"
+    ), f"Expected 'ready' status, got '{res.status}': {res.reply}"
     plan = json.loads(res.reply)
     tasks = plan.get("tasks", [])
 
     # PPT tasks present
-    ppt_tasks = [t for t in tasks if "ppt" in t.get("task_name", "").lower() or t.get("required_tool") in ("ppt_generator", "ppt_tool")]
+    ppt_tasks = [
+        t
+        for t in tasks
+        if "ppt" in t.get("task_name", "").lower()
+        or t.get("required_tool") in ("ppt_generator", "ppt_tool")
+    ]
     assert len(ppt_tasks) >= 1, "Expected at least 1 PPT-related task"
 
 
@@ -133,7 +165,9 @@ def test_conversational_chat_answered_directly_without_workflow(planner):
         req = PlannerRequest(message=query, session_id=session_id)
         res = planner.process_request(req)
 
-        assert res.status == "chat", f"Expected status 'chat' for '{query}', got '{res.status}'"
+        assert (
+            res.status == "chat"
+        ), f"Expected status 'chat' for '{query}', got '{res.status}'"
         assert res.action == "reply"
         assert "AetherPhoenix" in res.reply or "assistant" in res.reply.lower()
 
@@ -145,8 +179,8 @@ async def test_file_explorer_out_of_sandbox_requests_permission_modal():
     If denied or not granted, raises PermissionDeniedException without blowing up.
     """
     from app.core.exceptions import PermissionDeniedException
-    from app.tools.file_explorer.executor import FileExplorerExecutor
     from app.core.permissions.manager import PermissionManager
+    from app.tools.file_explorer.executor import FileExplorerExecutor
 
     mock_pm = MagicMock(spec=PermissionManager)
     # Mock check_permission returning False (denied)
@@ -157,8 +191,9 @@ async def test_file_explorer_out_of_sandbox_requests_permission_modal():
 
     # Attempting to list outside sandbox (e.g. D:\outside) should prompt check_permission
     with pytest.raises(PermissionDeniedException) as exc_info:
-        await executor.list_files(path="D:\\outside_sandbox_dir", workflow_id="wf-1", task_id="t-1")
+        await executor.list_files(
+            path="D:\\outside_sandbox_dir", workflow_id="wf-1", task_id="t-1"
+        )
 
     assert "Access denied" in str(exc_info.value)
     mock_pm.check_permission.assert_called_once()
-

@@ -72,7 +72,9 @@ async def download_artifact(artifact_id: UUID) -> FileResponse:
     # Determine MIME type based on file extension first to avoid platform registry quirks
     ext = filepath.suffix.lower()
     if ext == ".pptx":
-        mime_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        mime_type = (
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        )
     elif ext == ".pdf":
         mime_type = "application/pdf"
     elif ext == ".csv":

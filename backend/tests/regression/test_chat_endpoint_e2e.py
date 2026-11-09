@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
-from app.main import app
 from shared.contracts.planner import PlannerResponse
+
+from app.main import app
 
 client = TestClient(app)
 
@@ -66,12 +67,12 @@ def test_chat_message_organize_files():
     """
     response = client.post(
         "/api/v1/planner/generate",
-        json={"goal": "Organize files in the downloads directory by file type and date"},
+        json={
+            "goal": "Organize files in the downloads directory by file type and date"
+        },
     )
     assert response.status_code == 200
     data = response.json()
     parsed = PlannerResponse.model_validate(data)
     assert parsed.status == "ready"
     assert parsed.action == "execute_plan"
-
-

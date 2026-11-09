@@ -3,16 +3,14 @@ import logging
 import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from pydantic import BaseModel, Field
-
 from shared.contracts.planner import (
     PlanMetadata,
     PlannerOutput,
     PlannerRequest,
     PlannerResponse,
-    TaskDecompositionPlan,
 )
 from shared.contracts.task import (
     Task,
@@ -21,7 +19,7 @@ from shared.contracts.task import (
     TaskStatus,
     TaskType,
 )
-from shared.contracts.tool import Tool
+
 from app.tools.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -33,78 +31,91 @@ def get_default_tool_registry() -> ToolRegistry:
 
     try:
         from app.tools.file_explorer import register_file_explorer_tool
+
         register_file_explorer_tool(registry)
     except Exception as e:
         logger.debug(f"Could not register file_explorer: {e}")
 
     try:
         from app.tools.terminal import register_terminal_tool
+
         register_terminal_tool(registry)
     except Exception as e:
         logger.debug(f"Could not register terminal_tool: {e}")
 
     try:
         from app.tools.ppt import register_ppt_tool
+
         register_ppt_tool(registry)
     except Exception as e:
         logger.debug(f"Could not register ppt_tool: {e}")
 
     try:
         from app.tools.pdf import register_pdf_tool
+
         register_pdf_tool(registry)
     except Exception as e:
         logger.debug(f"Could not register pdf_tool: {e}")
 
     try:
         from app.tools.web_research import register_web_research_tool
+
         register_web_research_tool(registry)
     except Exception as e:
         logger.debug(f"Could not register web_research_tool: {e}")
 
     try:
         from app.tools.git import register_git_tool
+
         register_git_tool(registry)
     except Exception as e:
         logger.debug(f"Could not register git_tool: {e}")
 
     try:
         from app.tools.desktop import register_desktop_tool
+
         register_desktop_tool(registry)
     except Exception as e:
         logger.debug(f"Could not register desktop_tool: {e}")
 
     try:
         from app.tools.document import register_document_tool
+
         register_document_tool(registry)
     except Exception as e:
         logger.debug(f"Could not register document_tool: {e}")
 
     try:
         from app.tools.ocr import register_ocr_tool
+
         register_ocr_tool(registry)
     except Exception as e:
         logger.debug(f"Could not register ocr_tool: {e}")
 
     try:
         from app.tools.export import register_export_tool
+
         register_export_tool(registry)
     except Exception as e:
         logger.debug(f"Could not register export_tool: {e}")
 
     try:
         from app.tools.screenshot import register_screenshot_tool
+
         register_screenshot_tool(registry)
     except Exception as e:
         logger.debug(f"Could not register screenshot_tool: {e}")
 
     try:
         from app.tools.browser import register_browser_capability
+
         register_browser_capability(registry)
     except Exception as e:
         logger.debug(f"Could not register browser: {e}")
 
     try:
         from app.tools.browser_extension import register_browser_extension_capability
+
         register_browser_extension_capability(registry)
     except Exception as e:
         logger.debug(f"Could not register browser_extension: {e}")
@@ -149,12 +160,14 @@ class LLMPlanner:
         """Returns the live tool catalog with names, descriptions, and capabilities."""
         catalog = []
         for tool in self.tool_registry.list_all():
-            catalog.append({
-                "name": tool.name,
-                "description": tool.description,
-                "category": getattr(tool, "category", "GENERAL"),
-                "required_permissions": tool.required_permissions or [],
-            })
+            catalog.append(
+                {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "category": getattr(tool, "category", "GENERAL"),
+                    "required_permissions": tool.required_permissions or [],
+                }
+            )
         return catalog
 
     def is_conversational_chat(self, text: str) -> Optional[str]:
@@ -193,10 +206,36 @@ class LLMPlanner:
         words = lower.split()
 
         # Keyboard mash tokens
-        mash_tokens = ["asdf", "asdfgh", "asdfghjk", "qwerty", "qwertyuiop", "zxcvbnm", "blabla", "blahblah", "flkjsdflkjsd", "test1234"]
+        mash_tokens = [
+            "asdf",
+            "asdfgh",
+            "asdfghjk",
+            "qwerty",
+            "qwertyuiop",
+            "zxcvbnm",
+            "blabla",
+            "blahblah",
+            "flkjsdflkjsd",
+            "test1234",
+        ]
         if any(token in lower for token in mash_tokens):
             # If request contains mash tokens and no genuine action verbs
-            if not any(action in lower for action in ["create", "generate", "list", "show", "open", "find", "check", "run", "make", "sort", "organize"]):
+            if not any(
+                action in lower
+                for action in [
+                    "create",
+                    "generate",
+                    "list",
+                    "show",
+                    "open",
+                    "find",
+                    "check",
+                    "run",
+                    "make",
+                    "sort",
+                    "organize",
+                ]
+            ):
                 return True
 
         # Obvious single-word or repeated gibberish
@@ -215,14 +254,22 @@ class LLMPlanner:
 
         return False
 
-    def validate_plan_tools(self, payload: LLMPlanPayload) -> Tuple[bool, Optional[str]]:
+    def validate_plan_tools(
+        self, payload: LLMPlanPayload
+    ) -> Tuple[bool, Optional[str]]:
         """Ensures every planned task uses a tool that exists in ToolRegistry."""
         registered_names = {t.name for t in self.tool_registry.list_all()}
         for task in payload.tasks:
             if not task.required_tool or task.required_tool.strip() == "":
-                return False, f"Task '{task.task_name}' has empty required_tool, which is prohibited."
+                return (
+                    False,
+                    f"Task '{task.task_name}' has empty required_tool, which is prohibited.",
+                )
             if task.required_tool not in registered_names:
-                return False, f"Tool '{task.required_tool}' is not in the live ToolRegistry catalog."
+                return (
+                    False,
+                    f"Tool '{task.required_tool}' is not in the live ToolRegistry catalog.",
+                )
         return True, None
 
     def plan(
@@ -280,11 +327,28 @@ class LLMPlanner:
         registered_tools = {t.name: t for t in self.tool_registry.list_all()}
 
         # Read-only directory / file listing intent -> file_explorer
-        if any(w in lower for w in ["what folders", "what files", "what's in", "whats in", "list folders", "list files", "check d drive", "check c drive"]) or (
-            any(w in lower for w in ["list", "show", "check", "browse", "view"]) and any(d in lower for d in ["drive", "folder", "directory", "d:", "c:"])
+        if any(
+            w in lower
+            for w in [
+                "what folders",
+                "what files",
+                "what's in",
+                "whats in",
+                "list folders",
+                "list files",
+                "check d drive",
+                "check c drive",
+            ]
+        ) or (
+            any(w in lower for w in ["list", "show", "check", "browse", "view"])
+            and any(d in lower for d in ["drive", "folder", "directory", "d:", "c:"])
         ):
             if "file_explorer" in registered_tools:
-                path = "D:\\" if "d drive" in lower or "d:" in lower else ("C:\\" if "c drive" in lower or "c:" in lower else ".")
+                path = (
+                    "D:\\"
+                    if "d drive" in lower or "d:" in lower
+                    else ("C:\\" if "c drive" in lower or "c:" in lower else ".")
+                )
                 phase = Task(
                     workflow_id=workflow_id,
                     task_name="Phase 1: Directory Inspection",
@@ -313,7 +377,11 @@ class LLMPlanner:
                     status=TaskStatus.CREATED,
                 )
                 output = PlannerOutput(
-                    metadata=PlanMetadata(workflow_id=str(workflow_id), session_id=request.session_id, goal=request.message),
+                    metadata=PlanMetadata(
+                        workflow_id=str(workflow_id),
+                        session_id=request.session_id,
+                        goal=request.message,
+                    ),
                     workflow_spec=f"Workflow for {request.message}",
                     tasks=[phase, leaf],
                     dependency_graph={leaf.task_id: []},
@@ -333,7 +401,19 @@ class LLMPlanner:
                 )
 
         # Terminal commands
-        if any(w in lower for w in ["ipconfig", "ping", "netstat", "hostname", "whoami", "powershell", "terminal command", "run command"]):
+        if any(
+            w in lower
+            for w in [
+                "ipconfig",
+                "ping",
+                "netstat",
+                "hostname",
+                "whoami",
+                "powershell",
+                "terminal command",
+                "run command",
+            ]
+        ):
             if "terminal_tool" in registered_tools:
                 phase = Task(
                     workflow_id=workflow_id,
@@ -363,7 +443,11 @@ class LLMPlanner:
                     status=TaskStatus.CREATED,
                 )
                 output = PlannerOutput(
-                    metadata=PlanMetadata(workflow_id=str(workflow_id), session_id=request.session_id, goal=request.message),
+                    metadata=PlanMetadata(
+                        workflow_id=str(workflow_id),
+                        session_id=request.session_id,
+                        goal=request.message,
+                    ),
                     workflow_spec=f"Workflow for {request.message}",
                     tasks=[phase, leaf],
                     dependency_graph={leaf.task_id: []},
@@ -394,7 +478,9 @@ class LLMPlanner:
             action="await_user_input",
         )
 
-    def _call_gemini_planner(self, request: PlannerRequest, workflow_id: UUID, api_key: str) -> PlannerResponse:
+    def _call_gemini_planner(
+        self, request: PlannerRequest, workflow_id: UUID, api_key: str
+    ) -> PlannerResponse:
         """Invokes Google Gemini model with tool catalog constraint and retries once on schema error."""
         import httpx
 
@@ -429,13 +515,31 @@ class LLMPlanner:
                         continue
 
                     if plan_data.type == "chat":
-                        return PlannerResponse(session_id=request.session_id, status="chat", reply=plan_data.reply, action="reply")
+                        return PlannerResponse(
+                            session_id=request.session_id,
+                            status="chat",
+                            reply=plan_data.reply,
+                            action="reply",
+                        )
                     elif plan_data.type == "clarification":
-                        return PlannerResponse(session_id=request.session_id, status="clarifying", reply=plan_data.reply, options=plan_data.options, action="await_user_input")
+                        return PlannerResponse(
+                            session_id=request.session_id,
+                            status="clarifying",
+                            reply=plan_data.reply,
+                            options=plan_data.options,
+                            action="await_user_input",
+                        )
                     elif plan_data.type == "unsupported":
-                        return PlannerResponse(session_id=request.session_id, status="error", reply=plan_data.reason or "Cannot fulfill request.", action="await_user_input")
+                        return PlannerResponse(
+                            session_id=request.session_id,
+                            status="error",
+                            reply=plan_data.reason or "Cannot fulfill request.",
+                            action="await_user_input",
+                        )
                     else:
-                        return self._build_planner_response_from_llm(plan_data, request, workflow_id)
+                        return self._build_planner_response_from_llm(
+                            plan_data, request, workflow_id
+                        )
 
             except Exception as e:
                 logger.warning(f"LLM planner attempt {attempt+1} failed: {e}")
@@ -443,11 +547,15 @@ class LLMPlanner:
 
         return self._fallback_catalog_planner(request, workflow_id)
 
-    def _call_openai_planner(self, request: PlannerRequest, workflow_id: UUID, api_key: str) -> PlannerResponse:
+    def _call_openai_planner(
+        self, request: PlannerRequest, workflow_id: UUID, api_key: str
+    ) -> PlannerResponse:
         """Invokes OpenAI endpoint with tool catalog constraint and retries once on schema error."""
         return self._fallback_catalog_planner(request, workflow_id)
 
-    def _build_planner_response_from_llm(self, payload: LLMPlanPayload, request: PlannerRequest, workflow_id: UUID) -> PlannerResponse:
+    def _build_planner_response_from_llm(
+        self, payload: LLMPlanPayload, request: PlannerRequest, workflow_id: UUID
+    ) -> PlannerResponse:
         """Converts validated LLMPlanPayload into PlannerResponse with PlannerOutput."""
         tasks: List[Task] = []
         phase_root = Task(
@@ -495,7 +603,11 @@ class LLMPlanner:
 
         leaf_tasks = [t for t in tasks if t.task_type == TaskType.LEAF]
         planner_output = PlannerOutput(
-            metadata=PlanMetadata(workflow_id=str(workflow_id), session_id=request.session_id, goal=request.message),
+            metadata=PlanMetadata(
+                workflow_id=str(workflow_id),
+                session_id=request.session_id,
+                goal=request.message,
+            ),
             workflow_spec=f"Workflow for {request.message}",
             tasks=tasks,
             dependency_graph=dep_graph,

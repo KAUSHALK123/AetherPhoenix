@@ -350,7 +350,10 @@ class FailureDetectorService:
             # Direct and substring matches
             if expected == art_name or expected in art_filepath:
                 return False
-            if expected_lower in art_name.lower() or expected_lower in art_filepath.lower():
+            if (
+                expected_lower in art_name.lower()
+                or expected_lower in art_filepath.lower()
+            ):
                 return False
 
             # Check filename base
@@ -366,9 +369,15 @@ class FailureDetectorService:
                 return False
 
             # Semantic format matching
-            if "ppt" in expected_lower and (art_ext == ".pptx" or getattr(artifact, "artifact_type", None) == ArtifactType.PPT):
+            if "ppt" in expected_lower and (
+                art_ext == ".pptx"
+                or getattr(artifact, "artifact_type", None) == ArtifactType.PPT
+            ):
                 return False
-            if "pdf" in expected_lower and (art_ext == ".pdf" or getattr(artifact, "artifact_type", None) == ArtifactType.PDF):
+            if "pdf" in expected_lower and (
+                art_ext == ".pdf"
+                or getattr(artifact, "artifact_type", None) == ArtifactType.PDF
+            ):
                 return False
 
             # Check if artifact base stem is in expected
@@ -381,7 +390,13 @@ class FailureDetectorService:
             if expected in result.output:
                 return False
             # Check common output file path keys
-            for key in ("filepath", "output_path", "artifact_location", "presentation", "file_path"):
+            for key in (
+                "filepath",
+                "output_path",
+                "artifact_location",
+                "presentation",
+                "file_path",
+            ):
                 val = result.output.get(key)
                 if val and isinstance(val, str) and os.path.exists(val):
                     val_ext = os.path.splitext(val)[1].lower()
@@ -399,24 +414,49 @@ class FailureDetectorService:
                     return False
 
             # Semantic match for File System inspection results
-            if task.required_tool in ("file_explorer", "file_manager_tool") or getattr(task, "category", None) == TaskCategory.FILE_SYSTEM:
-                if any(kw in expected_lower for kw in ("folder", "file", "list", "directory", "inspect", "check")):
-                    has_items = "items" in result.output or (isinstance(result.output.get("metadata"), dict) and "items" in result.output["metadata"])
+            if (
+                task.required_tool in ("file_explorer", "file_manager_tool")
+                or getattr(task, "category", None) == TaskCategory.FILE_SYSTEM
+            ):
+                if any(
+                    kw in expected_lower
+                    for kw in (
+                        "folder",
+                        "file",
+                        "list",
+                        "directory",
+                        "inspect",
+                        "check",
+                    )
+                ):
+                    has_items = "items" in result.output or (
+                        isinstance(result.output.get("metadata"), dict)
+                        and "items" in result.output["metadata"]
+                    )
                     if has_items or result.output.get("action") == "list_files":
                         return False
 
             # Semantic match for Terminal / Shell command execution results
-            if getattr(task, "category", None) in (TaskCategory.TERMINAL, TaskCategory.POWERSHELL) or task.required_tool in ("terminal_tool", "powershell_tool"):
+            if getattr(task, "category", None) in (
+                TaskCategory.TERMINAL,
+                TaskCategory.POWERSHELL,
+            ) or task.required_tool in ("terminal_tool", "powershell_tool"):
                 if "stdout" in result.output:
                     return False
 
         # Task category compatibility check: if task succeeded and produced artifacts matching category
         if result.success and result.artifacts:
             if getattr(task, "category", None) == TaskCategory.PPT_GENERATION:
-                if any(os.path.splitext(a.filepath)[1].lower() == ".pptx" for a in result.artifacts):
+                if any(
+                    os.path.splitext(a.filepath)[1].lower() == ".pptx"
+                    for a in result.artifacts
+                ):
                     return False
             elif getattr(task, "category", None) == TaskCategory.PDF_GENERATION:
-                if any(os.path.splitext(a.filepath)[1].lower() == ".pdf" for a in result.artifacts):
+                if any(
+                    os.path.splitext(a.filepath)[1].lower() == ".pdf"
+                    for a in result.artifacts
+                ):
                     return False
 
         return True

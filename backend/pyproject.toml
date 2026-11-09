@@ -49,7 +49,7 @@ exclude = [
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
-ignore = []
+ignore = ["E501", "E402"]
 
 [tool.black]
 line-length = 88

@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
+
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -26,7 +27,9 @@ class ResolvedCommandResponse(BaseModel):
 
 
 @router.post("/resolve", response_model=ResolvedCommandResponse)
-async def resolve_command_endpoint(request: ResolveCommandRequest) -> ResolvedCommandResponse:
+async def resolve_command_endpoint(
+    request: ResolveCommandRequest,
+) -> ResolvedCommandResponse:
     """
     MCP-compatible endpoint to resolve natural language user prompts
     (e.g., 'chk my ipaddress', 'check disk space', 'show processes')

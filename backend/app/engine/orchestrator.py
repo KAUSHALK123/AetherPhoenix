@@ -172,12 +172,22 @@ class PipelineOrchestrator:
                                 payload={
                                     "output": res.output,
                                     "output_keys": (
-                                        list(res.output.keys()) if isinstance(res.output, dict) else []
+                                        list(res.output.keys())
+                                        if isinstance(res.output, dict)
+                                        else []
                                     ),
-                                    "artifacts": [
-                                        a.model_dump(mode="json") if hasattr(a, "model_dump") else str(a)
-                                        for a in res.artifacts
-                                    ] if res.artifacts else [],
+                                    "artifacts": (
+                                        [
+                                            (
+                                                a.model_dump(mode="json")
+                                                if hasattr(a, "model_dump")
+                                                else str(a)
+                                            )
+                                            for a in res.artifacts
+                                        ]
+                                        if res.artifacts
+                                        else []
+                                    ),
                                 },
                             )
                         else:
@@ -234,7 +244,9 @@ class PipelineOrchestrator:
                                         f"Task '{t.task_name}' ({t.task_id}) exhausted maximum retry budget "
                                         f"(K_max={max_retries}). Halting retries and terminating workflow execution."
                                     )
-                                    engine.update_task_status(t.task_id, TaskStatus.FAILED)
+                                    engine.update_task_status(
+                                        t.task_id, TaskStatus.FAILED
+                                    )
                                 else:
                                     healing_res = None
                                     if self.healing:
@@ -258,12 +270,10 @@ class PipelineOrchestrator:
                                         )
                                     )
 
-                                    feedback = (
-                                        await feedback_loop.process_and_publish_feedback(
-                                            state=state,
-                                            failure_report=failure_report,
-                                            healing_result=healing_res,
-                                        )
+                                    feedback = await feedback_loop.process_and_publish_feedback(
+                                        state=state,
+                                        failure_report=failure_report,
+                                        healing_result=healing_res,
                                     )
                                     state.feedback = feedback
 
@@ -360,7 +370,10 @@ class PipelineOrchestrator:
         """Truncates very large string or list payloads before feeding to LLM synthesis."""
         if isinstance(val, str):
             if len(val) > max_chars:
-                return val[:max_chars] + f"\n... [truncated ({len(val) - max_chars} characters omitted)]"
+                return (
+                    val[:max_chars]
+                    + f"\n... [truncated ({len(val) - max_chars} characters omitted)]"
+                )
             return val
         elif isinstance(val, list):
             if len(val) > 50:
@@ -372,13 +385,16 @@ class PipelineOrchestrator:
             return {k: self._truncate_for_llm(v, max_chars) for k, v in val.items()}
         return val
 
-    async def _generate_final_response(self, state: SharedWorkflowState) -> Dict[str, Any]:
+    async def _generate_final_response(
+        self, state: SharedWorkflowState
+    ) -> Dict[str, Any]:
         """
         Collects task outputs and artifacts and synthesizes a concise, direct answer
         to the user's original goal, truncating large outputs before feeding to the LLM.
         Explicitly notes errors or unhelpful/empty tool returns.
         """
         import os
+
         original_goal = state.metadata.goal or "Workflow Execution"
         raw_outputs = state.task_outputs or {}
 
@@ -406,6 +422,7 @@ class PipelineOrchestrator:
         if gemini_key or openai_key:
             try:
                 import json
+
                 import httpx
 
                 artifacts_summary = [
@@ -438,9 +455,17 @@ class PipelineOrchestrator:
                         if resp.status_code == 200:
                             data = resp.json()
                             candidate = data.get("candidates", [{}])[0]
-                            answer_text = candidate.get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+                            answer_text = (
+                                candidate.get("content", {})
+                                .get("parts", [{}])[0]
+                                .get("text", "")
+                                .strip()
+                            )
                             if answer_text:
-                                return {"answer": answer_text, "raw_output": clean_outputs}
+                                return {
+                                    "answer": answer_text,
+                                    "raw_output": clean_outputs,
+                                }
                 elif openai_key:
                     url = "https://api.openai.com/v1/chat/completions"
                     headers = {
@@ -455,9 +480,14 @@ class PipelineOrchestrator:
                         resp = await client.post(url, headers=headers, json=payload)
                         if resp.status_code == 200:
                             data = resp.json()
-                            answer_text = data["choices"][0]["message"]["content"].strip()
+                            answer_text = data["choices"][0]["message"][
+                                "content"
+                            ].strip()
                             if answer_text:
-                                return {"answer": answer_text, "raw_output": clean_outputs}
+                                return {
+                                    "answer": answer_text,
+                                    "raw_output": clean_outputs,
+                                }
             except Exception as e:
                 logger.warning(
                     f"LLM final response synthesis failed, falling back to deterministic extraction: {e}"
@@ -465,10 +495,21 @@ class PipelineOrchestrator:
 
         # 2. Deterministic Fallback Synthesis
         # Check if entire workflow failed or tasks failed without substantive output
-        if failed_tasks_info and not state.artifacts and not any(
-            isinstance(v, dict)
-            and (v.get("items") or (isinstance(v.get("metadata"), dict) and v["metadata"].get("items")) or v.get("stdout"))
-            for v in clean_outputs.values()
+        if (
+            failed_tasks_info
+            and not state.artifacts
+            and not any(
+                isinstance(v, dict)
+                and (
+                    v.get("items")
+                    or (
+                        isinstance(v.get("metadata"), dict)
+                        and v["metadata"].get("items")
+                    )
+                    or v.get("stdout")
+                )
+                for v in clean_outputs.values()
+            )
         ):
             answer = (
                 f"The workflow encountered an error and could not complete your request '{original_goal}':\n"
@@ -517,7 +558,10 @@ class PipelineOrchestrator:
                     for fl in found_files:
                         lines.append(f"- {fl}")
                 return {"answer": "\n".join(lines), "raw_output": clean_outputs}
-            elif any("file_explorer" in str(getattr(t, "required_tool", "")) for t in state.tasks.values()):
+            elif any(
+                "file_explorer" in str(getattr(t, "required_tool", ""))
+                for t in state.tasks.values()
+            ):
                 path_display = f" in '{target_path}'" if target_path else ""
                 return {
                     "answer": f"The directory inspection ran successfully, but found no folders or files{path_display}.",
@@ -552,7 +596,9 @@ class PipelineOrchestrator:
         for out in clean_outputs.values():
             if isinstance(out, dict):
                 if out.get("is_error") or out.get("error"):
-                    err_val = out.get("error") or out.get("message") or "Unknown tool error"
+                    err_val = (
+                        out.get("error") or out.get("message") or "Unknown tool error"
+                    )
                     return {
                         "answer": f"The tool executed, but returned an error: {err_val}",
                         "raw_output": clean_outputs,

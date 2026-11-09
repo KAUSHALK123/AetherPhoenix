@@ -80,8 +80,15 @@ class FileExplorerExecutor:
             for req in self.permission_manager.requests.values():
                 status_str = getattr(req.status, "value", str(req.status)).upper()
                 if status_str in ("GRANTED", "APPROVED"):
-                    req_path = getattr(req, "context", {}).get("path") if hasattr(req, "context") else None
-                    if req_path and (req_path == str(resolved_path) or str(resolved_path).startswith(req_path)):
+                    req_path = (
+                        getattr(req, "context", {}).get("path")
+                        if hasattr(req, "context")
+                        else None
+                    )
+                    if req_path and (
+                        req_path == str(resolved_path)
+                        or str(resolved_path).startswith(req_path)
+                    ):
                         return resolved_path
 
         logger.warning(
@@ -409,7 +416,9 @@ class FileExplorerExecutor:
                     try:
                         is_dir = entry.is_dir(follow_symlinks=False)
                         st = entry.stat(follow_symlinks=False)
-                        mod_time = datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat()
+                        mod_time = datetime.fromtimestamp(
+                            st.st_mtime, tz=timezone.utc
+                        ).isoformat()
                         items.append(
                             {
                                 "name": entry.name,
@@ -432,7 +441,9 @@ class FileExplorerExecutor:
                             }
                         )
         except PermissionError as pe:
-            raise PermissionDeniedException(f"Operating system denied access to list directory: {path}") from pe
+            raise PermissionDeniedException(
+                f"Operating system denied access to list directory: {path}"
+            ) from pe
 
         return FileExplorerActionResult(
             success=True,

@@ -53,5 +53,7 @@ def register_file_explorer_tool(registry: ToolRegistry) -> Tool:
     )
     registry.register(file_manager_tool)
 
-    logger.info("Successfully registered 'file_explorer' and 'file_manager_tool' in ToolRegistry.")
+    logger.info(
+        "Successfully registered 'file_explorer' and 'file_manager_tool' in ToolRegistry."
+    )
     return file_explorer_tool

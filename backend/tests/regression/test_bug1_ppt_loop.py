@@ -1,13 +1,22 @@
-import asyncio
 from pathlib import Path
 from uuid import uuid4
-import pytest
-import pptx
 
+import pptx
+import pytest
 from shared.contracts.artifact import Artifact, ArtifactType
-from shared.contracts.execution import ExecutionResult
+from shared.contracts.execution import ExecutionResult, TaskError
+from shared.contracts.permission import (
+    PermissionRequest,
+    PermissionStatus,
+    PermissionType,
+    RiskLevel,
+)
 from shared.contracts.task import Task, TaskCategory, TaskStatus
-from shared.contracts.workflow import SharedWorkflowState, WorkflowMetadata, WorkflowStatus
+from shared.contracts.workflow import (
+    SharedWorkflowState,
+    WorkflowMetadata,
+    WorkflowStatus,
+)
 
 from app.agents.supervisor.agent import SupervisorAgent
 from app.agents.supervisor.failure_detector import FailureDetectorService
@@ -15,7 +24,6 @@ from app.agents.worker.agent import WorkerAgent
 from app.core.config import get_config
 from app.core.events.bus import EventBus
 from app.core.permissions.manager import PermissionManager
-from shared.contracts.permission import PermissionRequest, PermissionStatus, PermissionType, RiskLevel
 from app.engine.orchestrator import PipelineOrchestrator
 from app.tools.ppt import register_ppt_tool
 from app.tools.ppt.adapter import PPTToolAdapter
@@ -143,7 +151,9 @@ def test_failure_detector_does_not_flag_valid_ppt_output():
     )
 
     is_missing = fd._is_output_missing(task, res)
-    assert is_missing is False, "FailureDetector incorrectly flagged valid PPT output as missing"
+    assert (
+        is_missing is False
+    ), "FailureDetector incorrectly flagged valid PPT output as missing"
 
 
 @pytest.mark.asyncio
@@ -220,7 +230,9 @@ async def test_retry_budget_hard_cap_exhaustion_fails_workflow(tmp_path):
 
     assert final_state.metadata.status == WorkflowStatus.FAILED
     assert task.status == TaskStatus.FAILED
-    assert failing_adapter.call_count <= 4, f"Infinite loop detected: called {failing_adapter.call_count} times"
+    assert (
+        failing_adapter.call_count <= 4
+    ), f"Infinite loop detected: called {failing_adapter.call_count} times"
 
 
 @pytest.mark.asyncio
@@ -244,10 +256,17 @@ async def test_download_artifact_ppt_mime_type_and_filename(tmp_path):
         size_bytes=test_file.stat().st_size,
         checksum="dummy_checksum",
     )
-    saved_art = await storage.register_artifact(artifact, content=test_file.read_bytes())
+    saved_art = await storage.register_artifact(
+        artifact, content=test_file.read_bytes()
+    )
 
     response = await download_artifact(saved_art.artifact_id)
-    assert response.media_type == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
-    assert response.headers["Content-Disposition"] == 'attachment; filename="presentation.pptx"'
+    assert (
+        response.media_type
+        == "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    )
+    assert (
+        response.headers["Content-Disposition"]
+        == 'attachment; filename="presentation.pptx"'
+    )
     assert response.filename == "presentation.pptx"
-

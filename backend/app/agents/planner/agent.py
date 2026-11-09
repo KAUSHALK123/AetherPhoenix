@@ -344,6 +344,7 @@ class PlannerAgent:
         # Stage 1 & 2: User Requirement Analysis
         user_req = self.requirement_analyzer.analyze_request(request)
         from shared.contracts.planner import IntentCategory
+
         is_read_only = user_req.intent == IntentCategory.DATA_RETRIEVAL
 
         # Stage 3: Clarification
@@ -413,7 +414,9 @@ class PlannerAgent:
             tasks, unavailable_tools=unavailable_tools
         )
         if unsupported_caps or decomposition_plan.unsupported_capabilities:
-            unsupported_all = list(set(unsupported_caps + decomposition_plan.unsupported_capabilities))
+            unsupported_all = list(
+                set(unsupported_caps + decomposition_plan.unsupported_capabilities)
+            )
             decomposition_plan.unsupported_capabilities = unsupported_all
             self.active_sessions.pop(request.session_id, None)
             return PlannerResponse(

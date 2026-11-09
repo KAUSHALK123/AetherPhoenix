@@ -2,10 +2,11 @@
 
 import json
 import uuid
+
 import pytest
+from shared.contracts.planner import PlannerRequest
 
 from app.agents.planner.agent import PlannerAgent
-from shared.contracts.planner import PlannerRequest
 
 
 @pytest.fixture
@@ -32,24 +33,28 @@ def test_organizer_prompts_file_organization_clarification(planner, query):
     req = PlannerRequest(message=query, session_id=session_id)
     res = planner.process_request(req)
 
-    assert res.status == "clarifying", f"Expected 'clarifying' status for '{query}', got '{res.status}'"
+    assert (
+        res.status == "clarifying"
+    ), f"Expected 'clarifying' status for '{query}', got '{res.status}'"
     reply_lower = res.reply.lower()
 
     # Must ask relevant file organization questions
-    assert "folder" in reply_lower, f"Clarification should ask about folder: {res.reply}"
-    assert "organized" in reply_lower or "file type" in reply_lower, (
-        f"Clarification should ask about organization criteria: {res.reply}"
-    )
-    assert "moved or copied" in reply_lower or "move" in reply_lower, (
-        f"Clarification should ask about move vs copy: {res.reply}"
-    )
+    assert (
+        "folder" in reply_lower
+    ), f"Clarification should ask about folder: {res.reply}"
+    assert (
+        "organized" in reply_lower or "file type" in reply_lower
+    ), f"Clarification should ask about organization criteria: {res.reply}"
+    assert (
+        "moved or copied" in reply_lower or "move" in reply_lower
+    ), f"Clarification should ask about move vs copy: {res.reply}"
 
     # Must NEVER mention presentation / PPT / slides
     forbidden = ["ppt", "pptx", "slide", "slides", "presentation", "powerpoint", "deck"]
     for word in forbidden:
-        assert word not in reply_lower, (
-            f"Clarification for file organization should never mention '{word}': {res.reply}"
-        )
+        assert (
+            word not in reply_lower
+        ), f"Clarification for file organization should never mention '{word}': {res.reply}"
 
 
 def test_organizer_preset_and_clarified_goal_decomposes_to_file_explorer_dag(planner):
@@ -65,7 +70,9 @@ def test_organizer_preset_and_clarified_goal_decomposes_to_file_explorer_dag(pla
     req = PlannerRequest(message=preset_query, session_id=session_id)
     res = planner.process_request(req)
 
-    assert res.status == "ready", f"Expected 'ready' plan for preset query, got status '{res.status}'"
+    assert (
+        res.status == "ready"
+    ), f"Expected 'ready' plan for preset query, got status '{res.status}'"
 
     plan_data = json.loads(res.reply)
     tasks = plan_data["tasks"]
@@ -79,18 +86,22 @@ def test_organizer_preset_and_clarified_goal_decomposes_to_file_explorer_dag(pla
     assert task_names[2] == "Move/copy files into destination"
 
     for t in leaf_tasks:
-        assert t["required_tool"] == "file_explorer", (
-            f"Expected leaf task to use 'file_explorer', got '{t.get('required_tool')}'"
-        )
-        assert t["category"] == "FILE_SYSTEM", (
-            f"Expected task category 'FILE_SYSTEM', got '{t.get('category')}'"
-        )
+        assert (
+            t["required_tool"] == "file_explorer"
+        ), f"Expected leaf task to use 'file_explorer', got '{t.get('required_tool')}'"
+        assert (
+            t["category"] == "FILE_SYSTEM"
+        ), f"Expected task category 'FILE_SYSTEM', got '{t.get('category')}'"
 
         name_lower = t["task_name"].lower()
         desc_lower = t["description"].lower()
         for forbidden in ["ppt", "pptx", "slide", "slides", "presentation", "pdf"]:
-            assert forbidden not in name_lower, f"Forbidden '{forbidden}' in task name: {t['task_name']}"
-            assert forbidden not in desc_lower, f"Forbidden '{forbidden}' in task desc: {t['description']}"
+            assert (
+                forbidden not in name_lower
+            ), f"Forbidden '{forbidden}' in task name: {t['task_name']}"
+            assert (
+                forbidden not in desc_lower
+            ), f"Forbidden '{forbidden}' in task desc: {t['description']}"
 
 
 def test_multiturn_clarification_flow(planner):
@@ -112,11 +123,12 @@ def test_multiturn_clarification_flow(planner):
         session_id=session_id,
     )
     res2 = planner.process_request(req2)
-    assert res2.status == "ready", f"Expected plan ready after clarification, got '{res2.status}': {res2.reply}"
+    assert (
+        res2.status == "ready"
+    ), f"Expected plan ready after clarification, got '{res2.status}': {res2.reply}"
 
     plan_data = json.loads(res2.reply)
     leaf_tasks = [t for t in plan_data["tasks"] if t.get("task_type") == "LEAF"]
     assert len(leaf_tasks) == 3
     for t in leaf_tasks:
         assert t["required_tool"] == "file_explorer"
-

@@ -71,4 +71,3 @@ class WebResearchToolAdapter(BaseToolAdapter):
                     execution_time_ms=(time.time() - start_time) * 1000.0
                 ),
             )
-

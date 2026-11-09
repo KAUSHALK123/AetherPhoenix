@@ -32,7 +32,7 @@ export interface FileExplorerItem {
 
 export interface FileExplorerData {
   path: string;
-  action: 'opened_folder' | 'opened_file' | 'created_folder' | 'revealed_artifact';
+  action: 'opened_folder' | 'opened_file' | 'created_folder' | 'revealed_artifact' | 'list_files';
   status: 'COMPLETED' | 'FAILED';
   items?: FileExplorerItem[];
 }

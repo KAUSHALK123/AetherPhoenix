@@ -1,7 +1,7 @@
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 from uuid import UUID
 
 from shared.contracts.artifact import Artifact, ArtifactType
@@ -14,7 +14,10 @@ from shared.contracts.tool import Tool, ToolHealth, ToolState
 from app.core.config import get_config
 from app.core.logging import get_logger
 from app.core.permissions import PermissionManager
-from app.services.artifact_storage import ArtifactStorageService, get_artifact_storage_service
+from app.services.artifact_storage import (
+    ArtifactStorageService,
+    get_artifact_storage_service,
+)
 from app.tools.adapter import BaseToolAdapter
 from app.tools.document.generator import DocumentGenerator
 from app.tools.registry import ToolRegistry
@@ -94,7 +97,13 @@ class DocumentToolAdapter(BaseToolAdapter):
         output_dir.mkdir(parents=True, exist_ok=True)
 
         target_format = inputs.get("format", "markdown").lower()
-        ext_map = {"markdown": ".md", "text": ".txt", "html": ".html", "json": ".json", "csv": ".csv"}
+        ext_map = {
+            "markdown": ".md",
+            "text": ".txt",
+            "html": ".html",
+            "json": ".json",
+            "csv": ".csv",
+        }
         ext = ext_map.get(target_format, ".md")
 
         filename = f"{title.lower().replace(' ', '_')}{ext}"
@@ -161,7 +170,8 @@ class DocumentToolAdapter(BaseToolAdapter):
                     "file_size_bytes": gen_result.file_size_bytes,
                 },
                 artifacts=[saved_artifact],
-                logs=logs_captured + [f"Document written successfully to {output_path}"],
+                logs=logs_captured
+                + [f"Document written successfully to {output_path}"],
                 metrics=ExecutionMetrics(execution_time_ms=execution_time_ms),
             )
         except Exception as exc:
@@ -208,5 +218,7 @@ def register_document_tool(registry: ToolRegistry) -> Tool:
     )
     registry.register(content_tool)
 
-    logger.info("Successfully registered 'document_generator' and 'content_tool' in ToolRegistry.")
+    logger.info(
+        "Successfully registered 'document_generator' and 'content_tool' in ToolRegistry."
+    )
     return doc_tool

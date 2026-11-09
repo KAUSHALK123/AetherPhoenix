@@ -1,11 +1,12 @@
-import asyncio
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
 from shared.contracts.event import EventType, RuntimeEvent
-from shared.contracts.execution import ExecutionMetrics, ExecutionResult, SupervisorDecision
+from shared.contracts.execution import (
+    ExecutionResult,
+    SupervisorDecision,
+)
 from shared.contracts.permission import (
     PermissionRequest,
     PermissionStatus,
@@ -21,11 +22,9 @@ from shared.contracts.workflow import (
 
 from app.agents.supervisor.agent import SupervisorAgent
 from app.agents.worker.agent import WorkerAgent
-from app.core.config import get_config
 from app.core.events.bus import EventBus
 from app.core.permissions.manager import PermissionManager
 from app.engine.orchestrator import PipelineOrchestrator
-from app.engine.validator import OutputValidationService
 from app.tools.file_explorer import register_file_explorer_tool
 from app.tools.file_explorer.adapter import FileExplorerToolAdapter
 from app.tools.file_explorer.models import FileExplorerActionResult
@@ -66,7 +65,12 @@ async def test_list_folders_in_d_drive_end_to_end(tmp_path):
     mock_items = [
         {"name": "Projects", "is_dir": True, "type": "folder", "path": "D:\\Projects"},
         {"name": "Music", "is_dir": True, "type": "folder", "path": "D:\\Music"},
-        {"name": "Documents", "is_dir": True, "type": "folder", "path": "D:\\Documents"},
+        {
+            "name": "Documents",
+            "is_dir": True,
+            "type": "folder",
+            "path": "D:\\Documents",
+        },
         {"name": "Games", "is_dir": True, "type": "folder", "path": "D:\\Games"},
         {"name": "setup.exe", "is_dir": False, "type": "file", "path": "D:\\setup.exe"},
     ]
@@ -78,12 +82,16 @@ async def test_list_folders_in_d_drive_end_to_end(tmp_path):
         metadata={"items": mock_items, "count": 5},
     )
 
-    with patch.object(fe_adapter.executor, "list_files", new=AsyncMock(return_value=mock_result)):
+    with patch.object(
+        fe_adapter.executor, "list_files", new=AsyncMock(return_value=mock_result)
+    ):
         worker = WorkerAgent(
             tool_registry=tool_registry,
             permission_manager=permission_manager,
         )
-        worker.register_adapter("app.tools.file_explorer.adapter.FileExplorerToolAdapter", fe_adapter)
+        worker.register_adapter(
+            "app.tools.file_explorer.adapter.FileExplorerToolAdapter", fe_adapter
+        )
         worker.register_adapter("file_explorer", fe_adapter)
 
         supervisor = SupervisorAgent(
@@ -148,7 +156,9 @@ async def test_list_folders_in_d_drive_end_to_end(tmp_path):
         assert raw_output["Inspect D Drive Folders"]["action"] == "list_files"
 
         # 4. Assert WebSocket / EventBus payload contains answer and raw_output
-        completed_events = [e for e in emitted_events if e.event_type == EventType.WORKFLOW_COMPLETED]
+        completed_events = [
+            e for e in emitted_events if e.event_type == EventType.WORKFLOW_COMPLETED
+        ]
         assert len(completed_events) == 1
         payload = completed_events[0].payload
         assert payload.get("answer") == answer
@@ -264,7 +274,10 @@ async def test_supervisor_fails_placeholder_leaf_task_without_tool():
     assert validation.is_valid is False
     assert validation.decision == SupervisorDecision.FAILED
     assert placeholder_task.status == TaskStatus.FAILED
-    assert any("placeholder" in issue.lower() or "no-op" in issue.lower() for issue in validation.issues)
+    assert any(
+        "placeholder" in issue.lower() or "no-op" in issue.lower()
+        for issue in validation.issues
+    )
 
 
 @pytest.mark.asyncio
@@ -307,7 +320,10 @@ async def test_final_response_reports_tool_error_honestly():
 
     res = await orchestrator._generate_final_response(state)
     assert "error" in res["answer"].lower() or "Device D: not ready" in res["answer"]
-    assert res["raw_output"]["Check D Drive"]["error"] == "Device D: not ready or accessible"
+    assert (
+        res["raw_output"]["Check D Drive"]["error"]
+        == "Device D: not ready or accessible"
+    )
 
 
 @pytest.mark.asyncio

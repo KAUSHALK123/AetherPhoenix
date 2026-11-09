@@ -48,7 +48,7 @@ class ClarificationEngine:
                 "organizer",
             ]
         )
-        return has_action or ("organizer" in lower)
+        return (has_action and has_file_kw) or ("organizer" in lower)
 
     def detect_missing_info(self, requirement: UserRequirement) -> List[str]:
         """
@@ -169,7 +169,10 @@ class ClarificationEngine:
         if missing_fields:
             question = self.generate_question(missing_fields)
             options = None
-            if "source_folder" in missing_fields or "organization_criteria" in missing_fields:
+            if (
+                "source_folder" in missing_fields
+                or "organization_criteria" in missing_fields
+            ):
                 options = [
                     "Organize Downloads by file type",
                     "Organize Desktop by category",

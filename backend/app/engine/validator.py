@@ -95,7 +95,14 @@ class OutputValidationService:
             return not output.strip()
         if isinstance(output, dict):
             # Check if all keys are purely no-op or placeholder bookkeeping metadata
-            meta_keys = {"status", "phase", "execution_time", "metrics", "exit_code", "timestamp"}
+            meta_keys = {
+                "status",
+                "phase",
+                "execution_time",
+                "metrics",
+                "exit_code",
+                "timestamp",
+            }
             non_meta_keys = [k for k in output.keys() if k not in meta_keys]
             if not non_meta_keys:
                 return True
@@ -231,7 +238,10 @@ class OutputValidationService:
                             f"Success criteria failed: '{criterion}' "
                             "could not be verified (empty output)"
                         )
-                    elif self.is_empty_or_noop_output(result.output) and not result.artifacts:
+                    elif (
+                        self.is_empty_or_noop_output(result.output)
+                        and not result.artifacts
+                    ):
                         is_valid = False
                         issues.append(
                             f"Success criteria failed: '{criterion}' "

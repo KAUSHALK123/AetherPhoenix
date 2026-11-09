@@ -48,8 +48,15 @@ class FileSystemExecutor:
             for req in self.permission_manager.requests.values():
                 status_str = getattr(req.status, "value", str(req.status)).upper()
                 if status_str in ("GRANTED", "APPROVED"):
-                    req_path = getattr(req, "context", {}).get("path") if hasattr(req, "context") else None
-                    if req_path and (req_path == str(resolved_path) or str(resolved_path).startswith(req_path)):
+                    req_path = (
+                        getattr(req, "context", {}).get("path")
+                        if hasattr(req, "context")
+                        else None
+                    )
+                    if req_path and (
+                        req_path == str(resolved_path)
+                        or str(resolved_path).startswith(req_path)
+                    ):
                         return resolved_path
 
         logger.error(

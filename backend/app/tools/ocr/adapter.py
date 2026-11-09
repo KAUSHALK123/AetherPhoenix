@@ -101,7 +101,7 @@ class OCRToolAdapter(BaseToolAdapter):
 
         # Resolve relative path if needed
         from pathlib import Path
-        import os
+
         from app.core.config import get_config
 
         path_obj = Path(filepath)
@@ -149,7 +149,9 @@ class OCRToolAdapter(BaseToolAdapter):
                 ]
                 output["query"] = query
                 output["matches"] = matches
-                output["found"] = len(matches) > 0 or q_lower in ocr_result.extracted_text.lower()
+                output["found"] = (
+                    len(matches) > 0 or q_lower in ocr_result.extracted_text.lower()
+                )
                 logs_captured.append(
                     f"PDF search for '{query}': {'found' if output['found'] else 'not found'} ({len(matches)} matching segment(s))"
                 )

@@ -1,11 +1,9 @@
-import asyncio
 import logging
-from pathlib import Path
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from shared.contracts.artifact import Artifact, ArtifactType
 from shared.contracts.execution import ExecutionMetrics, ExecutionResult, TaskError
 from shared.contracts.pdf import (
     HeadingElement,
@@ -19,7 +17,7 @@ from shared.contracts.task import Task
 from shared.contracts.tool import Tool, ToolHealth, ToolState
 
 from app.core.config import get_config
-from app.core.exceptions import PermissionDeniedException, ToolExecutionException
+from app.core.exceptions import PermissionDeniedException
 from app.core.permissions import PermissionManager
 from app.services.artifact_storage import (
     ArtifactStorageService,
@@ -86,7 +84,9 @@ class PDFToolAdapter(BaseToolAdapter):
         else:
             payload_copy = dict(payload)
             if "title" not in payload_copy:
-                payload_copy["title"] = payload_copy.get("topic", "Generated PDF Document")
+                payload_copy["title"] = payload_copy.get(
+                    "topic", "Generated PDF Document"
+                )
             if "output_path" not in payload_copy:
                 cfg = get_config()
                 out_dir = Path(cfg.ARTIFACTS_DIR) / "pdf_outputs"
@@ -186,7 +186,9 @@ class PDFToolAdapter(BaseToolAdapter):
                     text="The system architecture combines autonomous worker capabilities, supervisory validation contracts, and self-healing resilience.",
                     bold=False,
                 ),
-                HeadingElement(text="2. Technical Specifications & Verification", level=2),
+                HeadingElement(
+                    text="2. Technical Specifications & Verification", level=2
+                ),
                 ParagraphElement(
                     text="All execution stages conform strictly to typed Pydantic contracts and rigorous lifecycle verifications.",
                     bold=False,

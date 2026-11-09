@@ -128,7 +128,17 @@ class GoalParser:
             return IntentCategory.DATA_RETRIEVAL
         elif any(
             word in lower_text
-            for word in ["write", "generate", "draft", "summarize", "build", "ppt", "pdf", "slides", "presentation"]
+            for word in [
+                "write",
+                "generate",
+                "draft",
+                "summarize",
+                "build",
+                "ppt",
+                "pdf",
+                "slides",
+                "presentation",
+            ]
         ):
             return IntentCategory.CONTENT_GENERATION
         return IntentCategory.UNKNOWN

@@ -61,7 +61,11 @@ class FileExplorerToolAdapter(BaseToolAdapter):
         # Action resolution heuristics
         if not action:
             task_name_lower = task.task_name.lower()
-            if "list" in task_name_lower or "inspect" in task_name_lower or "check" in task_name_lower:
+            if (
+                "list" in task_name_lower
+                or "inspect" in task_name_lower
+                or "check" in task_name_lower
+            ):
                 action = "list_files"
             elif "reveal" in task_name_lower or "navigate" in task_name_lower:
                 action = "reveal_artifact"
@@ -81,8 +85,20 @@ class FileExplorerToolAdapter(BaseToolAdapter):
         logs_captured.append(f"Resolved file explorer action: {action}")
 
         try:
-            if action in ("list_files", "list_directory", "list_dir", "list", "browse", "browse_directory"):
-                path_arg = inputs.get("path") or inputs.get("folder") or inputs.get("directory") or "."
+            if action in (
+                "list_files",
+                "list_directory",
+                "list_dir",
+                "list",
+                "browse",
+                "browse_directory",
+            ):
+                path_arg = (
+                    inputs.get("path")
+                    or inputs.get("folder")
+                    or inputs.get("directory")
+                    or "."
+                )
                 res = await self.executor.list_files(
                     path=path_arg,
                     recursive=inputs.get("recursive", False),

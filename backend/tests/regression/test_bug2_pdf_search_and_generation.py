@@ -1,11 +1,19 @@
 from pathlib import Path
 from uuid import uuid4
-import pytest
 
-from shared.contracts.artifact import ArtifactType
-from shared.contracts.permission import PermissionRequest, PermissionStatus, PermissionType, RiskLevel
+import pytest
+from shared.contracts.permission import (
+    PermissionRequest,
+    PermissionStatus,
+    PermissionType,
+    RiskLevel,
+)
 from shared.contracts.task import Task, TaskCategory, TaskStatus
-from shared.contracts.workflow import SharedWorkflowState, WorkflowMetadata, WorkflowStatus
+from shared.contracts.workflow import (
+    SharedWorkflowState,
+    WorkflowMetadata,
+    WorkflowStatus,
+)
 
 from app.agents.supervisor.agent import SupervisorAgent
 from app.agents.worker.agent import WorkerAgent
@@ -16,7 +24,6 @@ from app.engine.orchestrator import PipelineOrchestrator
 from app.planner.decomposer import TaskDecompositionEngine
 from app.tools.ocr.adapter import OCRToolAdapter
 from app.tools.ocr.tool import register_ocr_tool
-from app.tools.pdf.generator import PDFGenerator
 from app.tools.pdf.tool import PDFToolAdapter, register_pdf_tool
 from app.tools.registry import ToolRegistry
 
@@ -65,7 +72,9 @@ async def test_pdf_generation_e2e_and_contract_validation(tmp_path):
 
     # 1. Test Decomposition of PDF generation goal
     decomposer = TaskDecompositionEngine()
-    plan = decomposer.decompose_goal("generate pdf report on System Reliability", workflow_id=workflow_id)
+    plan = decomposer.decompose_goal(
+        "generate pdf report on System Reliability", workflow_id=workflow_id
+    )
     tasks = plan.tasks
     leaf_tasks = [t for t in tasks if t.required_tool]
     assert len(leaf_tasks) == 1
@@ -108,7 +117,6 @@ async def test_pdf_search_e2e(tmp_path):
     cfg.ARTIFACTS_DIR = str(tmp_path / "artifacts")
     Path(cfg.ARTIFACTS_DIR).mkdir(parents=True, exist_ok=True)
 
-    event_bus = EventBus()
     permission_manager = PermissionManager()
     tool_registry = ToolRegistry()
 
@@ -141,9 +149,18 @@ async def test_pdf_search_e2e(tmp_path):
     sample_payload = {
         "title": "Quarterly Financial Analysis",
         "elements": [
-            {"element_type": "paragraph", "text": "Executive revenue summary for fiscal year 2026."},
-            {"element_type": "paragraph", "text": "Special keyword found here: PHOENIX_AUDIT_VERIFIED_77."},
-            {"element_type": "paragraph", "text": "Operating margin increased by 14% across all regions."},
+            {
+                "element_type": "paragraph",
+                "text": "Executive revenue summary for fiscal year 2026.",
+            },
+            {
+                "element_type": "paragraph",
+                "text": "Special keyword found here: PHOENIX_AUDIT_VERIFIED_77.",
+            },
+            {
+                "element_type": "paragraph",
+                "text": "Operating margin increased by 14% across all regions.",
+            },
         ],
         "output_path": str(target_pdf),
     }
@@ -195,5 +212,9 @@ async def test_pdf_adapter_exception_not_swallowed(tmp_path):
     result = await adapter.execute(task)
     assert result.success is False
     assert result.error is not None
-    assert result.error.error_code in ("PDF_GENERATION_FAILED", "PERMISSION_DENIED", "TOOL_EXECUTION_ERROR")
+    assert result.error.error_code in (
+        "PDF_GENERATION_FAILED",
+        "PERMISSION_DENIED",
+        "TOOL_EXECUTION_ERROR",
+    )
     assert result.error.error_message

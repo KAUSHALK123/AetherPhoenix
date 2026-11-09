@@ -113,12 +113,59 @@ class TaskDecompositionEngine:
                 ]
             )
             or (
-                any(w in lower_goal for w in ["list", "show", "check", "browse", "view", "inspect", "explore", "what's in", "whats in"])
-                and any(d in lower_goal for d in ["drive", "folder", "directory", "directories", "d:", "c:", "e:", ":\\", ":/"])
-                and not any(a in lower_goal for a in ["organize", "sort", "clean up", "cleanup", "move", "copy", "delete"])
+                any(
+                    w in lower_goal
+                    for w in [
+                        "list",
+                        "show",
+                        "check",
+                        "browse",
+                        "view",
+                        "inspect",
+                        "explore",
+                        "what's in",
+                        "whats in",
+                    ]
+                )
+                and any(
+                    d in lower_goal
+                    for d in [
+                        "drive",
+                        "folder",
+                        "directory",
+                        "directories",
+                        "d:",
+                        "c:",
+                        "e:",
+                        ":\\",
+                        ":/",
+                    ]
+                )
+                and not any(
+                    a in lower_goal
+                    for a in [
+                        "organize",
+                        "sort",
+                        "clean up",
+                        "cleanup",
+                        "move",
+                        "copy",
+                        "delete",
+                    ]
+                )
             )
-            or bool(re.search(r"\b(check|show|list|browse|view|inspect)\s+[a-z]\s+drive\b", lower_goal))
-            or bool(re.search(r"\b(?:what|tell me)\s+(?:folders|files)\s+(?:are\s+)?in\s+[a-z]\s+drive\b", lower_goal))
+            or bool(
+                re.search(
+                    r"\b(check|show|list|browse|view|inspect)\s+[a-z]\s+drive\b",
+                    lower_goal,
+                )
+            )
+            or bool(
+                re.search(
+                    r"\b(?:what|tell me)\s+(?:folders|files)\s+(?:are\s+)?in\s+[a-z]\s+drive\b",
+                    lower_goal,
+                )
+            )
         )
         if is_read_only_dir_intent:
             return self._decompose_directory_inspection_goal(goal, workflow_id)
@@ -126,10 +173,35 @@ class TaskDecompositionEngine:
         # 2. File Organization & Management Intent (Priority over file extensions)
         is_organize_intent = any(
             v in lower_goal
-            for v in ["organize", "sort", "group", "clean up", "cleanup", "move", "copy", "delete"]
+            for v in [
+                "organize",
+                "sort",
+                "group",
+                "clean up",
+                "cleanup",
+                "move",
+                "copy",
+                "delete",
+            ]
         ) and any(
             n in lower_goal
-            for n in ["file", "files", "folder", "folders", "directory", "directories", "downloads", "desktop", "docs", "documents", ".ppt", ".pdf", ".jpg", ".png", ".txt"]
+            for n in [
+                "file",
+                "files",
+                "folder",
+                "folders",
+                "directory",
+                "directories",
+                "downloads",
+                "desktop",
+                "docs",
+                "documents",
+                ".ppt",
+                ".pdf",
+                ".jpg",
+                ".png",
+                ".txt",
+            ]
         )
         if is_organize_intent or any(
             w in lower_goal
@@ -277,17 +349,13 @@ class TaskDecompositionEngine:
             ]
         ):
             return self._decompose_system_goal(goal, workflow_id)
-        elif any(
-            w in lower_goal for w in ["research", "investigate", "find info"]
-        ):
+        elif any(w in lower_goal for w in ["research", "investigate", "find info"]):
             return self._decompose_research_goal(goal, workflow_id)
         elif any(
             w in lower_goal for w in ["code", "build", "develop", "implement", "app"]
         ):
             return self._decompose_coding_goal(goal, workflow_id)
-        elif any(
-            w in lower_goal for w in ["system", "repair", "driver", "config"]
-        ):
+        elif any(w in lower_goal for w in ["system", "repair", "driver", "config"]):
             return self._decompose_system_goal(goal, workflow_id)
         elif any(
             w in lower_goal
@@ -318,14 +386,20 @@ class TaskDecompositionEngine:
                 "open folder",
                 "file explorer",
             ]
-        ) or ("file" in lower_goal and "create" not in lower_goal and "code" not in lower_goal):
+        ) or (
+            "file" in lower_goal
+            and "create" not in lower_goal
+            and "code" not in lower_goal
+        ):
             return self._decompose_filesystem_goal(goal, workflow_id)
         else:
             # Fallback: query LLM planner with live ToolRegistry catalog
             try:
                 import json
-                from app.planner.llm_planner import LLMPlanner
+
                 from shared.contracts.planner import PlannerRequest
+
+                from app.planner.llm_planner import LLMPlanner
 
                 if not hasattr(self, "llm_planner") or self.llm_planner is None:
                     self.llm_planner = LLMPlanner()
@@ -347,7 +421,18 @@ class TaskDecompositionEngine:
 
             # For actionable goals (e.g. security/user/system setup) or testing workflows,
             # allow generic task decomposition so CapabilityDiscoveryEngine can map capabilities.
-            if any(w in lower_goal for w in ["user", "securely", "account", "permission", "login", "auth", "role"]):
+            if any(
+                w in lower_goal
+                for w in [
+                    "user",
+                    "securely",
+                    "account",
+                    "permission",
+                    "login",
+                    "auth",
+                    "role",
+                ]
+            ):
                 return self._decompose_generic_goal(goal, workflow_id)
 
             # Do not emit a placeholder plan for unhandled requests!
@@ -664,7 +749,11 @@ class TaskDecompositionEngine:
             expected_output="Environment details log",
             success_criteria=["Environment details inspected"],
             failure_criteria=["Inspection failed"],
-            inputs={"command": resolved.command, "raw_query": goal, "display_name": resolved.display_name},
+            inputs={
+                "command": resolved.command,
+                "raw_query": goal,
+                "display_name": resolved.display_name,
+            },
             estimated_duration_seconds=15,
             status=TaskStatus.CREATED,
         )
@@ -696,13 +785,17 @@ class TaskDecompositionEngine:
 
         return [phase_root, task_inspect, task_execute]
 
-    def _decompose_directory_inspection_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
+    def _decompose_directory_inspection_goal(
+        self, goal: str, workflow_id: UUID
+    ) -> List[Task]:
         """Decomposes a read-only directory or drive inspection goal into a file_explorer task."""
         lower_goal = goal.lower()
 
         # Extract target path
         target_path = "."
-        drive_match = re.search(r"\b([a-zA-Z])\s+drive\b", lower_goal) or re.search(r"\bdrive\s+([a-zA-Z])\b", lower_goal)
+        drive_match = re.search(r"\b([a-zA-Z])\s+drive\b", lower_goal) or re.search(
+            r"\bdrive\s+([a-zA-Z])\b", lower_goal
+        )
         if drive_match:
             drive_letter = drive_match.group(1).upper()
             target_path = f"{drive_letter}:\\"
@@ -747,7 +840,9 @@ class TaskDecompositionEngine:
             priority=TaskPriority.LOW,
             dependencies=[],
             expected_output=f"List of files and directories in '{target_path}'",
-            success_criteria=[f"Directory contents for '{target_path}' retrieved successfully"],
+            success_criteria=[
+                f"Directory contents for '{target_path}' retrieved successfully"
+            ],
             failure_criteria=[f"Failed to access or list '{target_path}'"],
             estimated_duration_seconds=30,
             status=TaskStatus.CREATED,
@@ -836,7 +931,18 @@ class TaskDecompositionEngine:
         lower_goal = goal.lower()
 
         # Handle direct submit button click follow-ups
-        is_direct_submit = any(w in lower_goal for w in ["press submit", "click submit", "submit the issue", "submit new issue", "submit issue", "press the submit", "click the submit"])
+        is_direct_submit = any(
+            w in lower_goal
+            for w in [
+                "press submit",
+                "click submit",
+                "submit the issue",
+                "submit new issue",
+                "submit issue",
+                "press the submit",
+                "click the submit",
+            ]
+        )
         if is_direct_submit:
             phase_root = Task(
                 workflow_id=workflow_id,
@@ -907,9 +1013,15 @@ class TaskDecompositionEngine:
 
         # 2. Extract title if creating an issue
         title = ""
-        title_match = re.search(r"(?:titled|title|named)\s+['\"]([^'\"]+)['\"]", goal, re.IGNORECASE)
+        title_match = re.search(
+            r"(?:titled|title|named)\s+['\"]([^'\"]+)['\"]", goal, re.IGNORECASE
+        )
         if not title_match:
-            title_match = re.search(r"(?:titled|title)\s+([^,]+?)(?:\s+with\s+description|\s+and\s+description|\s+description|\s+and\s+body|\s+with\s+body|\s+and\s+post|$)", goal, re.IGNORECASE)
+            title_match = re.search(
+                r"(?:titled|title)\s+([^,]+?)(?:\s+with\s+description|\s+and\s+description|\s+description|\s+and\s+body|\s+with\s+body|\s+and\s+post|$)",
+                goal,
+                re.IGNORECASE,
+            )
         if title_match:
             title = title_match.group(1).strip()
         else:
@@ -917,16 +1029,33 @@ class TaskDecompositionEngine:
 
         # 3. Extract description / body
         body = ""
-        body_match = re.search(r"(?:description|body)\s+['\"]([^'\"]+)['\"]", goal, re.IGNORECASE)
+        body_match = re.search(
+            r"(?:description|body)\s+['\"]([^'\"]+)['\"]", goal, re.IGNORECASE
+        )
         if not body_match:
-            body_match = re.search(r"(?:with\s+description|and\s+description|description|with\s+body|and\s+body)\s+['\"]?([^'\".,]+)['\"]?", goal, re.IGNORECASE)
+            body_match = re.search(
+                r"(?:with\s+description|and\s+description|description|with\s+body|and\s+body)\s+['\"]?([^'\".,]+)['\"]?",
+                goal,
+                re.IGNORECASE,
+            )
         if body_match:
             body = body_match.group(1).strip()
         else:
             body = f"Automated issue reported via AetherPhoenix for: {goal}"
 
         # 4. Construct Target URL
-        is_issue = any(w in lower_goal for w in ["issue", "bug", "feature", "ticket", "post issue", "create issue", "submit issue"])
+        is_issue = any(
+            w in lower_goal
+            for w in [
+                "issue",
+                "bug",
+                "feature",
+                "ticket",
+                "post issue",
+                "create issue",
+                "submit issue",
+            ]
+        )
         if is_issue:
             query_params = urllib.parse.urlencode({"title": title, "body": body})
             target_url = f"https://github.com/{repo}/issues/new?{query_params}"
@@ -955,7 +1084,8 @@ class TaskDecompositionEngine:
         task_nav = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
-            task_name=f"Navigate to GitHub ({repo})" + (" - New Issue Form" if is_issue else ""),
+            task_name=f"Navigate to GitHub ({repo})"
+            + (" - New Issue Form" if is_issue else ""),
             description=f"Open active browser tab to {target_url}",
             assigned_agent="WorkerAgent",
             required_tool="browser_extension",
@@ -1071,7 +1201,9 @@ class TaskDecompositionEngine:
                 query = re.sub(r"[.?!]+$", "", query).strip()
                 encoded_q = urllib.parse.quote_plus(query)
                 target_url = f"https://www.google.com/search?q={encoded_q}"
-        elif "navigate to" in lower_goal or "open" in lower_goal or "go to" in lower_goal:
+        elif (
+            "navigate to" in lower_goal or "open" in lower_goal or "go to" in lower_goal
+        ):
             nav_match = re.search(
                 r"(?:navigate\s+to|go\s+to|open\s+browser\s+and\s+navigate\s+to|open\s+browser\s+and\s+go\s+to|open)\s+(.+)",
                 goal,
@@ -1282,7 +1414,9 @@ class TaskDecompositionEngine:
             priority=TaskPriority.HIGH,
             dependencies=[],
             expected_output="PDF document (.pdf)",
-            success_criteria=["PDF file created with valid magic bytes and non-empty content"],
+            success_criteria=[
+                "PDF file created with valid magic bytes and non-empty content"
+            ],
             failure_criteria=["Failed to generate or validate PDF document"],
             inputs={"title": goal, "topic": goal},
             estimated_duration_seconds=45,
@@ -1296,15 +1430,25 @@ class TaskDecompositionEngine:
         import re
 
         # Extract search query if present
-        query_match = re.search(r"(?:search|find|query|lookup)\s+(?:for\s+)?['\"]?([^'\"]+?)['\"]?\s+in\s+", goal, re.IGNORECASE)
+        query_match = re.search(
+            r"(?:search|find|query|lookup)\s+(?:for\s+)?['\"]?([^'\"]+?)['\"]?\s+in\s+",
+            goal,
+            re.IGNORECASE,
+        )
         query = query_match.group(1).strip() if query_match else None
         if not query:
             # Fallback regex
-            query_match2 = re.search(r"(?:search|find|extract)\s+['\"]?([^'\"]+?)['\"]?\s+(?:from|in)\s+pdf", goal, re.IGNORECASE)
+            query_match2 = re.search(
+                r"(?:search|find|extract)\s+['\"]?([^'\"]+?)['\"]?\s+(?:from|in)\s+pdf",
+                goal,
+                re.IGNORECASE,
+            )
             query = query_match2.group(1).strip() if query_match2 else "search text"
 
         # Extract file path if present
-        path_match = re.search(r"['\"]?([a-zA-Z0-9_\-\\/.]+\.pdf)['\"]?", goal, re.IGNORECASE)
+        path_match = re.search(
+            r"['\"]?([a-zA-Z0-9_\-\\/.]+\.pdf)['\"]?", goal, re.IGNORECASE
+        )
         target_path = path_match.group(1) if path_match else "document.pdf"
 
         phase_root = Task(
@@ -1509,4 +1653,3 @@ class TaskDecompositionEngine:
             raise ValueError("Circular dependency detected during topological sort")
 
         return ordered
-

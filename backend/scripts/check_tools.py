@@ -11,7 +11,6 @@ For every adapter and tool registered in ToolRegistry, this script verifies:
 """
 
 import asyncio
-import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type
@@ -34,13 +33,13 @@ from shared.contracts.execution import ExecutionResult
 from shared.contracts.export import ExportRequest
 from shared.contracts.ocr import OCRRequest
 from shared.contracts.pdf import PDFDocumentInput
-from shared.contracts.permission import PermissionRequest, PermissionStatus, PermissionType
+from shared.contracts.permission import (
+    PermissionStatus,
+)
 from shared.contracts.screenshot import ScreenshotRequest
 from shared.contracts.task import Task, TaskCategory, TaskType
-from shared.contracts.tool import Tool
 
 from app.agents.worker.agent import WorkerAgent
-from app.planner.decomposer import TaskDecompositionEngine
 from app.tools import (
     register_desktop_tool,
     register_document_tool,
@@ -63,7 +62,6 @@ from app.tools.terminal.tool import TerminalToolInput
 from app.tools.web_research.schemas import WebResearchRequest
 from app.tools.web_scraping import register_web_scraping_tool
 from app.tools.web_scraping.contracts import ScrapeRequest
-
 
 # ---------------------------------------------------------------------------
 # Schema Specifications and Sample Inputs
@@ -410,7 +408,9 @@ def print_results_table(results: List[Dict[str, Any]]) -> None:
             if not r["status"]:
                 print(f"[-] Tool: {r['tool_name']}")
                 if not r["name_match"]:
-                    print(f"    Name Match: Not found in planner/decomposer emitted tool strings")
+                    print(
+                        "    Name Match: Not found in planner/decomposer emitted tool strings"
+                    )
                 if not r["schema_valid"]:
                     print(f"    Schema Error: {r['schema_error']}")
                 if not r["exec_pass"]:
