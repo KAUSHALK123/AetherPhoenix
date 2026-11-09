@@ -74,6 +74,8 @@ try:
         StructuredResearchResult,
         WebResearchRequest,
         WebResearchTool,
+        WebResearchToolAdapter,
+        register_web_research_tool,
     )
 except ImportError:
     BaseResearchTool = None
@@ -87,6 +89,8 @@ except ImportError:
     StructuredResearchResult = None
     WebResearchRequest = None
     WebResearchTool = None
+    WebResearchToolAdapter = None
+    register_web_research_tool = None
 
 try:
     from app.tools.file_explorer import (
@@ -147,6 +151,8 @@ __all__ = [
     "register_git_tool",
     "GitToolAdapter",
     "WebResearchTool",
+    "WebResearchToolAdapter",
+    "register_web_research_tool",
     "BaseResearchTool",
     "SearchEngineInterface",
     "DuckDuckGoSearchEngine",

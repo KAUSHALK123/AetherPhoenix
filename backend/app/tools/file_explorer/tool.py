@@ -37,5 +37,21 @@ def register_file_explorer_tool(registry: ToolRegistry) -> Tool:
     )
 
     registry.register(file_explorer_tool)
-    logger.info("Successfully registered 'file_explorer' tool in ToolRegistry.")
+
+    file_manager_tool = Tool(
+        name="file_manager_tool",
+        description="Local file manager tool for managing local files and directories.",
+        version="1.0.0",
+        status=ToolState.READY,
+        health=ToolHealth.HEALTHY,
+        adapter="FileExplorerToolAdapter",
+        dependencies=[],
+        required_permissions=[
+            PermissionType.FILE_SYSTEM.value,
+            PermissionType.FILE_WRITE.value,
+        ],
+    )
+    registry.register(file_manager_tool)
+
+    logger.info("Successfully registered 'file_explorer' and 'file_manager_tool' in ToolRegistry.")
     return file_explorer_tool

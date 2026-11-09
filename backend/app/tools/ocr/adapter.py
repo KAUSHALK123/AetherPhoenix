@@ -51,6 +51,17 @@ class OCRToolAdapter(BaseToolAdapter):
             task.inputs.copy() if hasattr(task, "inputs") and task.inputs else {}
         )
 
+        if inputs.get("dry_run"):
+            duration_ms = (time.time() - start_time) * 1000.0
+            return ExecutionResult(
+                task_id=task.task_id,
+                workflow_id=task.workflow_id,
+                success=True,
+                output={"extracted_text": "Dry run OCR text", "confidence": 1.0},
+                logs=logs_captured + ["OCR dry run succeeded."],
+                metrics=ExecutionMetrics(execution_time_ms=duration_ms),
+            )
+
         # Resolve filepath from inputs
         filepath = (
             inputs.get("filepath")
