@@ -648,58 +648,61 @@ class TaskDecompositionEngine:
             status=TaskStatus.CREATED,
         )
 
-        task_inspect = Task(
+        task_list = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
-            task_name="Inspect Target Directory",
-            description="List and categorize existing files",
+            task_name="List files in source dir",
+            description="Scan and list files and metadata in the source directory",
             assigned_agent="WorkerAgent",
             required_tool="file_explorer",
             category=TaskCategory.FILE_SYSTEM,
             priority=TaskPriority.MEDIUM,
             dependencies=[],
-            expected_output="List of files and their metadata",
+            expected_output="List of files and their metadata in source directory",
             success_criteria=["File list retrieved successfully"],
             failure_criteria=["Target directory not found or inaccessible"],
             estimated_duration_seconds=30,
             status=TaskStatus.CREATED,
+            inputs={"action": "list_files", "path": "."},
         )
 
-        task_determine = Task(
+        task_create_dirs = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
-            task_name="Determine Organization Strategy",
-            description="Define how files should be categorized or moved",
-            assigned_agent="WorkerAgent",
-            required_tool="file_explorer",
-            category=TaskCategory.OTHER,
-            priority=TaskPriority.MEDIUM,
-            dependencies=[task_inspect.task_id],
-            expected_output="Mapping of source files to target destinations",
-            success_criteria=["Strategy defines mapping for all required files"],
-            failure_criteria=["Unable to determine file categories"],
-            estimated_duration_seconds=30,
-            status=TaskStatus.CREATED,
-        )
-
-        task_execute = Task(
-            parent_task_id=phase_root.task_id,
-            workflow_id=workflow_id,
-            task_name="Execute File Operations",
-            description="Move or copy files based on the strategy",
+            task_name="Create target categories/folders",
+            description="Create destination categories and folders for organization",
             assigned_agent="WorkerAgent",
             required_tool="file_explorer",
             category=TaskCategory.FILE_SYSTEM,
             priority=TaskPriority.MEDIUM,
-            dependencies=[task_determine.task_id],
-            expected_output="Operations log detailing moved files",
-            success_criteria=["All mapped operations succeeded"],
+            dependencies=[task_list.task_id],
+            expected_output="Target category directories created",
+            success_criteria=["Category folders created successfully"],
+            failure_criteria=["Failed to create category folders"],
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+            inputs={"action": "create_folder"},
+        )
+
+        task_move_copy = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name="Move/copy files into destination",
+            description="Move or copy files into destination category directories",
+            assigned_agent="WorkerAgent",
+            required_tool="file_explorer",
+            category=TaskCategory.FILE_SYSTEM,
+            priority=TaskPriority.MEDIUM,
+            dependencies=[task_create_dirs.task_id],
+            expected_output="Operations log detailing moved/copied files",
+            success_criteria=["All mapped files moved or copied to destination"],
             failure_criteria=["One or more file operations failed"],
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
+            inputs={"action": "move_file"},
         )
 
-        return [phase_root, task_inspect, task_determine, task_execute]
+        return [phase_root, task_list, task_create_dirs, task_move_copy]
 
     def _decompose_github_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
         """Decomposes a GitHub repository, issue creation, or PR goal into structured browser tasks."""
