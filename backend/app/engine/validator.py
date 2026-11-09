@@ -1,8 +1,8 @@
 import os
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from shared.contracts.execution import ExecutionResult
-from shared.contracts.task import Task
+from shared.contracts.task import Task, TaskType
 
 
 class OutputValidationService:
@@ -46,14 +46,75 @@ class OutputValidationService:
         checks["no_failure_criteria_triggered"] = not failure_detected
         issues.extend(failure_issues)
 
+        # 5. Placeholder / no-op task verification
+        is_phase_task = (
+            getattr(task, "task_type", None) == TaskType.PHASE
+            or "phase" in task.task_name.lower()
+        )
+        if not is_phase_task:
+            is_placeholder_name = any(
+                ph in task.task_name.lower()
+                for ph in ["evaluate goal context", "execute primary action"]
+            )
+            is_noop_task = (
+                not task.required_tool
+                and not result.artifacts
+                and self.is_empty_or_noop_output(result.output)
+            )
+            if is_placeholder_name or is_noop_task:
+                checks["no_placeholder_or_noop"] = False
+                issues.append(
+                    f"Task '{task.task_name}' is a placeholder or no-op task and cannot count as COMPLETED."
+                )
+            else:
+                checks["no_placeholder_or_noop"] = True
+        else:
+            checks["no_placeholder_or_noop"] = True
+
         is_valid = (
             checks["execution_success"]
             and checks["artifacts_valid"]
             and checks["output_valid"]
             and checks["no_failure_criteria_triggered"]
+            and checks.get("no_placeholder_or_noop", True)
         )
 
         return is_valid, checks, issues
+
+    @staticmethod
+    def is_empty_or_noop_output(output: Any) -> bool:
+        """
+        Determines whether the provided output is empty or a no-op placeholder.
+        """
+        if output is None:
+            return True
+        if isinstance(output, (dict, list, str)):
+            if len(output) == 0:
+                return True
+        if isinstance(output, str):
+            return not output.strip()
+        if isinstance(output, dict):
+            # Check if all keys are purely no-op or placeholder bookkeeping metadata
+            meta_keys = {"status", "phase", "execution_time", "metrics", "exit_code", "timestamp"}
+            non_meta_keys = [k for k in output.keys() if k not in meta_keys]
+            if not non_meta_keys:
+                return True
+            # Check if all non-meta values are empty/None/whitespace
+            has_substance = False
+            for k in non_meta_keys:
+                v = output[k]
+                if v is not None:
+                    if isinstance(v, (str, list, dict)):
+                        if len(v) > 0:
+                            if isinstance(v, str) and not v.strip():
+                                continue
+                            has_substance = True
+                            break
+                    else:
+                        has_substance = True
+                        break
+            return not has_substance
+        return False
 
     def _verify_artifacts(
         self, task: Task, result: ExecutionResult
@@ -132,6 +193,11 @@ class OutputValidationService:
                     "Expected output was defined, but no output data "
                     "or artifacts were returned."
                 )
+            elif self.is_empty_or_noop_output(result.output) and not result.artifacts:
+                is_valid = False
+                issues.append(
+                    "Expected output was defined, but tool returned empty or no-op output."
+                )
 
         # Check success criteria
         if task.success_criteria:
@@ -164,6 +230,12 @@ class OutputValidationService:
                         issues.append(
                             f"Success criteria failed: '{criterion}' "
                             "could not be verified (empty output)"
+                        )
+                    elif self.is_empty_or_noop_output(result.output) and not result.artifacts:
+                        is_valid = False
+                        issues.append(
+                            f"Success criteria failed: '{criterion}' "
+                            "could not be verified (no-op output)"
                         )
 
         return is_valid, issues

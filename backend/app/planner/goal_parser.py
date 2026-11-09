@@ -55,6 +55,9 @@ class GoalParser:
         "press": "Pressed or submitted target button",
         "click": "Clicked target element",
         "submit": "Submitted form or request",
+        "list": "Retrieved list of items",
+        "check": "Retrieved status or contents",
+        "show": "Displayed contents",
     }
 
     def parse_intent(self, text: str) -> IntentCategory:
@@ -106,12 +109,26 @@ class GoalParser:
                 "fetch",
                 "check",
                 "extract",
+                "list",
+                "view",
+                "inspect",
+                "explore",
+                "display",
+                "what's in",
+                "whats in",
+                "what is in",
+                "what folders",
+                "what files",
+                "tell me what",
+                "tell me",
+                "whats on",
+                "what's on",
             ]
         ):
             return IntentCategory.DATA_RETRIEVAL
         elif any(
             word in lower_text
-            for word in ["write", "generate", "draft", "summarize", "build"]
+            for word in ["write", "generate", "draft", "summarize", "build", "ppt", "pdf", "slides", "presentation"]
         ):
             return IntentCategory.CONTENT_GENERATION
         return IntentCategory.UNKNOWN

@@ -67,6 +67,20 @@ class RequirementAnalyzer:
                 "extract",
                 "fetch",
                 "check",
+                "list",
+                "view",
+                "inspect",
+                "explore",
+                "display",
+                "what's in",
+                "whats in",
+                "what is in",
+                "what folders",
+                "what files",
+                "tell me what",
+                "tell me",
+                "whats on",
+                "what's on",
             ]
         ):
             return IntentCategory.DATA_RETRIEVAL

@@ -123,6 +123,18 @@ class EventObservabilityService:
                 str(t_id) for t_id in getattr(state, "pending_tasks", [])
             ],
             "execution_duration": state.progress.execution_duration_seconds,
+            "final_response": getattr(state, "final_response", None),
+            "task_outputs": getattr(state, "task_outputs", {}),
+            "answer": (
+                state.final_response.get("answer")
+                if getattr(state, "final_response", None)
+                else None
+            ),
+            "raw_output": (
+                state.final_response.get("raw_output")
+                if getattr(state, "final_response", None)
+                else getattr(state, "task_outputs", {})
+            ),
         }
 
     def get_workflows(self) -> List[dict]:

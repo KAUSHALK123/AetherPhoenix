@@ -97,6 +97,11 @@ class ClarificationEngine:
                     "alphabetical",
                     "by category",
                     "categoriz",
+                    "pdf",
+                    "images",
+                    "videos",
+                    "docs",
+                    "sort by",
                 ]
             )
 
@@ -163,12 +168,20 @@ class ClarificationEngine:
 
         if missing_fields:
             question = self.generate_question(missing_fields)
+            options = None
+            if "source_folder" in missing_fields or "organization_criteria" in missing_fields:
+                options = [
+                    "Organize Downloads by file type",
+                    "Organize Desktop by category",
+                    "Sort files by date created",
+                ]
             return ClarificationResult(
                 needs_clarification=True,
                 question=question,
                 missing_fields=missing_fields,
+                options=options,
             )
 
         return ClarificationResult(
-            needs_clarification=False, question=None, missing_fields=[]
+            needs_clarification=False, question=None, missing_fields=[], options=None
         )

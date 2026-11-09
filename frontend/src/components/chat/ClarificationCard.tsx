@@ -11,7 +11,7 @@ export interface ClarificationCardProps {
 
 export const ClarificationCard: React.FC<ClarificationCardProps> = ({
   question,
-  options = ['Yes, proceed with default settings', 'Include detailed research & citations', 'Generate high-level overview only'],
+  options = [],
   onSubmit,
   isLoading = false,
 }) => {
@@ -43,27 +43,29 @@ export const ClarificationCard: React.FC<ClarificationCardProps> = ({
       </p>
 
       {/* Suggested option chips */}
-      <div className="space-y-2 mb-4">
-        <div className="text-xs uppercase tracking-wider text-amber-400/80 font-mono font-medium">
-          Suggested Responses
+      {options && options.length > 0 && (
+        <div className="space-y-2 mb-4">
+          <div className="text-xs uppercase tracking-wider text-amber-400/80 font-mono font-medium">
+            Suggested Responses
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {options.map((opt, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => handleOptionClick(opt)}
+                className={`text-xs px-3 py-1.5 rounded-lg border transition-all text-left ${
+                  selectedOption === opt
+                    ? 'bg-amber-500/20 border-amber-400 text-amber-200 shadow-sm'
+                    : 'bg-slate-900/60 border-slate-700/80 text-slate-300 hover:border-amber-500/40 hover:text-amber-300'
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {options.map((opt, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => handleOptionClick(opt)}
-              className={`text-xs px-3 py-1.5 rounded-lg border transition-all text-left ${
-                selectedOption === opt
-                  ? 'bg-amber-500/20 border-amber-400 text-amber-200 shadow-sm'
-                  : 'bg-slate-900/60 border-slate-700/80 text-slate-300 hover:border-amber-500/40 hover:text-amber-300'
-              }`}
-            >
-              {opt}
-            </button>
-          ))}
-        </div>
-      </div>
+      )}
 
       {/* Custom input submission */}
       <form onSubmit={handleSubmit} className="flex gap-2">

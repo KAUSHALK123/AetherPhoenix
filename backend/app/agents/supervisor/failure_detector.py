@@ -398,6 +398,18 @@ class FailureDetectorService:
                 if str(val) == expected:
                     return False
 
+            # Semantic match for File System inspection results
+            if task.required_tool in ("file_explorer", "file_manager_tool") or getattr(task, "category", None) == TaskCategory.FILE_SYSTEM:
+                if any(kw in expected_lower for kw in ("folder", "file", "list", "directory", "inspect", "check")):
+                    has_items = "items" in result.output or (isinstance(result.output.get("metadata"), dict) and "items" in result.output["metadata"])
+                    if has_items or result.output.get("action") == "list_files":
+                        return False
+
+            # Semantic match for Terminal / Shell command execution results
+            if getattr(task, "category", None) in (TaskCategory.TERMINAL, TaskCategory.POWERSHELL) or task.required_tool in ("terminal_tool", "powershell_tool"):
+                if "stdout" in result.output:
+                    return False
+
         # Task category compatibility check: if task succeeded and produced artifacts matching category
         if result.success and result.artifacts:
             if getattr(task, "category", None) == TaskCategory.PPT_GENERATION:

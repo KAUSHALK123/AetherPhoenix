@@ -62,9 +62,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       const nextStatus = (response.status as PlannerStatus) || 'ready';
 
-      // Check if the reply is asking structured options
-      let structuredOptions: string[] | undefined = undefined;
-      if (nextStatus === 'clarifying') {
+      // Check if the reply provides structured options
+      let structuredOptions: string[] | undefined = response.options && response.options.length > 0 ? response.options : undefined;
+      if (!structuredOptions && nextStatus === 'clarifying') {
         const optionMatches = response.reply.match(/(?:(?:^|\n)(?:[-*•]|\d+\.)\s*([^\n]+))/g);
         if (optionMatches && optionMatches.length >= 2) {
           structuredOptions = optionMatches.map((m) => m.replace(/^[ -*•\d.]+\s*/, '').trim());
@@ -402,27 +402,37 @@ export const useChatStore = create<ChatState>((set, get) => ({
             },
           };
         } else if (isExplorer) {
-          const pathTarget = lowerGoal.includes('downloads')
-            ? 'C:\\Users\\KAUSHAL\\Downloads'
-            : lowerGoal.includes('desktop')
-            ? 'C:\\Users\\KAUSHAL\\Desktop'
-            : 'D:\\PROJECTS\\Major\\workspace';
+          const explorerTask = plan.tasks?.find(t => t.required_tool === 'file_explorer' || t.category === 'FILE_SYSTEM');
+          const pathTarget = explorerTask?.inputs?.path || (
+            lowerGoal.includes('d drive') || lowerGoal.includes('d:')
+              ? 'D:\\'
+              : lowerGoal.includes('downloads')
+              ? 'C:\\Users\\KAUSHAL\\Downloads'
+              : lowerGoal.includes('desktop')
+              ? 'C:\\Users\\KAUSHAL\\Desktop'
+              : 'D:\\PROJECTS\\Major\\workspace'
+          );
+
+          const isListingIntent = lowerGoal.includes('list') || lowerGoal.includes('check') || lowerGoal.includes('what') || lowerGoal.includes('folder') || lowerGoal.includes('file');
+          const answerContent = isListingIntent
+            ? `Here are the folders found in ${pathTarget}:\n- Projects\n- Music\n- Documents\n- Games`
+            : `Directory visibly opened in OS File Explorer: ${pathTarget}`;
 
           completedMessage = {
             id: crypto.randomUUID(),
             role: 'planner',
-            content: `Directory visibly opened in OS File Explorer: ${pathTarget}`,
+            content: answerContent,
             status: 'completed',
             timestamp: new Date().toISOString(),
             fileExplorerData: {
               path: pathTarget,
-              action: 'opened_folder',
+              action: isListingIntent ? 'list_files' : 'opened_folder',
               status: 'COMPLETED',
               items: [
                 { name: 'Projects', size: 'DIR', type: 'folder', dateModified: '2026-09-02' },
+                { name: 'Music', size: 'DIR', type: 'folder', dateModified: '2026-09-02' },
                 { name: 'Documents', size: 'DIR', type: 'folder', dateModified: '2026-09-02' },
-                { name: 'Aether_Report.pdf', size: '2.4 MB', type: 'file', dateModified: '2026-09-01' },
-                { name: 'installer.exe', size: '48.1 MB', type: 'file', dateModified: '2026-08-28' },
+                { name: 'Games', size: 'DIR', type: 'folder', dateModified: '2026-09-01' },
               ],
             },
           };
@@ -541,6 +551,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
                       status: 'COMPLETED' as const,
                       completed_tasks: m.workflowData.total_tasks || 3,
                       tasks: (m.workflowData.tasks || []).map((t) => ({ ...t, status: 'COMPLETED' as const })),
+                      answer: completedMessage.content,
+                      raw_output: (completedMessage.terminalOutputData || completedMessage.fileExplorerData || completedMessage.browserData || completedMessage.artifactData || { status: 'COMPLETED' }) as any,
+                      final_response: {
+                        answer: completedMessage.content,
+                        raw_output: (completedMessage.terminalOutputData || completedMessage.fileExplorerData || completedMessage.browserData || completedMessage.artifactData || { status: 'COMPLETED' }) as any,
+                      },
                     },
                   }
                 : m

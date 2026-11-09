@@ -215,13 +215,14 @@ class NotificationService:
             )
 
         elif event_type_str == EventType.WORKFLOW_COMPLETED.value:
+            msg_text = payload.get("answer") or "Workflow completed successfully."
             return Notification(
                 event_id=str(event.id),
                 workflow_id=workflow_id,
                 task_id=task_id,
                 event_type=event_type_str,
                 title="Workflow Completed",
-                message="Workflow completed successfully.",
+                message=msg_text,
                 category=NotificationCategory.WORKFLOW,
                 severity=NotificationSeverity.SUCCESS,
                 timestamp=event.timestamp,
@@ -234,7 +235,8 @@ class NotificationService:
             "WorkflowFailed",
         ):
             error_reason = (
-                payload.get("error")
+                payload.get("answer")
+                or payload.get("error")
                 or payload.get("reason")
                 or "Execution encountered unrecoverable errors"
             )
@@ -244,7 +246,7 @@ class NotificationService:
                 task_id=task_id,
                 event_type=event_type_str,
                 title="Workflow Failed",
-                message=f"Workflow failed permanently: {error_reason}",
+                message=f"Workflow failed: {error_reason}",
                 category=NotificationCategory.WORKFLOW,
                 severity=NotificationSeverity.ERROR,
                 timestamp=event.timestamp,
