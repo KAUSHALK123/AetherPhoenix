@@ -4,6 +4,8 @@ from typing import List, Tuple
 
 from shared.contracts.planner import GoalPriority, IntentCategory
 
+from app.planner.normalizer import is_diagnostic_terminal_command, normalize_text
+
 logger = logging.getLogger(__name__)
 
 
@@ -61,10 +63,14 @@ class GoalParser:
     }
 
     def parse_intent(self, text: str) -> IntentCategory:
-        """
-        Determines the IntentCategory of a request based on linguistic markers.
-        """
-        lower_text = text.lower()
+        """Determines the IntentCategory of a request based on linguistic markers."""
+        norm_text = normalize_text(text)
+        lower_text = norm_text.lower()
+
+        # Direct diagnostic commands
+        if is_diagnostic_terminal_command(lower_text):
+            return IntentCategory.DATA_RETRIEVAL
+
         if any(
             word in lower_text
             for word in [
@@ -211,6 +217,9 @@ class GoalParser:
         for keyword, outcome_desc in self.OUTCOME_KEYWORDS.items():
             if re.search(r"\b" + keyword + r"\b", lower_text):
                 outcomes.append(f"{outcome_desc} from '{keyword}' request")
+
+        if is_diagnostic_terminal_command(lower_text):
+            outcomes.append("Terminal diagnostic command execution output")
 
         if not outcomes:
             outcomes.append("Successful goal execution outcome")

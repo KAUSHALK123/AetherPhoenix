@@ -348,9 +348,24 @@ class PlannerAgent:
         is_read_only = user_req.intent == IntentCategory.DATA_RETRIEVAL
 
         # Stage 3: Clarification
-        clarification = self.clarification_engine.evaluate_requirement(user_req)
-        # Bias toward acting: low-risk read-only requests proceed without clarification
-        if clarification.needs_clarification and not is_read_only:
+        clarification = self.clarification_engine.evaluate_requirement(
+            user_req, context=request.context
+        )
+        # Bias toward acting: low-risk read-only requests proceed without clarification,
+        # unless explicit data-loss risk, repository, or project ambiguity is flagged.
+        needs_clarify = clarification.needs_clarification and (
+            not is_read_only
+            or any(
+                f in clarification.missing_fields
+                for f in [
+                    "data_loss_confirmation",
+                    "project_selection",
+                    "repository",
+                    "destination_folder",
+                ]
+            )
+        )
+        if needs_clarify:
             self.active_sessions[request.session_id] = combined_message
             return PlannerResponse(
                 session_id=request.session_id,
