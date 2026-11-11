@@ -14,6 +14,11 @@ from shared.contracts.task import (
     TaskType,
 )
 
+from app.planner.normalizer import (
+    is_diagnostic_terminal_command,
+    normalize_text,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -81,10 +86,75 @@ class TaskDecompositionEngine:
         workflow_id: UUID,
         context: Dict[str, Any],
     ) -> List[Task]:
-        """
-        Decomposes the goal string into root phase tasks and atomic child tasks.
-        """
-        lower_goal = goal.lower()
+        """Decomposes the goal string into root phase tasks and atomic child tasks."""
+        norm_goal = normalize_text(goal)
+        lower_goal = norm_goal.lower()
+
+        # 0. Direct Diagnostic Terminal Command Intent (e.g. ipconfig, ping, whoami, hostname, netstat)
+        if is_diagnostic_terminal_command(lower_goal):
+            return self._decompose_system_goal(goal, workflow_id)
+
+        # 0b. IDE + Project Execution Intent (e.g. "Open VS Code and run my project")
+        is_ide_project_run = (
+            any(
+                w in lower_goal
+                for w in [
+                    "vs code",
+                    "vscode",
+                    "visual studio code",
+                    "open code",
+                    "editor",
+                ]
+            )
+            and any(
+                w in lower_goal
+                for w in ["run", "start", "launch", "execute", "test", "build"]
+            )
+            and any(
+                w in lower_goal
+                for w in ["project", "app", "code", "solution", "workspace", "script"]
+            )
+        )
+        if is_ide_project_run:
+            return self._decompose_ide_project_goal(goal, workflow_id, context=context)
+
+        # 0c. Git Repository Inspection Intent (e.g. "Open my GitHub repository and inspect the latest changes")
+        is_git_inspection = (
+            any(w in lower_goal for w in ["git", "github", "repo", "repository"])
+            and any(
+                w in lower_goal
+                for w in [
+                    "inspect",
+                    "changes",
+                    "latest changes",
+                    "commit",
+                    "commits",
+                    "history",
+                    "diff",
+                    "diffs",
+                    "status",
+                    "log",
+                    "branch",
+                    "branches",
+                ]
+            )
+            and not any(
+                w in lower_goal
+                for w in [
+                    "create issue",
+                    "open issue",
+                    "submit issue",
+                    "new issue",
+                    "post issue",
+                    "pull request",
+                    "submit form",
+                ]
+            )
+        )
+        if is_git_inspection:
+            return self._decompose_git_inspection_goal(
+                goal, workflow_id, context=context
+            )
 
         # 1. Read-Only Directory & Drive Inspection Intent
         is_read_only_dir_intent = (
@@ -851,12 +921,257 @@ class TaskDecompositionEngine:
 
         return [phase_root, task_list]
 
-    def _decompose_filesystem_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
-        """Decomposes a file system management goal into tasks."""
+    def _decompose_ide_project_goal(
+        self,
+        goal: str,
+        workflow_id: UUID,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> List[Task]:
+        """Decomposes an IDE launch and project run request into an executable DAG.
+
+        Expected tools:
+          1. File/project discovery (file_explorer)
+          2. VS Code integration (desktop_automation)
+          3. Terminal integration (terminal_tool)
+          4. Execution verification (terminal_tool)
+        """
+        ctx = context or {}
+        project_path = ctx.get("project_path") or "."
+
         phase_root = Task(
             workflow_id=workflow_id,
-            task_name="Phase 1: Filesystem Management",
-            description=f"Manage files and directories for: '{goal}'",
+            task_name="Phase 1: Project Discovery & Workspace Execution",
+            description=f"Discover project, launch VS Code, execute project in terminal, and verify: '{goal}'",
+            task_type=TaskType.PHASE,
+            assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
+            required_tool="",
+            category=TaskCategory.DESKTOP,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="Project opened in VS Code and verified running",
+            estimated_duration_seconds=120,
+            status=TaskStatus.CREATED,
+        )
+
+        task_discover = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name="Discover Project Structure and Configuration",
+            description=f"Scan and discover project entrypoint, scripts, and configuration in {project_path}",
+            assigned_agent="WorkerAgent",
+            required_tool="file_explorer",
+            category=TaskCategory.FILE_SYSTEM,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="Project structure and execution configuration identified",
+            success_criteria=["Project files and entrypoints located"],
+            failure_criteria=["Project directory inaccessible"],
+            inputs={"action": "discover_project", "path": project_path},
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        task_vscode = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name="Launch Visual Studio Code",
+            description=f"Open Visual Studio Code in the project directory: {project_path}",
+            assigned_agent="WorkerAgent",
+            required_tool="desktop_automation",
+            category=TaskCategory.DESKTOP,
+            priority=TaskPriority.HIGH,
+            dependencies=[task_discover.task_id],
+            expected_output="Visual Studio Code launched with project workspace loaded",
+            success_criteria=["VS Code application active with project opened"],
+            failure_criteria=["Failed to launch VS Code"],
+            inputs={
+                "action": "launch_app",
+                "app": "Visual Studio Code",
+                "target_path": project_path,
+            },
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        task_terminal = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name="Execute Project in Terminal",
+            description="Start the project execution process via terminal command",
+            assigned_agent="WorkerAgent",
+            required_tool="terminal_tool",
+            category=TaskCategory.TERMINAL,
+            priority=TaskPriority.HIGH,
+            dependencies=[task_vscode.task_id],
+            expected_output="Project process started in terminal",
+            success_criteria=["Run command executed without immediate crash"],
+            failure_criteria=["Terminal execution failed"],
+            inputs={
+                "action": "run_command",
+                "command": "run project",
+                "cwd": project_path,
+            },
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        task_verify = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name="Verify Project Execution Status",
+            description="Verify project execution, active process status, and runtime logs",
+            assigned_agent="WorkerAgent",
+            required_tool="terminal_tool",
+            category=TaskCategory.TERMINAL,
+            priority=TaskPriority.MEDIUM,
+            dependencies=[task_terminal.task_id],
+            expected_output="Process execution verified active",
+            success_criteria=["Project runtime status verified"],
+            failure_criteria=["Process terminated unexpectedly"],
+            inputs={"action": "verify_execution", "target": "project"},
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        return [phase_root, task_discover, task_vscode, task_terminal, task_verify]
+
+    def _decompose_git_inspection_goal(
+        self,
+        goal: str,
+        workflow_id: UUID,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> List[Task]:
+        """Decomposes a Git repository inspection goal into a structured DAG.
+
+        Expected tools:
+          1. GitHub integration (git_tool)
+          2. Repository inspection (git_tool)
+          3. Commit/branch history (git_tool)
+          4. Diff inspection (git_tool)
+        """
+        ctx = context or {}
+        repo_match = re.search(r"([a-zA-Z0-9_-]+/[a-zA-Z0-9_.-]+)", goal)
+        repo = (
+            repo_match.group(1)
+            if repo_match
+            else ctx.get("repository") or ctx.get("repo") or "current_workspace"
+        )
+
+        phase_root = Task(
+            workflow_id=workflow_id,
+            task_name=f"Phase 1: Git Repository Inspection ({repo})",
+            description=f"Inspect repository structure, history, and changes for: '{goal}'",
+            task_type=TaskType.PHASE,
+            assigned_agent="System",
+            success_criteria=["All child leaf tasks completed successfully"],
+            failure_criteria=["One or more child tasks failed"],
+            required_tool="",
+            category=TaskCategory.GIT,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output=f"Git repository inspection completed for {repo}",
+            estimated_duration_seconds=90,
+            status=TaskStatus.CREATED,
+        )
+
+        task_inspect = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name=f"Inspect Repository Status ({repo})",
+            description=f"Inspect working tree status and active branch for repository {repo}",
+            assigned_agent="WorkerAgent",
+            required_tool="git_tool",
+            category=TaskCategory.GIT,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="Repository status and branch details",
+            success_criteria=["Repository status retrieved successfully"],
+            failure_criteria=["Failed to inspect repository status"],
+            inputs={"action": "status", "repo": repo},
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        task_history = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name=f"Inspect Commit and Branch History ({repo})",
+            description=f"Retrieve recent commit history, author logs, and branch updates for {repo}",
+            assigned_agent="WorkerAgent",
+            required_tool="git_tool",
+            category=TaskCategory.GIT,
+            priority=TaskPriority.MEDIUM,
+            dependencies=[task_inspect.task_id],
+            expected_output="Recent commit history log",
+            success_criteria=["Commit history retrieved successfully"],
+            failure_criteria=["Failed to retrieve commit history"],
+            inputs={"action": "log", "repo": repo, "limit": 10},
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        task_diff = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name=f"Inspect Latest Diffs and Modifications ({repo})",
+            description=f"Inspect working tree diffs and latest code changes in {repo}",
+            assigned_agent="WorkerAgent",
+            required_tool="git_tool",
+            category=TaskCategory.GIT,
+            priority=TaskPriority.MEDIUM,
+            dependencies=[task_history.task_id],
+            expected_output="Diff of latest changes and modified files",
+            success_criteria=["Diff inspection completed successfully"],
+            failure_criteria=["Failed to retrieve diff"],
+            inputs={"action": "diff", "repo": repo},
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
+        return [phase_root, task_inspect, task_history, task_diff]
+
+    def _decompose_filesystem_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
+        """Decomposes a file system management or search/organize goal into tasks."""
+        lower_goal = normalize_text(goal).lower()
+
+        # Extract source directory (e.g. Downloads, Desktop, or .)
+        source_dir = "."
+        if "download" in lower_goal or "downloads" in lower_goal:
+            source_dir = "Downloads"
+        elif "desktop" in lower_goal:
+            source_dir = "Desktop"
+        elif "document" in lower_goal or "documents" in lower_goal:
+            source_dir = "Documents"
+
+        # Extract file type filter (e.g. PDF, images, etc.)
+        file_filter = "*.*"
+        file_type_label = "Files"
+        if "pdf" in lower_goal or ".pdf" in lower_goal:
+            file_filter = "*.pdf"
+            file_type_label = "PDFs"
+        elif (
+            "image" in lower_goal
+            or "picture" in lower_goal
+            or "photo" in lower_goal
+            or ".jpg" in lower_goal
+            or ".png" in lower_goal
+        ):
+            file_filter = "*.jpg,*.png,*.jpeg"
+            file_type_label = "Images"
+        elif "doc" in lower_goal or ".docx" in lower_goal:
+            file_filter = "*.docx,*.doc,*.txt"
+            file_type_label = "Documents"
+
+        target_folder = (
+            f"{source_dir}/{file_type_label}" if source_dir != "." else file_type_label
+        )
+
+        phase_root = Task(
+            workflow_id=workflow_id,
+            task_name=f"Phase 1: Filesystem Management ({file_type_label})",
+            description=f"Manage, search, and organize files for: '{goal}'",
             task_type=TaskType.PHASE,
             assigned_agent="System",
             success_criteria=["All child leaf tasks completed successfully"],
@@ -865,7 +1180,7 @@ class TaskDecompositionEngine:
             category=TaskCategory.FILE_SYSTEM,
             priority=TaskPriority.MEDIUM,
             dependencies=[],
-            expected_output="Filesystem operations completed",
+            expected_output=f"Filesystem operations completed for {file_type_label}",
             estimated_duration_seconds=120,
             status=TaskStatus.CREATED,
         )
@@ -873,26 +1188,26 @@ class TaskDecompositionEngine:
         task_list = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
-            task_name="List files in source dir",
-            description="Scan and list files and metadata in the source directory",
+            task_name=f"Scan and Filter {file_type_label} in {source_dir}",
+            description=f"Inspect {source_dir} directory and search/filter for matching {file_type_label} ({file_filter})",
             assigned_agent="WorkerAgent",
             required_tool="file_explorer",
             category=TaskCategory.FILE_SYSTEM,
             priority=TaskPriority.MEDIUM,
             dependencies=[],
-            expected_output="List of files and their metadata in source directory",
-            success_criteria=["File list retrieved successfully"],
+            expected_output=f"Filtered list of {file_type_label} in {source_dir}",
+            success_criteria=["File list retrieved and filtered successfully"],
             failure_criteria=["Target directory not found or inaccessible"],
             estimated_duration_seconds=30,
             status=TaskStatus.CREATED,
-            inputs={"action": "list_files", "path": "."},
+            inputs={"action": "list_files", "path": source_dir, "filter": file_filter},
         )
 
         task_create_dirs = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
-            task_name="Create target categories/folders",
-            description="Create destination categories and folders for organization",
+            task_name=f"Create Target Directory ({target_folder})",
+            description=f"Create target destination directory for {file_type_label} organization",
             assigned_agent="WorkerAgent",
             required_tool="file_explorer",
             category=TaskCategory.FILE_SYSTEM,
@@ -903,25 +1218,30 @@ class TaskDecompositionEngine:
             failure_criteria=["Failed to create category folders"],
             estimated_duration_seconds=30,
             status=TaskStatus.CREATED,
-            inputs={"action": "create_folder"},
+            inputs={"action": "create_folder", "path": target_folder},
         )
 
         task_move_copy = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
-            task_name="Move/copy files into destination",
-            description="Move or copy files into destination category directories",
+            task_name=f"Organize and Move {file_type_label} into Destination",
+            description=f"Move or copy filtered {file_type_label} into target destination folder {target_folder}",
             assigned_agent="WorkerAgent",
             required_tool="file_explorer",
             category=TaskCategory.FILE_SYSTEM,
             priority=TaskPriority.MEDIUM,
             dependencies=[task_create_dirs.task_id],
-            expected_output="Operations log detailing moved/copied files",
+            expected_output="Operations log detailing moved/organized files",
             success_criteria=["All mapped files moved or copied to destination"],
             failure_criteria=["One or more file operations failed"],
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
-            inputs={"action": "move_file"},
+            inputs={
+                "action": "move_file",
+                "source": source_dir,
+                "destination": target_folder,
+                "filter": file_filter,
+            },
         )
 
         return [phase_root, task_list, task_create_dirs, task_move_copy]

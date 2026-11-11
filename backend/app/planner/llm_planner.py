@@ -201,9 +201,15 @@ class LLMPlanner:
 
     def is_nonsense(self, text: str) -> bool:
         """Detects nonsensical or unfulfillable random gibberish."""
+        from app.planner.normalizer import is_diagnostic_terminal_command
+
         cleaned = text.strip()
         lower = cleaned.lower()
         words = lower.split()
+
+        # Terminal and diagnostic commands (e.g. ping 127.0.0.1, ipconfig) are never nonsense
+        if is_diagnostic_terminal_command(lower):
+            return False
 
         # Keyboard mash tokens
         mash_tokens = [
@@ -234,22 +240,26 @@ class LLMPlanner:
                     "make",
                     "sort",
                     "organize",
+                    "ping",
                 ]
             ):
                 return True
 
-        # Obvious single-word or repeated gibberish
+        # Obvious single-word or repeated gibberish (alphabetic only)
         if len(words) == 1:
             w = words[0]
-            # No vowels in a string longer than 4 chars
-            if len(w) > 4 and not any(c in "aeiouy" for c in w):
+            # No vowels in an alphabetic word longer than 4 chars
+            if w.isalpha() and len(w) > 4 and not any(c in "aeiouy" for c in w):
                 return True
 
         if re.match(r"^[bcdfghjklmnpqrstvwxyz\s]{6,}$", lower):
             return True
 
-        # Random keystroke mash like 'flkjsdflkjsd'
-        if any(len(w) > 6 and not re.search(r"[aeiouy]{1,}", w) for w in words):
+        # Random alphabetic keystroke mash like 'flkjsdflkjsd'
+        if any(
+            w.isalpha() and len(w) > 6 and not re.search(r"[aeiouy]{1,}", w)
+            for w in words
+        ):
             return True
 
         return False
