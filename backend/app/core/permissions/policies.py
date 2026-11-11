@@ -185,6 +185,37 @@ class SafeExecutionPolicy:
         "memory_read": RiskLevel.LOW,
         "memory_update": RiskLevel.LOW,
         "memory_delete": RiskLevel.LOW,
+        # Canonical tool baseline risks
+        "web_research": RiskLevel.LOW,
+        "web_research_tool": RiskLevel.LOW,
+        "web_scraping": RiskLevel.LOW,
+        "web_scraping_tool": RiskLevel.LOW,
+        "web_scraper": RiskLevel.LOW,
+        "cache_cleaner": RiskLevel.LOW,
+        "pdf_generator": RiskLevel.MEDIUM,
+        "pdf_tool": RiskLevel.MEDIUM,
+        "ppt_generator": RiskLevel.MEDIUM,
+        "ppt_tool": RiskLevel.MEDIUM,
+        "document_generator": RiskLevel.MEDIUM,
+        "content_tool": RiskLevel.MEDIUM,
+        "screenshot_engine": RiskLevel.LOW,
+        "ocr": RiskLevel.LOW,
+        "browser": RiskLevel.MEDIUM,
+        "browser_tool": RiskLevel.MEDIUM,
+        "browser_automation": RiskLevel.MEDIUM,
+        "file_explorer": RiskLevel.MEDIUM,
+        "file_system": RiskLevel.MEDIUM,
+        "file_manager_tool": RiskLevel.MEDIUM,
+        "git_tool": RiskLevel.MEDIUM,
+        "api_tool": RiskLevel.MEDIUM,
+        "desktop_tool": RiskLevel.HIGH,
+        "desktop_automation": RiskLevel.HIGH,
+        "terminal_tool": RiskLevel.CRITICAL,
+        "terminal": RiskLevel.CRITICAL,
+        "powershell": RiskLevel.CRITICAL,
+        "powershell_tool": RiskLevel.CRITICAL,
+        "powershell_executor": RiskLevel.CRITICAL,
+        "admin_tool": RiskLevel.CRITICAL,
     }
 
     # Action limits (e.g. max actions per session/task in SAFE mode)
@@ -578,10 +609,49 @@ def infer_task_permissions(
             "BROWSER": PermissionType.BROWSER_ACCESS.value,
             "TERMINAL": PermissionType.TERMINAL.value,
             "SHELL": PermissionType.TERMINAL.value,
+            "POWERSHELL": PermissionType.POWERSHELL.value,
             "DESKTOP": PermissionType.DESKTOP_AUTOMATION.value,
             "AUTOMATION": PermissionType.DESKTOP_AUTOMATION.value,
         }
         if cat_val in category_perm_map:
             perms.append(category_perm_map[cat_val])
 
+    if not perms:
+        tool_id = str(
+            (ctx.get("tool") if isinstance(ctx, dict) else None)
+            or getattr(task, "required_tool", "")
+            or ""
+        ).strip().lower()
+        if any(k in tool_id for k in ("powershell",)):
+            perms.append(PermissionType.POWERSHELL.value)
+        elif any(k in tool_id for k in ("terminal", "shell", "cmd")):
+            perms.append(PermissionType.TERMINAL.value)
+        elif any(k in tool_id for k in ("desktop",)):
+            perms.append(PermissionType.DESKTOP_AUTOMATION.value)
+        elif any(k in tool_id for k in ("browser",)):
+            perms.append(PermissionType.BROWSER_ACCESS.value)
+        elif any(k in tool_id for k in ("file_explorer", "file_system", "file_manager")):
+            perms.append(PermissionType.FILE_SYSTEM.value)
+        elif any(k in tool_id for k in ("admin", "registry")):
+            perms.append(PermissionType.ADMINISTRATOR.value)
+
     return perms
+
+
+def evaluate_task_risk_and_permissions(
+    task: Any,
+    tool: Any = None,
+    inputs_override: Optional[Dict[str, Any]] = None,
+    mode: ExecutionMode | str = ExecutionMode.SAFE,
+) -> tuple[RiskLevel, set[str], PolicyDecision, Dict[str, Any]]:
+    """Compute effective risk, required permission set, policy decision, and sanitized context."""
+    action_name, ctx = build_task_permission_context(
+        task=task,
+        payload=inputs_override,
+        tool_name=getattr(task, "required_tool", None),
+        workflow_id=getattr(task, "workflow_id", None),
+    )
+    decision = SafeExecutionPolicy.evaluate(action=action_name, mode=mode, context=ctx)
+    effective_risk = max_risk(getattr(task, "risk_level", "LOW"), decision.risk_level)
+    perms = set(infer_task_permissions(tool=tool, task=task, context=ctx))
+    return effective_risk, perms, decision, ctx

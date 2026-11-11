@@ -23,8 +23,11 @@ from app.agents.healing.root_cause_analyzer import (
     RootCauseAnalysis,
     RootCauseAnalyzer,
 )
+from app.agents.healing.validator import validate_recovery_plan
 from app.core.events.bus import EventBus
 from app.core.logging import get_logger
+from app.core.permissions.models import ExecutionMode
+from app.core.permissions.policies import evaluate_task_risk_and_permissions
 from app.runtime.interfaces import AgentRegistration, BaseAgent
 
 logger = get_logger(__name__)
@@ -58,14 +61,17 @@ class SelfHealingLoop(BaseAgent):
         escalation_handler: Optional[EscalationHandler] = None,
         max_retries: int = 3,
         max_healing_attempts: int = 5,
+        permission_manager: Optional[Any] = None,
     ) -> None:
         self.event_bus = event_bus
+        self.permission_manager = permission_manager
         self.error_parser = error_parser or ErrorParser()
         self.root_cause_analyzer = root_cause_analyzer or RootCauseAnalyzer()
         self.recovery_planner = recovery_planner or RecoveryPlanner()
         self.retry_engine = retry_engine or RetryEngine(
             default_max_retries=max_retries,
             default_max_healing_attempts=max_healing_attempts,
+            permission_manager=permission_manager,
         )
         self.escalation_handler = escalation_handler or EscalationHandler(
             event_bus=event_bus
@@ -195,21 +201,27 @@ class SelfHealingLoop(BaseAgent):
             f"recoverable={root_cause.is_recoverable}"
         )
 
+        exec_mode = (
+            getattr(getattr(state, "metadata", None), "execution_mode", None)
+            or getattr(self.permission_manager, "mode", None)
+            or ExecutionMode.SAFE
+        )
+        orig_risk, orig_perms, _, _ = evaluate_task_risk_and_permissions(
+            task, mode=exec_mode
+        )
+        baseline = (orig_risk, orig_perms)
+
         plan: RecoveryPlan = self.recovery_planner.plan(
             root_cause=root_cause,
             task=task,
             state=state,
             max_healing_attempts=self.max_healing_attempts,
+            mode=exec_mode,
         )
         logger.info(
             f"Step 3/4 - Recovery Planner strategy: "
             f"{plan.strategy.value}, executable={plan.is_executable}"
         )
-
-        if plan.replacement_tasks:
-            self.current_state = HealingState.GENERATING_TASKS
-        else:
-            self.current_state = HealingState.RETRYING
 
         can_retry, reason = self.retry_engine.can_retry(
             task=task,
@@ -224,6 +236,8 @@ class SelfHealingLoop(BaseAgent):
             logger.warning(
                 f"RetryEngine blocked recovery attempt for task {task_id}: {reason}"
             )
+            if hasattr(plan, "replacement_tasks"):
+                plan.replacement_tasks = []
             self.current_state = (
                 HealingState.EXHAUSTED
                 if "limit" in reason.lower()
@@ -294,6 +308,85 @@ class SelfHealingLoop(BaseAgent):
                 logger.warning(f"Error invoking EscalationHandler: {esc_err}")
 
             return result
+
+        # Enforce parameter-aware & monotonic privilege invariance on recovery plan
+        is_plan_valid, val_errors = validate_recovery_plan(
+            plan,
+            original_task=task,
+            mode=exec_mode,
+            original_baseline=baseline,
+        )
+        if not is_plan_valid or not plan.is_viable:
+            sec_reason = (
+                "; ".join(val_errors)
+                if val_errors
+                else (
+                    "; ".join(getattr(plan, "validation_errors", []) or [])
+                    or "Recovery plan marked non-viable"
+                )
+            )
+            logger.warning(
+                f"SelfHealingLoop blocked unsafe or non-viable recovery plan for task {task_id}: {sec_reason}"
+            )
+            plan.is_viable = False
+            plan.replacement_tasks = []
+            self.current_state = HealingState.ESCALATED
+            rc_cat = (
+                root_cause.category.value
+                if hasattr(root_cause.category, "value")
+                else str(root_cause.category)
+            )
+            strat_val = (
+                plan.strategy.value
+                if hasattr(plan.strategy, "value")
+                else str(plan.strategy)
+            )
+            result = HealingResult(
+                task_id=task_id,
+                workflow_id=workflow_id,
+                root_cause=rc_cat,
+                recovery_strategy=strat_val,
+                replacement_tasks=[],
+                attempt_number=attempt_number,
+                success=False,
+            )
+            state.healing_history.append(result)
+            await self._emit_healing_event(
+                EventType.HEALING_FAILED,
+                workflow_id=workflow_id,
+                task_id=task_id,
+                payload={
+                    "reason": sec_reason,
+                    "attempt_number": attempt_number,
+                    "root_cause": rc_cat,
+                    "security_violation": True,
+                },
+            )
+            try:
+                esc_req = EscalationRequest(
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                    reason=EscalationReason.PERMISSION_DENIED,
+                    details=f"SelfHealing blocked unsafe recovery plan: {sec_reason}",
+                    failure_context={
+                        "error_code": parsed_error.normalized_code,
+                        "error_message": parsed_error.raw_message,
+                        "root_cause": rc_cat,
+                        "reason": sec_reason,
+                    },
+                    healing_history=list(state.healing_history),
+                    attempt_number=attempt_number,
+                    risk_level=getattr(task, "risk_level", None),
+                )
+                await self.escalation_handler.handle_escalation(esc_req, sws=state)
+            except Exception as esc_err:
+                logger.warning(f"Error invoking EscalationHandler: {esc_err}")
+            return result
+
+        if plan.replacement_tasks:
+            self.current_state = HealingState.GENERATING_TASKS
+        else:
+            self.current_state = HealingState.RETRYING
 
         result = await self.retry_engine.execute_recovery(
             plan=plan,

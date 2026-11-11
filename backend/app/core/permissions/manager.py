@@ -1068,6 +1068,91 @@ class PermissionManager:
                 },
             )
 
+    def has_valid_grant_for(
+        self,
+        workflow_id: Any,
+        permission_type: Any,
+        action: str,
+        context: Optional[Dict[str, Any]] = None,
+        task_id: Optional[Any] = None,
+    ) -> tuple[bool, str]:
+        """Synchronously check whether a prior grant authorizes an action without blocking."""
+        eval_ctx = SafeExecutionPolicy.sanitize_context(
+            context,
+            action=str(action or ""),
+            extra={"workflow_id": str(workflow_id), "task_id": str(task_id or "")},
+        )
+        decision = self.evaluate_action(action, eval_ctx, permission_type)
+        if not decision.allowed:
+            return False, decision.reason
+
+        action_fp = _action_fingerprint(str(action or ""), eval_ctx)
+        wf_id_str = str(workflow_id)
+        perm_str = (
+            getattr(permission_type, "value", None) or str(permission_type)
+        ).upper()
+        required_rank = risk_rank(decision.risk_level)
+        matched_grant = False
+        task_bound_mismatch = False
+
+        for req in self.requests.values():
+            req_wf = str(getattr(req, "workflow_id", ""))
+            req_task = str(getattr(req, "task_id", ""))
+            req_perm = (
+                getattr(req.permission_type, "value", None)
+                or str(req.permission_type)
+            ).upper()
+            if not (
+                (req_wf == wf_id_str or req_wf == "None" or not req_wf)
+                and req_perm == perm_str
+            ):
+                continue
+
+            req_ctx = getattr(req, "context", None) or {}
+            req_fp = (
+                req_ctx.get("_action_fingerprint")
+                if isinstance(req_ctx, dict)
+                else None
+            )
+            status_str = getattr(req.status, "value", str(req.status)).upper()
+            if status_str == "REJECTED" and (
+                (task_id is not None and req_task == str(task_id))
+                or (req_fp and req_fp == action_fp)
+            ):
+                return False, f"Explicit rejection exists for '{perm_str}'"
+
+            if status_str in ("GRANTED", "APPROVED"):
+                req_risk = (
+                    req_ctx.get("_evaluated_risk")
+                    if isinstance(req_ctx, dict) and "_evaluated_risk" in req_ctx
+                    else getattr(req, "risk_level", RiskLevel.LOW)
+                )
+                if risk_rank(req_risk) < required_rank:
+                    continue
+                if required_rank >= risk_rank(RiskLevel.HIGH):
+                    if req_fp and req_fp != action_fp:
+                        if task_id is not None and req_task == str(task_id):
+                            task_bound_mismatch = True
+                        continue
+                    if not req_fp and decision.risk_level == RiskLevel.CRITICAL:
+                        continue
+                matched_grant = True
+
+        if matched_grant:
+            return True, "Matching grant verified"
+        if task_bound_mismatch:
+            return (
+                False,
+                f"Prior grant for '{perm_str}' is bound to different action parameters and cannot be reused",
+            )
+        if not decision.requires_approval:
+            return True, "Policy allows operation without prior approval"
+
+        return (
+            False,
+            f"No matching grant for '{perm_str}' at risk '{decision.risk_level.value}'",
+        )
+
     def list_permissions(
         self,
         workflow_id: Optional[Any] = None,
