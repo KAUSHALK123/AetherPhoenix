@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import type { Message, PlannerPlan, PlannerStatus } from '../types/planner';
-import type { PermissionRequest } from '../types/permission';
 import { plannerService } from '../services/plannerService';
 import { permissionService } from '../services/permissionService';
+import { executionService } from '../services/executionService';
+import { workflowService } from '../services/workflowService';
+import type { WorkflowTaskDetail } from '../types/workflow';
 
 interface ChatState {
   messages: Message[];
@@ -12,7 +14,12 @@ interface ChatState {
   error: string | null;
   activePlan: PlannerPlan | null;
   executionMode: 'SAFE' | 'ASSISTED' | 'AUTONOMOUS';
-  
+
+  /** Active polling interval ID so we can cancel it */
+  _pollingIntervalId: ReturnType<typeof setInterval> | null;
+  /** The workflow_id currently being polled */
+  _activeWorkflowId: string | null;
+
   // Actions
   setExecutionMode: (mode: 'SAFE' | 'ASSISTED' | 'AUTONOMOUS') => void;
   sendMessage: (text: string) => Promise<void>;
@@ -23,6 +30,7 @@ interface ChatState {
   rejectPermissionInChat: (requestId: string) => Promise<void>;
   resetChat: () => void;
   clearError: () => void;
+  _stopPolling: () => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -33,11 +41,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
   error: null,
   activePlan: null,
   executionMode: 'ASSISTED',
+  _pollingIntervalId: null,
+  _activeWorkflowId: null,
 
   setExecutionMode: (mode) => set({ executionMode: mode }),
 
+  _stopPolling: () => {
+    const { _pollingIntervalId } = get();
+    if (_pollingIntervalId !== null) {
+      clearInterval(_pollingIntervalId);
+      set({ _pollingIntervalId: null, _activeWorkflowId: null });
+    }
+  },
+
   sendMessage: async (text: string) => {
     if (!text.trim()) return;
+
+    // Stop any active polling from a previous execution
+    get()._stopPolling();
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -55,19 +76,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     try {
       const { sessionId, currentStatus } = get();
-      const activeSessionId = currentStatus === 'clarifying' ? sessionId || undefined : sessionId || undefined;
-      
+      const activeSessionId =
+        currentStatus === 'clarifying' ? sessionId || undefined : sessionId || undefined;
+
       const response = await plannerService.generatePlan(text, activeSessionId);
       const parsedPlan = plannerService.parsePlanSafely(response.reply);
 
       const nextStatus = (response.status as PlannerStatus) || 'ready';
 
-      // Check if the reply provides structured options
-      let structuredOptions: string[] | undefined = response.options && response.options.length > 0 ? response.options : undefined;
-      if (!structuredOptions && nextStatus === 'clarifying') {
-        const optionMatches = response.reply.match(/(?:(?:^|\n)(?:[-*•]|\d+\.)\s*([^\n]+))/g);
+      // Check if the reply is asking structured options
+      let structuredOptions: string[] | undefined = undefined;
+      if (nextStatus === 'clarifying') {
+        const optionMatches = response.reply.match(
+          /(?:(?:^|\n)(?:[-*•]|\d+\.)\s*([^\n]+))/g
+        );
         if (optionMatches && optionMatches.length >= 2) {
-          structuredOptions = optionMatches.map((m) => m.replace(/^[ -*•\d.]+\s*/, '').trim());
+          structuredOptions = optionMatches.map((m) =>
+            m.replace(/^[ -*•\d.]+\s*/, '').trim()
+          );
         }
       }
 
@@ -89,7 +115,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         loading: false,
       }));
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred with the Planner service';
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : 'An error occurred with the Planner service';
       const errMessage: Message = {
         id: crypto.randomUUID(),
         role: 'planner',
@@ -116,456 +145,274 @@ export const useChatStore = create<ChatState>((set, get) => ({
     return get().sendMessage(prompt);
   },
 
+  /**
+   * Real executePlan — sends plan to backend execution endpoint and polls live state.
+   */
   executePlan: async (plan: PlannerPlan) => {
-    const planName = plan.workflow_spec || 'Autonomous Workflow';
-    
-    // Check if permission required
-    const requiresPermission = plan.required_permissions && plan.required_permissions.length > 0;
-    
-    // 1. Post executing status message
-    const executingMessageId = crypto.randomUUID();
-    const executingMessage: Message = {
-      id: executingMessageId,
-      role: 'planner',
-      content: `Executing plan: ${planName}`,
-      status: 'executing',
-      timestamp: new Date().toISOString(),
-      workflowData: {
-        workflow_id: `wf-${Math.random().toString(36).substring(2, 8)}`,
-        goal: planName,
-        status: 'RUNNING',
-        progress_percent: 20,
-        total_tasks: plan.tasks?.length || 3,
-        completed_tasks: 0,
-        failed_tasks: 0,
-        current_task_name: plan.tasks?.[0]?.task_name || 'Initializing Worker Agent',
-        tasks: (plan.tasks || []).map((t, idx) => ({
-          task_id: t.task_id || `task-${idx}`,
-          task_name: t.task_name || `Step ${idx + 1}`,
-          agent: t.assigned_agent || 'Worker',
-          status: idx === 0 ? 'RUNNING' : 'PENDING',
-          tool: t.required_tool,
-        })),
-      },
-    };
+    const { sessionId, executionMode } = get();
 
-    set((state) => ({
-      messages: [...state.messages, executingMessage],
-      currentStatus: 'executing',
-    }));
+    // Stop any previous polling
+    get()._stopPolling();
 
-    // If permission is required by contract, show permission card
-    if (requiresPermission) {
-      setTimeout(async () => {
-        let pendingPerm: PermissionRequest | null = null;
-        try {
-          const pendingList = await permissionService.getPendingPermissions();
-          if (pendingList && pendingList.length > 0) {
-            pendingPerm = pendingList[0];
-          }
-        } catch {
-          // ignore
-        }
-
-        if (!pendingPerm) {
-          pendingPerm = {
-            request_id: `req-${Math.random().toString(36).substring(2, 7)}`,
-            workflow_id: executingMessage.workflowData?.workflow_id || 'wf-active',
-            permission_type: plan.required_permissions?.[0] || 'File System Access',
-            reason: `Required to execute "${plan.tasks?.[0]?.task_name || planName}"`,
-            risk_level: (plan.risks?.[0]?.toLowerCase().includes('high') ? 'HIGH' : 'MEDIUM') as any,
-            status: 'PENDING',
-          };
-        }
-
-        const permMessage: Message = {
-          id: crypto.randomUUID(),
-          role: 'planner',
-          content: `Permission requested for capability: ${pendingPerm.permission_type}`,
-          status: 'permission_required',
-          timestamp: new Date().toISOString(),
-          permissionData: pendingPerm,
-        };
-
-        set((state) => ({
-          messages: [...state.messages, permMessage],
-          currentStatus: 'permission_required',
-        }));
-      }, 700);
+    // Serialize the plan to JSON for the execution endpoint
+    let planJson: string;
+    try {
+      planJson = JSON.stringify(plan);
+    } catch {
+      set((state) => ({
+        messages: [
+          ...state.messages,
+          {
+            id: crypto.randomUUID(),
+            role: 'planner' as const,
+            content: 'Error: Could not serialize plan for execution.',
+            status: 'error' as PlannerStatus,
+            timestamp: new Date().toISOString(),
+          },
+        ],
+        currentStatus: 'error',
+      }));
       return;
     }
 
-    const tasksSummary = plan.tasks?.map(t => `${t.task_name} ${t.required_tool || ''} ${t.category || ''} ${t.description || ''}`).join(' ') || '';
-    const rawGoal = (plan.metadata?.goal || planName || '').toLowerCase();
-    const lowerGoal = `${rawGoal} ${tasksSummary}`.toLowerCase();
+    // Insert initial "Executing…" status message
+    const workflowMsgId = crypto.randomUUID();
+    const initialTasks: WorkflowTaskDetail[] = (plan.tasks || []).map((t, idx) => ({
+      task_id: t.task_id || `task-${idx}`,
+      task_name: t.task_name || `Step ${idx + 1}`,
+      description: t.description || '',
+      status: 'PENDING',
+      retry_count: 0,
+      dependencies: (t.dependencies || []) as string[],
+      permissions: [],
+      risk_level: t.risk_level || 'LOW',
+      category: 'OTHER',
+    }));
 
-    // Check if terminal/shell goal is requested
-    const isTerminalIntent = plan.tasks?.some(t => t.required_tool === 'terminal_tool' || t.category === 'POWERSHELL' || t.category === 'SYSTEM_COMMAND') ||
-      /\b(ip|ipaddress|ipconfig|ifconfig|powershell|terminal|cmd|ping|netstat|whoami|disk|ram|memory|process|processes|uptime|port|ports|route|traceroute|env|systeminfo|system info)\b/i.test(lowerGoal);
+    const goalLabel =
+      plan.workflow_spec || plan.metadata?.goal || 'Autonomous Workflow';
 
-    // 1. Check if browser tool or capability is targeted
-    const isBrowserTask = plan.tasks?.some(t => 
-      t.required_tool === 'browser_extension' || 
-      t.required_tool === 'browser_automation' || 
-      t.category === 'BROWSER' ||
-      (t.inputs && (t.inputs.url || t.inputs.action === 'navigate'))
-    ) || (plan.required_permissions && plan.required_permissions.some(p => p.includes('BROWSER') || p.includes('INTERNET')));
+    set((state) => ({
+      messages: [
+        ...state.messages,
+        {
+          id: workflowMsgId,
+          role: 'planner' as const,
+          content: `Executing: ${goalLabel}`,
+          status: 'executing' as PlannerStatus,
+          timestamp: new Date().toISOString(),
+          workflowData: {
+            workflow_id: 'pending',
+            goal: goalLabel,
+            status: 'RUNNING',
+            progress_percentage: 0,
+            tasks: Object.fromEntries(initialTasks.map((t) => [t.task_id, t])),
+            validations: {},
+            running_tasks: [],
+            completed_tasks: [],
+            failed_tasks: [],
+            blocked_tasks: [],
+            pending_tasks: initialTasks.map((t) => t.task_id),
+            execution_duration: 0,
+            total_tasks: initialTasks.length,
+          },
+        },
+      ],
+      currentStatus: 'executing',
+    }));
 
-    const isBrowser = !isTerminalIntent && (isBrowserTask || 
-      lowerGoal.includes('github') ||
-      lowerGoal.includes('gitlab') ||
-      lowerGoal.includes('pull request') ||
-      lowerGoal.includes('repo') ||
-      lowerGoal.includes('youtube') || 
-      lowerGoal.includes('utube') || 
-      lowerGoal.includes('google') || 
-      lowerGoal.includes('browser') || 
-      lowerGoal.includes('navigate') || 
-      lowerGoal.includes('webpage') || 
-      lowerGoal.includes('website') ||
-      lowerGoal.includes('search for') ||
-      lowerGoal.includes('search on') ||
-      lowerGoal.includes('open http') ||
-      lowerGoal.includes('documentation page'));
-
-    // Pre-resolve browser target URL synchronously for popup window opening
-    let immediateTargetUrl = '';
-    let immediateSiteName = 'Web Browser';
-    let immediateQuery = '';
-
-    if (isBrowser) {
-      const navTask = plan.tasks?.find(t => t.inputs && t.inputs.url);
-      if (navTask && navTask.inputs?.url) {
-        immediateTargetUrl = navTask.inputs.url;
-        if (immediateTargetUrl.includes('github.com')) {
-          immediateSiteName = 'GitHub';
-          immediateQuery = navTask.inputs.issue_title || '';
-        } else if (immediateTargetUrl.includes('youtube.com')) {
-          immediateSiteName = 'YouTube';
-        } else if (immediateTargetUrl.includes('google.com')) {
-          immediateSiteName = 'Google';
-        } else {
-          immediateSiteName = immediateTargetUrl;
-        }
-      }
-
-      if (!immediateTargetUrl) {
-        if (lowerGoal.includes('github') || lowerGoal.includes('issue') || lowerGoal.includes('gitlab')) {
-          immediateSiteName = 'GitHub';
-          const repoMatch = (planName + ' ' + rawGoal).match(/([a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+)/);
-          const repo = repoMatch ? repoMatch[1] : 'KAUSHALK123/AetherPhoenix';
-
-          const titleMatch = (planName + ' ' + rawGoal).match(/(?:titled|title|named)\s+['"]([^'"]+)['"]/i) ||
-                             (planName + ' ' + rawGoal).match(/(?:titled|title)\s+([^,]+?)(?:\s+with\s+description|\s+and\s+description|\s+description|\s+and\s+body|\s+with\s+body|\s+and\s+post|$)/i);
-          const title = titleMatch ? titleMatch[1].trim() : 'New Issue Report';
-
-          const bodyMatch = (planName + ' ' + rawGoal).match(/(?:description|body)\s+['"]([^'"]+)['"]/i) ||
-                            (planName + ' ' + rawGoal).match(/(?:with\s+description|and\s+description|description|with\s+body|and\s+body)\s+['"]?([^'\".,]+)['\"]?/i);
-          const body = bodyMatch ? bodyMatch[1].trim() : `Automated issue reported via AetherPhoenix for: ${rawGoal}`;
-
-          const isIssue = lowerGoal.includes('issue') || lowerGoal.includes('bug') || lowerGoal.includes('feature') || lowerGoal.includes('ticket') || lowerGoal.includes('post');
-          if (isIssue) {
-            immediateTargetUrl = `https://github.com/${repo}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
-            immediateQuery = title;
-          } else {
-            immediateTargetUrl = `https://github.com/${repo}`;
-          }
-        } else if (lowerGoal.includes('youtube') || lowerGoal.includes('utube')) {
-          immediateSiteName = 'YouTube';
-          const match = lowerGoal.match(/(?:search\s+(?:for\s+)?|query\s+|find\s+|watch\s+|lookup\s+)(.+)/i);
-          if (match) {
-            immediateQuery = match[1].replace(/[.?!]+$/, '').trim();
-            immediateTargetUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(immediateQuery)}`;
-          } else {
-            immediateTargetUrl = 'https://www.youtube.com';
-          }
-        } else if (lowerGoal.includes('google')) {
-          immediateSiteName = 'Google';
-          const match = lowerGoal.match(/(?:search\s+(?:for\s+|google\s+for\s+)?|query\s+|find\s+|lookup\s+)(.+)/i);
-          if (match) {
-            immediateQuery = match[1].replace(/[.?!]+$/, '').trim();
-            immediateTargetUrl = `https://www.google.com/search?q=${encodeURIComponent(immediateQuery)}`;
-          } else {
-            immediateTargetUrl = 'https://www.google.com';
-          }
-        } else {
-          const urlMatch = (planName + ' ' + rawGoal).match(/(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.(?:com|org|io|net|edu|dev|gov|ai|app)[^\s]*)/i);
-          if (urlMatch) {
-            const raw = urlMatch[1].replace(/[,.;!?)]+$/, '');
-            immediateTargetUrl = raw.startsWith('http') ? raw : `https://${raw}`;
-            immediateSiteName = immediateTargetUrl;
-          } else {
-            const match = lowerGoal.match(/(?:navigate\s+to|go\s+to|search\s+(?:for\s+)?|open\s+browser\s+and\s+navigate\s+to|open)\s+(.+)/i);
-            if (match) {
-              immediateQuery = match[1].replace(/^(?:browser\s+and\s+navigate\s+to\s+|browser\s+and\s+go\s+to\s+|browser\s+to\s+|browser\s+and\s+open\s+|browser\s+)/i, '').replace(/[.?!]+$/, '').trim();
-              immediateTargetUrl = `https://www.google.com/search?q=${encodeURIComponent(immediateQuery)}`;
-              immediateSiteName = immediateQuery.charAt(0).toUpperCase() + immediateQuery.slice(1);
-            } else {
-              immediateTargetUrl = 'https://www.google.com';
-              immediateSiteName = 'Google';
-            }
-          }
-        }
-      }
-
-      // Synchronous window open while in user gesture handler (prevents popup blocker)
-      try {
-        window.open(immediateTargetUrl, '_blank', 'noopener,noreferrer');
-      } catch {
-        // Ignored if handled later
-      }
+    // Call the real execution endpoint
+    let workflowId: string;
+    try {
+      const execResponse = await executionService.executeWorkflow(
+        planJson,
+        sessionId || undefined,
+        executionMode
+      );
+      workflowId = execResponse.workflow_id;
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to start workflow execution';
+      set((state) => ({
+        messages: [
+          ...state.messages.filter((m) => m.id !== workflowMsgId),
+          {
+            id: crypto.randomUUID(),
+            role: 'planner' as const,
+            content: `✕ Execution failed: ${errorMessage}`,
+            status: 'error' as PlannerStatus,
+            timestamp: new Date().toISOString(),
+          },
+        ],
+        currentStatus: 'error',
+      }));
+      return;
     }
 
-    // Progress simulation matching actual backend workflow execution
-    setTimeout(() => {
-      // Step 2 progress
-      set((state) => ({
-        messages: state.messages.map((m) =>
-          m.id === executingMessageId && m.workflowData
-            ? {
-                ...m,
-                workflowData: {
-                  ...m.workflowData,
-                  progress_percent: 65,
-                  completed_tasks: 1,
-                  current_task_name: plan.tasks?.[1]?.task_name || 'Synthesizing output document',
-                  tasks: (m.workflowData.tasks || []).map((t, idx) =>
-                    idx === 0 ? { ...t, status: 'COMPLETED' } : idx === 1 ? { ...t, status: 'RUNNING' } : t
-                  ),
-                },
-              }
-            : m
-        ),
-      }));
+    // Update the workflow message with the real workflow_id
+    set((state) => ({
+      _activeWorkflowId: workflowId,
+      messages: state.messages.map((m) =>
+        m.id === workflowMsgId && m.workflowData
+          ? { ...m, workflowData: { ...m.workflowData, workflow_id: workflowId } }
+          : m
+      ),
+    }));
 
-      setTimeout(async () => {
-        const isExplorer = !isBrowser && (plan.tasks?.some(t => t.required_tool === 'file_explorer' || t.category === 'FILE_SYSTEM') || lowerGoal.includes('folder') || lowerGoal.includes('downloads directory') || lowerGoal.includes('file explorer'));
-        const isDesktopApp = !isBrowser && (plan.tasks?.some(t => t.required_tool === 'desktop_automation' || t.category === 'DESKTOP') || lowerGoal.includes('open vs code') || lowerGoal.includes('open notepad') || lowerGoal.includes('launch notepad') || lowerGoal.includes('launch calc'));
-        const isPpt = !isBrowser && (plan.tasks?.some(t => t.required_tool === 'ppt_tool' || t.category === 'PPT_GENERATION') || lowerGoal.includes('presentation') || lowerGoal.includes('powerpoint') || lowerGoal.includes('ppt') || lowerGoal.includes('slides'));
-        const isPdf = !isBrowser && !isPpt && (plan.tasks?.some(t => t.required_tool === 'pdf_generator' || t.category === 'PDF_GENERATION') || lowerGoal.includes('pdf report') || lowerGoal.includes('generate pdf') || lowerGoal.includes('export pdf'));
-        const isTerminal = !isBrowser && !isExplorer && !isDesktopApp && !isPpt && !isPdf && (isTerminalIntent || plan.tasks?.some(t => t.required_tool === 'terminal_tool' || t.category === 'POWERSHELL' || t.category === 'SYSTEM_COMMAND'));
+    const shownPermissionIds = new Set<string>();
 
-        let completedMessage: Message;
+    /**
+     * Polling callback — fires every 2-3 seconds.
+     * Updates workflow status card, permissions, and artifacts.
+     */
+    const poll = async () => {
+      const currentWorkflowId = get()._activeWorkflowId;
+      if (!currentWorkflowId) return;
 
-        if (isBrowser) {
-          const targetUrl = immediateTargetUrl || 'https://www.google.com';
-          const siteName = immediateSiteName || 'Web Browser';
-          const query = immediateQuery;
+      // 1. Poll workflow state
+      const wfState = await workflowService.getWorkflowById(currentWorkflowId);
 
-          // 1. Command backend to launch/navigate or interact
-          const interactTask = plan.tasks?.find(t => t.inputs && t.inputs.action === 'interact');
-          if (interactTask && interactTask.inputs) {
-            try {
-              await fetch('/api/v1/browser-extension/interact', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  selector: interactTask.inputs.selector || "button.btn-primary[type='submit']",
-                  action: interactTask.inputs.interaction_action || 'click',
-                  value: interactTask.inputs.value,
-                  workflow_id: executingMessage.workflowData?.workflow_id,
-                }),
-              });
-            } catch (err) {
-              console.warn('Backend browser interact API call failed:', err);
-            }
-          } else if (targetUrl) {
-            try {
-              await fetch('/api/v1/browser-extension/navigate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: targetUrl, workflow_id: executingMessage.workflowData?.workflow_id }),
-              });
-            } catch (err) {
-              console.warn('Backend browser navigate API call failed:', err);
-            }
-          }
+      if (wfState) {
+        // Update the workflow status card in chat
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            m.id === workflowMsgId && m.workflowData
+              ? { ...m, workflowData: { ...m.workflowData, ...wfState } }
+              : m
+          ),
+        }));
 
-          const isSubmitAction = lowerGoal.includes('press submit') || lowerGoal.includes('click submit') || lowerGoal.includes('submit issue') || lowerGoal.includes('submit new issue');
+        const statusUp = wfState.status?.toUpperCase() ?? '';
 
-          completedMessage = {
-            id: crypto.randomUUID(),
-            role: 'planner',
-            content: isSubmitAction
-              ? 'Dispatched click interaction to "Submit new issue" button on your active GitHub tab!'
-              : siteName === 'GitHub'
-              ? `Successfully opened GitHub issue form with pre-filled title "${query || 'New Issue'}": ${targetUrl}`
-              : `Successfully opened browser to ${siteName}${query ? ` and searched for "${query}"` : ''}: ${targetUrl}`,
-            status: 'completed',
-            timestamp: new Date().toISOString(),
-            browserData: {
-              url: targetUrl,
-              siteName,
-              query: query || undefined,
-              action: isSubmitAction ? 'clicked submit' : query ? 'searched' : 'navigated',
-              status: 'COMPLETED',
-            },
-          };
-        } else if (isExplorer) {
-          const explorerTask = plan.tasks?.find(t => t.required_tool === 'file_explorer' || t.category === 'FILE_SYSTEM');
-          const pathTarget = explorerTask?.inputs?.path || (
-            lowerGoal.includes('d drive') || lowerGoal.includes('d:')
-              ? 'D:\\'
-              : lowerGoal.includes('downloads')
-              ? 'C:\\Users\\KAUSHAL\\Downloads'
-              : lowerGoal.includes('desktop')
-              ? 'C:\\Users\\KAUSHAL\\Desktop'
-              : 'D:\\PROJECTS\\Major\\workspace'
+        // COMPLETED
+        if (statusUp === 'COMPLETED') {
+          get()._stopPolling();
+          set({ currentStatus: 'completed' });
+
+          const artifacts = await workflowService.getWorkflowArtifacts(
+            currentWorkflowId
           );
 
-          const isListingIntent = lowerGoal.includes('list') || lowerGoal.includes('check') || lowerGoal.includes('what') || lowerGoal.includes('folder') || lowerGoal.includes('file');
-          const answerContent = isListingIntent
-            ? `Here are the folders found in ${pathTarget}:\n- Projects\n- Music\n- Documents\n- Games`
-            : `Directory visibly opened in OS File Explorer: ${pathTarget}`;
+          if (artifacts.length > 0) {
+            const completionMessages: Message[] = artifacts.map((artifact) => ({
+              id: crypto.randomUUID(),
+              role: 'planner' as const,
+              content: `✓ Artifact ready: ${artifact.filename}`,
+              status: 'completed' as PlannerStatus,
+              timestamp: new Date().toISOString(),
+              artifactData: artifact,
+            }));
 
-          completedMessage = {
-            id: crypto.randomUUID(),
-            role: 'planner',
-            content: answerContent,
-            status: 'completed',
-            timestamp: new Date().toISOString(),
-            fileExplorerData: {
-              path: pathTarget,
-              action: isListingIntent ? 'list_files' : 'opened_folder',
-              status: 'COMPLETED',
-              items: [
-                { name: 'Projects', size: 'DIR', type: 'folder', dateModified: '2026-09-02' },
-                { name: 'Music', size: 'DIR', type: 'folder', dateModified: '2026-09-02' },
-                { name: 'Documents', size: 'DIR', type: 'folder', dateModified: '2026-09-02' },
-                { name: 'Games', size: 'DIR', type: 'folder', dateModified: '2026-09-01' },
+            set((state) => ({
+              messages: [
+                ...state.messages,
+                {
+                  id: crypto.randomUUID(),
+                  role: 'planner' as const,
+                  content: `✓ Workflow completed successfully! Generated ${artifacts.length} artifact(s).`,
+                  status: 'completed' as PlannerStatus,
+                  timestamp: new Date().toISOString(),
+                },
+                ...completionMessages,
               ],
-            },
-          };
-        } else if (isDesktopApp) {
-          const appName = lowerGoal.includes('vs code') || lowerGoal.includes('code') ? 'Visual Studio Code' : lowerGoal.includes('notepad') ? 'Notepad' : 'Desktop App';
-          completedMessage = {
-            id: crypto.randomUUID(),
-            role: 'planner',
-            content: `Successfully launched desktop application: ${appName}`,
-            status: 'completed',
-            timestamp: new Date().toISOString(),
-            desktopAppData: {
-              appName,
-              executablePath: appName.includes('Code') ? 'C:\\Program Files\\Microsoft VS Code\\Code.exe' : 'C:\\Windows\\notepad.exe',
-              pid: 14820,
-              status: 'LAUNCHED',
-            },
-          };
-        } else if (isPpt || isPdf) {
-          const artifactName = isPpt
-            ? 'EV_Comprehensive_Presentation.pptx'
-            : 'Market_Analysis_Report.pdf';
-
-          completedMessage = {
-            id: crypto.randomUUID(),
-            role: 'planner',
-            content: `Workflow completed successfully! Generated artifact: ${artifactName}`,
-            status: 'completed',
-            timestamp: new Date().toISOString(),
-            artifactData: {
-              id: `art-${Math.random().toString(36).substring(2, 7)}`,
-              filename: artifactName,
-              type: isPpt ? 'PPTX' : 'PDF',
-              size_bytes: isPpt ? 41984 : 245760,
-              status: 'READY',
-              created_at: new Date().toISOString(),
-              workflow_id: executingMessage.workflowData?.workflow_id || 'wf-active',
-              download_url: '#',
-              preview_content: isPpt
-                ? 'Slide 1: Electric Vehicles Market Overview\nSlide 2: Battery Technology Comparisons\nSlide 3: Supply Chain Dynamics\nSlide 4: Infrastructure & Charging\nSlide 5: Strategic Growth Forecast'
-                : 'Market Research Summary & Competitive Intelligence Report.',
-            },
-          };
-        } else if (isTerminal) {
-          const terminalTask = plan.tasks?.find(t => t.required_tool === 'terminal_tool' || t.category === 'POWERSHELL' || t.category === 'SYSTEM_COMMAND');
-          let resolvedCmd = terminalTask?.inputs?.command;
-          
-          if (!resolvedCmd) {
-            try {
-              const res = await fetch('/api/v1/mcp/commands/resolve', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: rawGoal || planName }),
-              });
-              if (res.ok) {
-                const data = await res.json();
-                resolvedCmd = data.command;
-              }
-            } catch (err) {
-              console.warn('Failed to resolve command via MCP endpoint:', err);
-            }
-          }
-
-          if (!resolvedCmd) {
-            resolvedCmd = lowerGoal.includes('ip') ? 'ipconfig' : planName;
-          }
-
-          let stdoutText = '';
-          if (lowerGoal.includes('public ip') || (resolvedCmd.includes('curl') && (resolvedCmd.includes('icanhazip') || resolvedCmd.includes('ipify')))) {
-            stdoutText = `103.142.188.42`;
-          } else if (lowerGoal.includes('ip') || resolvedCmd.includes('ipconfig') || resolvedCmd.includes('ifconfig')) {
-            stdoutText = `Windows IP Configuration\n\nEthernet adapter Ethernet:\n   Connection-specific DNS Suffix  . : localdomain\n   IPv4 Address. . . . . . . . . . . : 192.168.1.105\n   Subnet Mask . . . . . . . . . . . : 255.255.255.0\n   Default Gateway . . . . . . . . . : 192.168.1.1\n\nWireless LAN adapter Wi-Fi:\n   Media State . . . . . . . . . . . : Media disconnected`;
-          } else if (resolvedCmd.includes('Get-Process') || resolvedCmd.includes('ps aux') || lowerGoal.includes('process')) {
-            stdoutText = `Handles  NPM(K)    PM(K)      WS(K)     CPU(s)     Id  ProcessName\n-------  ------    -----      -----     ------     --  -----------\n    540      34    42100      68200      12.45   4120  Code\n    890      62    98400     142000      45.80   7840  chrome\n    210      18    15200      28400       3.12   9120  powershell\n    430      28    36100      52000       8.90  12480  python`;
-          } else if (resolvedCmd.includes('Get-PSDrive') || resolvedCmd.includes('df -h') || lowerGoal.includes('disk')) {
-            stdoutText = `Name           Used (GB)     Free (GB)    Provider      Root\n----           ---------     ---------    --------      ----\nC                 142.50        333.50    FileSystem    C:\\\nD                  88.20        411.80    FileSystem    D:\\`;
-          } else if (resolvedCmd.includes('Get-CimInstance') || resolvedCmd.includes('free -h') || lowerGoal.includes('memory') || lowerGoal.includes('ram')) {
-            stdoutText = `TotalPhysicalMemoryGB : 16.00\nFreePhysicalMemoryGB  : 9.42\nUsedPhysicalMemoryGB  : 6.58\nMemoryLoadPercent     : 41.1%`;
-          } else if (resolvedCmd.includes('Get-NetTCPConnection') || resolvedCmd.includes('netstat') || lowerGoal.includes('port')) {
-            stdoutText = `LocalAddress    LocalPort   RemoteAddress   RemotePort   State\n------------    ---------   -------------   ----------   -----\n0.0.0.0         8000        0.0.0.0         0            Listen\n0.0.0.0         3000        0.0.0.0         0            Listen\n127.0.0.1       5432        0.0.0.0         0            Listen\n127.0.0.1       6379        0.0.0.0         0            Listen`;
+            }));
           } else {
-            stdoutText = `Command executed cleanly: ${resolvedCmd}\nStatus: Success (Exit Code: 0)`;
+            const taskCount = Array.isArray(wfState.tasks)
+              ? wfState.tasks.length
+              : Object.keys(wfState.tasks || {}).length;
+            const completedCount = Array.isArray(wfState.completed_tasks)
+              ? wfState.completed_tasks.length
+              : typeof wfState.completed_tasks === 'number'
+              ? wfState.completed_tasks
+              : taskCount;
+            set((state) => ({
+              messages: [
+                ...state.messages,
+                {
+                  id: crypto.randomUUID(),
+                  role: 'planner' as const,
+                  content: `✓ Workflow completed. ${completedCount}/${taskCount} tasks finished successfully.`,
+                  status: 'completed' as PlannerStatus,
+                  timestamp: new Date().toISOString(),
+                },
+              ],
+            }));
           }
-
-          completedMessage = {
-            id: crypto.randomUUID(),
-            role: 'planner',
-            content: `Execution completed for shell command: \`${resolvedCmd}\``,
-            status: 'completed',
-            timestamp: new Date().toISOString(),
-            terminalOutputData: {
-              command: resolvedCmd,
-              stdout: stdoutText,
-              status: 'COMPLETED',
-            },
-          };
-        } else {
-          completedMessage = {
-            id: crypto.randomUUID(),
-            role: 'planner',
-            content: `Workflow plan "${planName}" completed successfully across all defined phases.`,
-            status: 'completed',
-            timestamp: new Date().toISOString(),
-          };
+          return;
         }
 
-        set((state) => ({
-          messages: state.messages
-            .map((m) =>
-              m.id === executingMessageId && m.workflowData
-                ? {
-                    ...m,
-                    workflowData: {
-                      ...m.workflowData,
-                      progress_percent: 100,
-                      status: 'COMPLETED' as const,
-                      completed_tasks: m.workflowData.total_tasks || 3,
-                      tasks: (m.workflowData.tasks || []).map((t) => ({ ...t, status: 'COMPLETED' as const })),
-                      answer: completedMessage.content,
-                      raw_output: (completedMessage.terminalOutputData || completedMessage.fileExplorerData || completedMessage.browserData || completedMessage.artifactData || { status: 'COMPLETED' }) as any,
-                      final_response: {
-                        answer: completedMessage.content,
-                        raw_output: (completedMessage.terminalOutputData || completedMessage.fileExplorerData || completedMessage.browserData || completedMessage.artifactData || { status: 'COMPLETED' }) as any,
-                      },
-                    },
-                  }
-                : m
-            )
-            .concat(completedMessage),
-          currentStatus: 'completed',
-        }));
-      }, 1500);
-    }, 1200);
+        // FAILED / BLOCKED / ESCALATED
+        if (
+          statusUp === 'FAILED' ||
+          statusUp === 'BLOCKED' ||
+          statusUp === 'ESCALATED'
+        ) {
+          get()._stopPolling();
+          set({ currentStatus: 'error' });
+
+          const failedIds = Array.isArray(wfState.failed_tasks)
+            ? wfState.failed_tasks
+            : [];
+          const tasksDict = Array.isArray(wfState.tasks)
+            ? Object.fromEntries(wfState.tasks.map((t: any) => [t.task_id, t]))
+            : wfState.tasks || {};
+          const failedTaskNames = failedIds
+            .map((id) => tasksDict[id]?.task_name ?? id)
+            .join(', ');
+
+          set((state) => ({
+            messages: [
+              ...state.messages,
+              {
+                id: crypto.randomUUID(),
+                role: 'planner' as const,
+                content:
+                  `✕ Workflow ${statusUp.toLowerCase()}.` +
+                  (failedTaskNames ? ` Failed tasks: ${failedTaskNames}.` : '') +
+                  ' Execution stopped.',
+                status: 'error' as PlannerStatus,
+                timestamp: new Date().toISOString(),
+              },
+            ],
+          }));
+          return;
+        }
+      }
+
+      // 2. Poll permissions (same interval)
+      try {
+        const pendingPerms = await permissionService.getPendingPermissions();
+        const newPerms = pendingPerms.filter(
+          (p) => !shownPermissionIds.has(p.request_id)
+        );
+
+        if (newPerms.length > 0) {
+          const permMessages: Message[] = newPerms.map((perm) => {
+            shownPermissionIds.add(perm.request_id);
+            return {
+              id: crypto.randomUUID(),
+              role: 'planner' as const,
+              content: `⚠ Permission required for capability: ${perm.permission_type}`,
+              status: 'permission_required' as PlannerStatus,
+              timestamp: new Date().toISOString(),
+              permissionData: perm,
+            };
+          });
+
+          set((state) => ({
+            messages: [...state.messages, ...permMessages],
+            currentStatus: 'permission_required',
+          }));
+        }
+      } catch {
+        // best effort
+      }
+    };
+
+    // Start polling immediately, then every 2.5 seconds
+    await poll();
+    const intervalId = setInterval(poll, 2500);
+    set({ _pollingIntervalId: intervalId });
   },
 
   approvePermissionInChat: async (requestId: string) => {
@@ -580,34 +427,31 @@ export const useChatStore = create<ChatState>((set, get) => ({
         m.permissionData?.request_id === requestId
           ? {
               ...m,
-              status: 'ready',
-              content: `✓ Permission granted for ${m.permissionData.permission_type}. Continuing workflow execution...`,
+              status: 'executing' as PlannerStatus,
+              content: `✓ Permission granted for ${m.permissionData?.permission_type}. Workflow continuing…`,
             }
           : m
       ),
+      currentStatus: 'executing',
     }));
-
-    const activePlan = get().activePlan;
-    if (activePlan) {
-      // Resume execution
-      get().executePlan({ ...activePlan, required_permissions: [] });
-    }
   },
 
   rejectPermissionInChat: async (requestId: string) => {
     try {
-      await permissionService.rejectPermission(requestId, 'Denied by user in chat');
+      await permissionService.rejectPermission(requestId, 'Denied by user');
     } catch {
       // ignore
     }
+
+    get()._stopPolling();
 
     set((state) => ({
       messages: state.messages.map((m) =>
         m.permissionData?.request_id === requestId
           ? {
               ...m,
-              status: 'error',
-              content: `✕ Permission rejected for ${m.permissionData.permission_type}. Workflow execution stopped.`,
+              status: 'error' as PlannerStatus,
+              content: `✕ Permission rejected for ${m.permissionData?.permission_type}. Workflow execution stopped.`,
             }
           : m
       ),
@@ -616,6 +460,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   resetChat: () => {
+    get()._stopPolling();
     set({
       messages: [],
       sessionId: null,
@@ -623,6 +468,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       loading: false,
       error: null,
       activePlan: null,
+      _activeWorkflowId: null,
     });
   },
 

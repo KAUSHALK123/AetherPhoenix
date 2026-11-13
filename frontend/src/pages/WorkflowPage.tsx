@@ -88,6 +88,34 @@ export const WorkflowPage: React.FC = () => {
     fetchWorkflows();
   }, []);
 
+  const taskList = selectedWorkflow
+    ? Array.isArray(selectedWorkflow.tasks)
+      ? selectedWorkflow.tasks
+      : Object.values(selectedWorkflow.tasks || {})
+    : [];
+
+  const totalCount = selectedWorkflow?.total_tasks || taskList.length || 0;
+  const completedCount =
+    typeof selectedWorkflow?.completed_tasks === 'number'
+      ? selectedWorkflow.completed_tasks
+      : Array.isArray(selectedWorkflow?.completed_tasks)
+      ? selectedWorkflow.completed_tasks.length
+      : taskList.filter((t: any) =>
+          String(t.status).toUpperCase().includes('COMPLETED')
+        ).length;
+  const failedCount =
+    typeof selectedWorkflow?.failed_tasks === 'number'
+      ? selectedWorkflow.failed_tasks
+      : Array.isArray(selectedWorkflow?.failed_tasks)
+      ? selectedWorkflow.failed_tasks.length
+      : taskList.filter((t: any) =>
+          String(t.status).toUpperCase().includes('FAIL')
+        ).length;
+  const progress =
+    (selectedWorkflow as any)?.progress_percentage ??
+    selectedWorkflow?.progress_percent ??
+    (totalCount > 0 ? (completedCount / totalCount) * 100 : 0);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -186,12 +214,12 @@ export const WorkflowPage: React.FC = () => {
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs font-mono text-slate-400">
                 <span>Execution Progress</span>
-                <span className="text-sky-400 font-bold">{selectedWorkflow.progress_percent}%</span>
+                <span className="text-sky-400 font-bold">{Math.round(progress)}%</span>
               </div>
               <div className="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800">
                 <div
                   className="bg-gradient-to-r from-sky-500 to-indigo-500 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${selectedWorkflow.progress_percent}%` }}
+                  style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
@@ -200,7 +228,7 @@ export const WorkflowPage: React.FC = () => {
             <div className="space-y-3 pt-2">
               <div className="text-xs font-mono uppercase text-slate-400">Task Execution Nodes</div>
               <div className="space-y-2">
-                {selectedWorkflow.tasks.map((task, idx) => (
+                {taskList.map((task: any, idx: number) => (
                   <div
                     key={task.task_id || idx}
                     className="glass-card rounded-xl p-4 border border-slate-800 flex items-center justify-between gap-4"
@@ -214,8 +242,9 @@ export const WorkflowPage: React.FC = () => {
                           {task.task_name}
                         </div>
                         <div className="text-xs text-slate-500 font-mono flex items-center gap-2">
-                          <span>Agent: {task.agent}</span>
+                          <span>Category: {task.category || 'General'}</span>
                           {task.tool && <span>• Tool: {task.tool}</span>}
+                          {task.agent && <span>• Agent: {task.agent}</span>}
                         </div>
                       </div>
                     </div>
@@ -226,16 +255,23 @@ export const WorkflowPage: React.FC = () => {
                           {(task.duration_ms / 1000).toFixed(1)}s
                         </span>
                       )}
+                      {task.retry_count > 0 && (
+                        <span className="text-xs font-mono text-amber-400">
+                          retries: {task.retry_count}
+                        </span>
+                      )}
                       <Badge
                         variant={
-                          task.status === 'COMPLETED'
+                          String(task.status).toUpperCase().includes('COMPLETED')
                             ? 'success'
-                            : task.status === 'RUNNING'
+                            : String(task.status).toUpperCase().includes('RUNNING')
                             ? 'warning'
+                            : String(task.status).toUpperCase().includes('FAIL')
+                            ? 'danger'
                             : 'neutral'
                         }
                       >
-                        {task.status}
+                        {String(task.status).replace(/.*\./, '')}
                       </Badge>
                     </div>
                   </div>
@@ -253,19 +289,19 @@ export const WorkflowPage: React.FC = () => {
             <div className="space-y-3 text-xs font-mono">
               <div className="flex justify-between p-3 bg-slate-950/60 rounded-xl border border-slate-800">
                 <span className="text-slate-500">Total Tasks:</span>
-                <span className="text-slate-200 font-bold">{selectedWorkflow.total_tasks}</span>
+                <span className="text-slate-200 font-bold">{totalCount}</span>
               </div>
               <div className="flex justify-between p-3 bg-slate-950/60 rounded-xl border border-slate-800">
                 <span className="text-slate-500">Completed Tasks:</span>
-                <span className="text-emerald-400 font-bold">{selectedWorkflow.completed_tasks}</span>
+                <span className="text-emerald-400 font-bold">{completedCount}</span>
               </div>
               <div className="flex justify-between p-3 bg-slate-950/60 rounded-xl border border-slate-800">
                 <span className="text-slate-500">Failed Tasks:</span>
-                <span className="text-slate-200 font-bold">{selectedWorkflow.failed_tasks}</span>
+                <span className="text-slate-200 font-bold">{failedCount}</span>
               </div>
               <div className="flex justify-between p-3 bg-slate-950/60 rounded-xl border border-slate-800">
                 <span className="text-slate-500">Execution Mode:</span>
-                <span className="text-sky-300 font-bold">{selectedWorkflow.execution_mode}</span>
+                <span className="text-sky-300 font-bold">{selectedWorkflow.execution_mode || 'ASSISTED'}</span>
               </div>
             </div>
           </div>

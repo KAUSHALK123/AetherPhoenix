@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import mimetypes
 from pathlib import Path
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
@@ -22,12 +25,12 @@ mimetypes.add_type(
 )
 
 
-@router.get("", response_model=list[Artifact])
+@router.get("", response_model=List[Artifact])
 async def list_artifacts(
-    workflow_id: UUID | None = None,
-    task_id: UUID | None = None,
-    artifact_type: ArtifactType | None = None,
-) -> list[Artifact]:
+    workflow_id: Optional[UUID] = None,
+    task_id: Optional[UUID] = None,
+    artifact_type: Optional[ArtifactType] = None,
+) -> List[Artifact]:
     """Lists registered workflow and task artifacts."""
     return await artifact_storage_service.list_artifacts(
         workflow_id=workflow_id,

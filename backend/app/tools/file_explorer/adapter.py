@@ -14,6 +14,7 @@ from app.tools.file_explorer.models import (
     CreateFolderRequest,
     DetectExistenceRequest,
     FileMetadataRequest,
+    MoveFileRequest,
     OpenFileRequest,
     OpenFolderRequest,
     RevealArtifactRequest,
@@ -65,8 +66,16 @@ class FileExplorerToolAdapter(BaseToolAdapter):
                 "list" in task_name_lower
                 or "inspect" in task_name_lower
                 or "check" in task_name_lower
+                or "scan" in task_name_lower
+                or "find" in task_name_lower
             ):
                 action = "list_files"
+            elif (
+                "move" in task_name_lower
+                or "organize" in task_name_lower
+                or "copy" in task_name_lower
+            ):
+                action = "move_file"
             elif "reveal" in task_name_lower or "navigate" in task_name_lower:
                 action = "reveal_artifact"
             elif "folder" in task_name_lower and "create" in task_name_lower:
@@ -158,6 +167,44 @@ class FileExplorerToolAdapter(BaseToolAdapter):
             elif action in ("get_file_metadata", "metadata", "file_metadata"):
                 req = FileMetadataRequest(path=inputs.get("path", "."))
                 res = await self.executor.get_file_metadata(req)
+                output = res.model_dump()
+
+            elif action in (
+                "move_file",
+                "move",
+                "organize",
+                "organize_files",
+                "copy_file",
+            ):
+                source_arg = (
+                    inputs.get("source")
+                    or inputs.get("src")
+                    or inputs.get("source_dir")
+                    or inputs.get("path")
+                    or "."
+                )
+                dest_arg = (
+                    inputs.get("destination")
+                    or inputs.get("dest")
+                    or inputs.get("target_folder")
+                    or inputs.get("target")
+                    or "organized"
+                )
+                filter_arg = (
+                    inputs.get("filter")
+                    or inputs.get("file_filter")
+                    or inputs.get("pattern")
+                )
+                req = MoveFileRequest(
+                    source=str(source_arg),
+                    destination=str(dest_arg),
+                    file_filter=str(filter_arg) if filter_arg else None,
+                )
+                res = await self.executor.move_files(
+                    request=req,
+                    workflow_id=task.workflow_id,
+                    task_id=task.task_id,
+                )
                 output = res.model_dump()
 
             else:

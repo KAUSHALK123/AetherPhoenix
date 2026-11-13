@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -23,6 +24,7 @@ from app.tools.file_explorer.models import (
     FileExplorerActionResult,
     FileMetadataRequest,
     FileMetadataResponse,
+    MoveFileRequest,
     OpenFileRequest,
     OpenFolderRequest,
     RevealArtifactRequest,
@@ -303,31 +305,14 @@ class FileExplorerExecutor:
         task_id: Optional[UUID | str] = None,
     ) -> FileExplorerActionResult:
         """Creates a directory after verifying permission through PermissionManager."""
-        target_path = self._resolve_and_validate_path(request.path)
+        target_path = await self._resolve_and_check_path(
+            request.path,
+            workflow_id=workflow_id,
+            task_id=task_id,
+            action_desc=f"Create folder '{request.path}'",
+            permission_type=PermissionType.FILE_SYSTEM_WRITE,
+        )
         logger.info(f"Attempting to create folder: {target_path}")
-
-        # Permission check
-        if self.permission_manager:
-            wf_str = str(workflow_id) if workflow_id else "file_explorer_workflow"
-            t_str = str(task_id) if task_id else "create_folder_task"
-
-            chk = self.permission_manager.check_permission(
-                action=f"Create folder '{request.path}'",
-                permission_type=PermissionType.FILE_SYSTEM_WRITE,
-                workflow_id=wf_str,
-                task_id=t_str,
-                context={"path": str(target_path)},
-            )
-            if hasattr(chk, "__await__"):
-                is_approved = await chk
-            else:
-                is_approved = bool(chk)
-
-            if not is_approved:
-                logger.warning(f"Create folder permission denied for {target_path}")
-                raise PermissionDeniedException(
-                    f"Permission denied to create folder: {request.path}"
-                )
 
         target_path.mkdir(parents=request.create_parents, exist_ok=True)
         logger.info(f"Successfully created folder: {target_path}")
@@ -451,4 +436,83 @@ class FileExplorerExecutor:
             target_path=str(target_path),
             message=f"Found {len(items)} items in '{target_path}'",
             metadata={"items": items, "count": len(items)},
+        )
+
+    async def move_files(
+        self,
+        request: MoveFileRequest,
+        workflow_id: Optional[UUID | str] = None,
+        task_id: Optional[UUID | str] = None,
+    ) -> FileExplorerActionResult:
+        """
+        Moves a file or matching files from source into destination.
+        Handles single file moves as well as directory-based pattern moves (e.g. *.pdf).
+        """
+        source_path = await self._resolve_and_check_path(
+            request.source,
+            workflow_id=workflow_id,
+            task_id=task_id,
+            action_desc=f"Move files from '{request.source}'",
+            permission_type=PermissionType.FILE_SYSTEM,
+        )
+        dest_path = await self._resolve_and_check_path(
+            request.destination,
+            workflow_id=workflow_id,
+            task_id=task_id,
+            action_desc=f"Move files to '{request.destination}'",
+            permission_type=PermissionType.FILE_SYSTEM,
+        )
+
+        if not source_path.exists():
+            raise FileNotFoundError(f"Source path not found: {request.source}")
+
+        if not dest_path.exists():
+            dest_path.mkdir(parents=True, exist_ok=True)
+
+        moved_files = []
+        if source_path.is_file():
+            target_file = (
+                dest_path / source_path.name if dest_path.is_dir() else dest_path
+            )
+            shutil.move(str(source_path), str(target_file))
+            moved_files.append(str(target_file))
+        elif source_path.is_dir():
+            pattern = (request.file_filter or "*").strip()
+            if pattern.startswith("*."):
+                ext = pattern[1:].lower()
+            elif pattern.startswith("."):
+                ext = pattern.lower()
+            elif pattern == "*":
+                ext = None
+            else:
+                ext = f".{pattern.lower()}" if not pattern.startswith("*") else None
+
+            for entry in list(source_path.iterdir()):
+                if entry.is_file():
+                    match = True
+                    if ext:
+                        match = entry.suffix.lower() == ext
+                    elif pattern and pattern != "*":
+                        import fnmatch
+
+                        match = fnmatch.fnmatch(entry.name.lower(), pattern.lower())
+                    if match:
+                        target_file = dest_path / entry.name
+                        shutil.move(str(entry), str(target_file))
+                        moved_files.append(str(target_file))
+
+        return FileExplorerActionResult(
+            success=True,
+            action="move_file",
+            target_path=str(dest_path),
+            message=(
+                f"Successfully moved {len(moved_files)} file(s) from "
+                f"'{request.source}' to '{request.destination}'."
+            ),
+            metadata={
+                "moved_files": moved_files,
+                "count": len(moved_files),
+                "source": str(source_path),
+                "destination": str(dest_path),
+            },
         )

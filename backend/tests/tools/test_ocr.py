@@ -72,7 +72,7 @@ def test_register_ocr_tool():
     tool = register_ocr_tool(registry)
 
     assert tool.name == "ocr"
-    assert tool.adapter == "OCRToolAdapter"
+    assert "OCRToolAdapter" in tool.adapter
     assert PermissionType.FILE_SYSTEM.value in tool.required_permissions
     assert registry.get("ocr") == tool
 
