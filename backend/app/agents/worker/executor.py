@@ -132,10 +132,7 @@ class WorkerTaskExecutor:
             tool_name=tool_name,
             workflow_id=active_wf_id,
         )
-        pm_mode = (
-            getattr(self.permission_manager, "mode", None)
-            or ExecutionMode.SAFE
-        )
+        pm_mode = getattr(self.permission_manager, "mode", None) or ExecutionMode.SAFE
         baseline_decision = SafeExecutionPolicy.evaluate(
             action=action_name,
             mode=pm_mode,
@@ -186,27 +183,27 @@ class WorkerTaskExecutor:
                         )
                     )
         except PermissionDeniedException as pde:
-                duration_ms = (time.time() - start_time) * 1000.0
-                exec_logger.log_task_failure(
-                    duration_ms=duration_ms,
+            duration_ms = (time.time() - start_time) * 1000.0
+            exec_logger.log_task_failure(
+                duration_ms=duration_ms,
+                error_code="PERMISSION_DENIED",
+                error_message=pde.message,
+            )
+            return ExecutionResult(
+                task_id=task.task_id,
+                workflow_id=active_wf_id,
+                success=False,
+                logs=logs_captured,
+                error=TaskError(
                     error_code="PERMISSION_DENIED",
                     error_message=pde.message,
-                )
-                return ExecutionResult(
-                    task_id=task.task_id,
-                    workflow_id=active_wf_id,
-                    success=False,
-                    logs=logs_captured,
-                    error=TaskError(
-                        error_code="PERMISSION_DENIED",
-                        error_message=pde.message,
-                        is_recoverable=False,
-                    ),
-                    metrics=ExecutionMetrics(
-                        execution_time_ms=duration_ms,
-                        exit_code=1,
-                    ),
-                )
+                    is_recoverable=False,
+                ),
+                metrics=ExecutionMetrics(
+                    execution_time_ms=duration_ms,
+                    exit_code=1,
+                ),
+            )
 
         # Step 4: Execute Tool
         tool_start_time = time.time()

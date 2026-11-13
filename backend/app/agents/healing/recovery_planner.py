@@ -156,7 +156,9 @@ class RecoveryPlanner:
             orig_risk, _, _, _ = evaluate_task_risk_and_permissions(
                 task_obj, mode=exec_mode
             )
-            if not context.get("target_tool") and getattr(task_obj, "required_tool", None):
+            if not context.get("target_tool") and getattr(
+                task_obj, "required_tool", None
+            ):
                 context["target_tool"] = task_obj.required_tool
 
         likely_cause = getattr(root_cause, "likely_root_cause", "")

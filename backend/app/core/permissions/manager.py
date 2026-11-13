@@ -458,7 +458,11 @@ class PermissionManager:
                     continue
 
                 req_ctx = getattr(req, "context", None) or {}
-                req_fp = req_ctx.get("_action_fingerprint") if isinstance(req_ctx, dict) else None
+                req_fp = (
+                    req_ctx.get("_action_fingerprint")
+                    if isinstance(req_ctx, dict)
+                    else None
+                )
                 status_str = getattr(req.status, "value", str(req.status)).upper()
 
                 # Do not silently override an explicit rejection for this same action/task
@@ -493,7 +497,11 @@ class PermissionManager:
                     or str(req.permission_type)
                 ).upper()
                 req_ctx = getattr(req, "context", None) or {}
-                req_fp = req_ctx.get("_action_fingerprint") if isinstance(req_ctx, dict) else None
+                req_fp = (
+                    req_ctx.get("_action_fingerprint")
+                    if isinstance(req_ctx, dict)
+                    else None
+                )
                 if (
                     req_wf == wf_id_str
                     and req_task == str(task_id)
@@ -720,8 +728,9 @@ class PermissionManager:
                     str((context or {}).get("action") or reason or ""), context
                 ).value
             ).upper()
-            if eval_risk != RiskLevel.CRITICAL.value and not PermissionPolicy.requires_approval(
-                permission_type, self.mode
+            if (
+                eval_risk != RiskLevel.CRITICAL.value
+                and not PermissionPolicy.requires_approval(permission_type, self.mode)
             ):
                 req.status = PermissionStatus.APPROVED
 
@@ -743,7 +752,11 @@ class PermissionManager:
         eval_risk = (
             req_ctx.get("_evaluated_risk")
             if isinstance(req_ctx, dict) and "_evaluated_risk" in req_ctx
-            else getattr(getattr(req, "risk_level", None), "value", getattr(req, "risk_level", None))
+            else getattr(
+                getattr(req, "risk_level", None),
+                "value",
+                getattr(req, "risk_level", None),
+            )
         )
         is_critical = str(eval_risk or "").upper() == RiskLevel.CRITICAL.value
 
@@ -762,7 +775,9 @@ class PermissionManager:
             return True
 
         # Handle local model
-        if is_critical or PermissionPolicy.requires_approval(req.permission_type, self.mode):
+        if is_critical or PermissionPolicy.requires_approval(
+            req.permission_type, self.mode
+        ):
             return req.status == PermissionStatus.APPROVED
 
         req.status = PermissionStatus.APPROVED
@@ -1023,7 +1038,8 @@ class PermissionManager:
                     if decision is not None:
                         req_risk = (
                             req_ctx.get("_evaluated_risk")
-                            if isinstance(req_ctx, dict) and "_evaluated_risk" in req_ctx
+                            if isinstance(req_ctx, dict)
+                            and "_evaluated_risk" in req_ctx
                             else getattr(req, "risk_level", RiskLevel.LOW)
                         )
                         if risk_rank(req_risk) < required_rank:
@@ -1099,8 +1115,7 @@ class PermissionManager:
             req_wf = str(getattr(req, "workflow_id", ""))
             req_task = str(getattr(req, "task_id", ""))
             req_perm = (
-                getattr(req.permission_type, "value", None)
-                or str(req.permission_type)
+                getattr(req.permission_type, "value", None) or str(req.permission_type)
             ).upper()
             if not (
                 (req_wf == wf_id_str or req_wf == "None" or not req_wf)

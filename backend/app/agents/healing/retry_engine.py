@@ -552,8 +552,8 @@ class RetryEngine:
         )
 
         # If replacement tasks are present, they were validated above; validate candidate retry too
-        cand_risk, cand_perms, cand_decision, cand_ctx = evaluate_task_risk_and_permissions(
-            candidate_task, mode=exec_mode
+        cand_risk, cand_perms, cand_decision, cand_ctx = (
+            evaluate_task_risk_and_permissions(candidate_task, mode=exec_mode)
         )
         if not cand_decision.allowed:
             return (
@@ -761,7 +761,9 @@ class RetryEngine:
 
         # Apply recovery-plan task parameter changes safely.
         if request.recovery_plan and request.recovery_plan.updated_task_params:
-            patched = simulate_task_patch(task, request.recovery_plan.updated_task_params)
+            patched = simulate_task_patch(
+                task, request.recovery_plan.updated_task_params
+            )
             for key in request.recovery_plan.updated_task_params.keys():
                 if key in PROTECTED_TASK_IDENTITY_KEYS:
                     continue

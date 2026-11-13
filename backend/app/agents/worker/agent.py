@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from shared.contracts.execution import ExecutionMetrics, ExecutionResult, TaskError
-from shared.contracts.permission import PermissionType
+from shared.contracts.permission import PermissionType, RiskLevel
 from shared.contracts.task import Task, TaskStatus, TaskType
 from shared.contracts.tool import ToolState
 
@@ -17,7 +17,6 @@ from app.core.permissions.policies import (
     build_task_permission_context,
     infer_task_permissions,
 )
-from shared.contracts.permission import RiskLevel
 from app.memory.task_history import TaskHistoryService, get_task_history_service
 from app.runtime.interfaces import AgentRegistration, BaseAgent
 from app.services.artifact_storage import (
@@ -331,8 +330,7 @@ class WorkerAgent(BaseAgent):
                 workflow_id=task.workflow_id,
             )
             pm_mode = (
-                getattr(self.permission_manager, "mode", None)
-                or ExecutionMode.SAFE
+                getattr(self.permission_manager, "mode", None) or ExecutionMode.SAFE
             )
             baseline_decision = SafeExecutionPolicy.evaluate(
                 action=action_name,

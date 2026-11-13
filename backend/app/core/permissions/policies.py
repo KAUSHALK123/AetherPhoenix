@@ -1,7 +1,7 @@
-from dataclasses import dataclass, field
 import re
-from typing import Any, Dict, Optional, Set
 import urllib.parse
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional, Set
 
 from shared.contracts.permission import RiskLevel
 
@@ -36,6 +36,7 @@ def max_risk(a: Any, b: Any) -> RiskLevel:
         if rank == target:
             return lvl
     return RiskLevel.HIGH
+
 
 # Define which permissions are inherently risky and always require approval,
 # even in ASSISTED mode.
@@ -276,8 +277,19 @@ class SafeExecutionPolicy:
                             sanitized[canonical] = _bound_str(val)
                         break
 
-            for meta_key in ("action", "operation", "tool", "risk_level", "workflow_id", "task_id"):
-                if meta_key not in sanitized and meta_key in src and src[meta_key] is not None:
+            for meta_key in (
+                "action",
+                "operation",
+                "tool",
+                "risk_level",
+                "workflow_id",
+                "task_id",
+            ):
+                if (
+                    meta_key not in sanitized
+                    and meta_key in src
+                    and src[meta_key] is not None
+                ):
                     sanitized[meta_key] = _bound_str(src[meta_key], 256)
 
             for raw_k, raw_v in src.items():
@@ -338,14 +350,11 @@ class SafeExecutionPolicy:
                     return f"Restricted URL scheme '{raw_url}' is blocked by Safe Mode."
 
         # 3. Destructive commands/scripts (whitespace normalized)
-        raw_cmd = (
-            ctx.get("command")
-            or ctx.get("cmd")
-            or ctx.get("script")
-            or ""
-        )
+        raw_cmd = ctx.get("command") or ctx.get("cmd") or ctx.get("script") or ""
         cmd_for_eval = re.sub(r"\s+", " ", str(raw_cmd or action or "")).strip().lower()
-        if raw_cmd or any(tok in norm_action for tok in ("terminal", "powershell", "shell", "command")):
+        if raw_cmd or any(
+            tok in norm_action for tok in ("terminal", "powershell", "shell", "command")
+        ):
             for token in DESTRUCTIVE_COMMAND_TOKENS:
                 if token in cmd_for_eval:
                     return (
@@ -360,7 +369,14 @@ class SafeExecutionPolicy:
                     )
 
         # 4. Restricted sensitive system paths
-        for path_key in ("path", "file_path", "target_path", "destination", "output_path", "filepath"):
+        for path_key in (
+            "path",
+            "file_path",
+            "target_path",
+            "destination",
+            "output_path",
+            "filepath",
+        ):
             if path_key in ctx and ctx[path_key]:
                 norm_path = str(ctx[path_key]).replace("\\", "/").strip().lower()
                 for sys_path in RESTRICTED_SYSTEM_PATHS:
@@ -556,11 +572,11 @@ def build_task_permission_context(
             for k, v in nested.items():
                 raw_inputs.setdefault(k, v)
 
-    resolved_tool = str(tool_name or getattr(task, "required_tool", None) or "default_tool")
+    resolved_tool = str(
+        tool_name or getattr(task, "required_tool", None) or "default_tool"
+    )
     action_name = str(
-        raw_inputs.get("action")
-        or raw_inputs.get("operation")
-        or resolved_tool
+        raw_inputs.get("action") or raw_inputs.get("operation") or resolved_tool
     )
     active_wf = workflow_id or getattr(task, "workflow_id", None)
     extra = {
@@ -569,7 +585,9 @@ def build_task_permission_context(
         "tool": resolved_tool,
         "risk_level": str(getattr(task, "risk_level", "LOW") or "LOW"),
     }
-    ctx = SafeExecutionPolicy.sanitize_context(raw_inputs, action=action_name, extra=extra)
+    ctx = SafeExecutionPolicy.sanitize_context(
+        raw_inputs, action=action_name, extra=extra
+    )
     return action_name, ctx
 
 
@@ -602,7 +620,9 @@ def infer_task_permissions(
 
     if not perms and task is not None:
         cat_val = str(
-            getattr(getattr(task, "category", None), "value", getattr(task, "category", ""))
+            getattr(
+                getattr(task, "category", None), "value", getattr(task, "category", "")
+            )
         ).upper()
         category_perm_map = {
             "FILE_SYSTEM": PermissionType.FILE_SYSTEM.value,
@@ -617,11 +637,15 @@ def infer_task_permissions(
             perms.append(category_perm_map[cat_val])
 
     if not perms:
-        tool_id = str(
-            (ctx.get("tool") if isinstance(ctx, dict) else None)
-            or getattr(task, "required_tool", "")
-            or ""
-        ).strip().lower()
+        tool_id = (
+            str(
+                (ctx.get("tool") if isinstance(ctx, dict) else None)
+                or getattr(task, "required_tool", "")
+                or ""
+            )
+            .strip()
+            .lower()
+        )
         if any(k in tool_id for k in ("powershell",)):
             perms.append(PermissionType.POWERSHELL.value)
         elif any(k in tool_id for k in ("terminal", "shell", "cmd")):
@@ -630,7 +654,9 @@ def infer_task_permissions(
             perms.append(PermissionType.DESKTOP_AUTOMATION.value)
         elif any(k in tool_id for k in ("browser",)):
             perms.append(PermissionType.BROWSER_ACCESS.value)
-        elif any(k in tool_id for k in ("file_explorer", "file_system", "file_manager")):
+        elif any(
+            k in tool_id for k in ("file_explorer", "file_system", "file_manager")
+        ):
             perms.append(PermissionType.FILE_SYSTEM.value)
         elif any(k in tool_id for k in ("admin", "registry")):
             perms.append(PermissionType.ADMINISTRATOR.value)

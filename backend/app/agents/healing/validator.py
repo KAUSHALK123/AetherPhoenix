@@ -152,7 +152,9 @@ def validate_retry_plan_security(
         patch_action = str(
             flat_patch.get("action")
             or updated_params.get("required_tool")
-            or (getattr(original_task, "required_tool", None) if original_task else None)
+            or (
+                getattr(original_task, "required_tool", None) if original_task else None
+            )
             or "retry_patch"
         )
         errors.extend(
@@ -165,7 +167,11 @@ def validate_retry_plan_security(
         )
 
         # Compare patched task risk & permissions monotonically against original task
-        if original_task is not None and orig_risk is not None and orig_perms is not None:
+        if (
+            original_task is not None
+            and orig_risk is not None
+            and orig_perms is not None
+        ):
             patched_task = simulate_task_patch(original_task, updated_params)
             patched_risk, patched_perms, patched_decision, _ = (
                 evaluate_task_risk_and_permissions(patched_task, mode=mode)
@@ -189,7 +195,9 @@ def validate_retry_plan_security(
     # 2. Validate replacement_tasks
     replacement_tasks = getattr(plan, "replacement_tasks", None) or []
     for idx, rep_task in enumerate(replacement_tasks):
-        rep_ref = f"ReplacementTask[{idx}] ({getattr(rep_task, 'required_tool', 'unknown')})"
+        rep_ref = (
+            f"ReplacementTask[{idx}] ({getattr(rep_task, 'required_tool', 'unknown')})"
+        )
         rep_inputs = getattr(rep_task, "inputs", None) or {}
         rep_action = str(
             (rep_inputs.get("action") if isinstance(rep_inputs, dict) else None)
@@ -218,13 +226,15 @@ def validate_retry_plan_security(
                 f"{rep_ref} evaluated at CRITICAL risk, which self-healing cannot execute."
             )
 
-        if original_task is not None and orig_risk is not None and orig_perms is not None:
+        if (
+            original_task is not None
+            and orig_risk is not None
+            and orig_perms is not None
+        ):
             if getattr(rep_task, "workflow_id", None) != getattr(
                 original_task, "workflow_id", None
             ):
-                errors.append(
-                    f"{rep_ref} workflow_id mismatch against original task."
-                )
+                errors.append(f"{rep_ref} workflow_id mismatch against original task.")
             if risk_rank(rep_risk) > risk_rank(orig_risk):
                 errors.append(
                     f"{rep_ref} violates monotonic privilege invariance: "
@@ -301,7 +311,9 @@ def validate_recovery_plan(
 
             # Security check: unrestricted command patterns & SafeExecutionPolicy params
             act_params = dict(action.action_parameters or {})
-            act_label = str(action.target_tool or action.action_type or "recovery_action")
+            act_label = str(
+                action.target_tool or action.action_type or "recovery_action"
+            )
             for param_key, param_val in act_params.items():
                 if isinstance(param_val, str):
                     for pattern in UNRESTRICTED_COMMAND_PATTERNS:

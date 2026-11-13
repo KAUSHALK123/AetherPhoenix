@@ -193,7 +193,9 @@ class WorkerReexecutionManager:
             # Re-evaluate actual task parameters against SafeExecutionPolicy before dispatch
             exec_mode = (
                 getattr(getattr(state, "metadata", None), "execution_mode", None)
-                or getattr(getattr(worker_agent, "permission_manager", None), "mode", None)
+                or getattr(
+                    getattr(worker_agent, "permission_manager", None), "mode", None
+                )
                 or ExecutionMode.SAFE
             )
             _, _, pre_decision, _ = evaluate_task_risk_and_permissions(
