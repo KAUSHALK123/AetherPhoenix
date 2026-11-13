@@ -1617,16 +1617,22 @@ class TaskDecompositionEngine:
         """Decomposes a desktop application launch or GUI automation goal."""
         lower_goal = goal.lower()
         app_name = "Application"
+        app_code = "application"
         if (
             "vs code" in lower_goal
             or "vscode" in lower_goal
             or "open code" in lower_goal
         ):
             app_name = "Visual Studio Code"
+            app_code = "code"
         elif "notepad" in lower_goal:
             app_name = "Notepad"
+            app_code = "notepad"
         elif "calc" in lower_goal:
             app_name = "Calculator"
+            app_code = "calc"
+        else:
+            app_code = app_name.lower()
 
         phase_root = Task(
             workflow_id=workflow_id,
@@ -1658,7 +1664,7 @@ class TaskDecompositionEngine:
             expected_output=f"{app_name} launched with active PID",
             success_criteria=[f"{app_name} process is running"],
             failure_criteria=[f"Failed to launch {app_name}"],
-            inputs={"app_name": app_name},
+            inputs={"action": "launch_app", "app_name": app_code, "app": app_name},
             estimated_duration_seconds=30,
             status=TaskStatus.CREATED,
         )

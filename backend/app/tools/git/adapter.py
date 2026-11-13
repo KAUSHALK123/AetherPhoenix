@@ -26,8 +26,38 @@ class GitToolAdapter(BaseToolAdapter):
         Executes a Git operation based on the task parameters.
         """
         try:
-            # Parse inputs
-            input_data = GitToolInput(**task.inputs)
+            # Parse inputs with robust fallback and normalization
+            raw_inputs = dict(task.inputs) if task.inputs else {}
+            op = (
+                raw_inputs.get("operation")
+                or raw_inputs.get("action")
+                or raw_inputs.get("command")
+            )
+            if not op:
+                combined = f"{task.task_name} {task.description or ''}".lower()
+                if "status" in combined:
+                    op = "status"
+                elif any(
+                    k in combined
+                    for k in ["log", "history", "commits", "recent changes"]
+                ):
+                    op = "history"
+                elif "branch" in combined:
+                    op = "branches"
+                elif "diff" in combined:
+                    op = "diff"
+                elif "detect" in combined or "check repo" in combined:
+                    op = "detect_repo"
+                else:
+                    op = "status"
+
+            raw_inputs["operation"] = op
+            if "working_directory" not in raw_inputs:
+                raw_inputs["working_directory"] = raw_inputs.get(
+                    "repo_path"
+                ) or raw_inputs.get("path")
+
+            input_data = GitToolInput(**raw_inputs)
 
             operation = input_data.operation.lower()
             working_directory = input_data.working_directory
@@ -40,7 +70,7 @@ class GitToolAdapter(BaseToolAdapter):
                 cmd = ["git", "status", "-s"]
             elif operation == "branches":
                 cmd = ["git", "branch", "-a"]
-            elif operation == "history":
+            elif operation in ("history", "log"):
                 limit = input_data.limit or 10
                 cmd = ["git", "log", f"-n{limit}", "--oneline"]
             elif operation == "checkout":

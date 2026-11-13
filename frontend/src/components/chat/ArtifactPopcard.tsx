@@ -35,9 +35,13 @@ export const ArtifactPopcard: React.FC<ArtifactPopcardProps> = ({ artifact }) =>
         : null;
 
     if (targetUrl) {
+      const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+      const fullUrl = targetUrl.startsWith('http') ? targetUrl : `${API_BASE}${targetUrl}`;
       const link = document.createElement('a');
-      link.href = targetUrl;
+      link.href = fullUrl;
       link.download = artifact.filename;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
