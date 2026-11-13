@@ -11,6 +11,13 @@ from shared.contracts.tool import ToolState
 from app.core.exceptions import PermissionDeniedException, ToolNotFoundException
 from app.core.logging.execution_logger import WorkerExecutionLogger
 from app.core.permissions.manager import PermissionManager
+from app.core.permissions.models import ExecutionMode
+from app.core.permissions.policies import (
+    SafeExecutionPolicy,
+    build_task_permission_context,
+    infer_task_permissions,
+)
+from shared.contracts.permission import RiskLevel
 from app.memory.task_history import TaskHistoryService, get_task_history_service
 from app.runtime.interfaces import AgentRegistration, BaseAgent
 from app.services.artifact_storage import (
@@ -317,23 +324,48 @@ class WorkerAgent(BaseAgent):
                     f"Tool adapter '{tool.adapter}' is not registered in WorkerAgent"
                 )
 
-            # 4. Permission Verification
-            if self.permission_manager and tool.required_permissions:
-                for perm_str in tool.required_permissions:
+            # 4. Parameter-Aware Permission Verification
+            action_name, perm_context = build_task_permission_context(
+                task=task,
+                tool_name=tool_name,
+                workflow_id=task.workflow_id,
+            )
+            pm_mode = (
+                getattr(self.permission_manager, "mode", None)
+                or ExecutionMode.SAFE
+            )
+            baseline_decision = SafeExecutionPolicy.evaluate(
+                action=action_name,
+                mode=pm_mode,
+                context=perm_context,
+            )
+            if not baseline_decision.allowed:
+                raise PermissionDeniedException(
+                    f"Action '{action_name}' blocked by policy: {baseline_decision.reason}"
+                )
+
+            if self.permission_manager:
+                effective_perms = infer_task_permissions(
+                    tool=tool, task=task, context=perm_context
+                )
+                for perm_str in effective_perms:
                     try:
                         perm_type = PermissionType(perm_str.upper())
                     except ValueError:
                         logger.warning(f"Unknown permission type: {perm_str}")
                         continue
 
-                    chk = self.permission_manager.check_permission(
-                        action=f"Execute tool {tool_name}",
-                        permission_type=perm_type,
-                        context={
-                            "task_id": str(task.task_id),
-                            "workflow_id": str(task.workflow_id),
-                        },
-                    )
+                    try:
+                        chk = self.permission_manager.check_permission(
+                            action=action_name,
+                            permission_type=perm_type,
+                            context=perm_context,
+                        )
+                    except TypeError:
+                        chk = self.permission_manager.check_permission(
+                            action=action_name,
+                            permission_type=perm_type,
+                        )
                     if hasattr(chk, "__await__"):
                         is_approved = await chk
                     else:
@@ -343,6 +375,16 @@ class WorkerAgent(BaseAgent):
                         raise PermissionDeniedException(
                             f"Permission denied for {perm_type.value}"
                         )
+
+                # Fail closed on CRITICAL tasks/inputs even if no permissions were declared
+                if (
+                    not effective_perms
+                    and baseline_decision.risk_level == RiskLevel.CRITICAL
+                    and baseline_decision.requires_approval
+                ):
+                    raise PermissionDeniedException(
+                        f"Critical action '{action_name}' denied without explicit permission."
+                    )
 
             # 5. Execute Tool via Adapter
             task.status = TaskStatus.RUNNING
