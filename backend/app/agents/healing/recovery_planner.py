@@ -1,3 +1,4 @@
+import copy
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
@@ -10,6 +11,12 @@ from shared.contracts.recovery_plan import (
 )
 
 from app.agents.healing.validator import validate_recovery_plan
+from app.core.permissions.models import ExecutionMode
+from app.core.permissions.policies import (
+    SafeExecutionPolicy,
+    evaluate_task_risk_and_permissions,
+    risk_rank,
+)
 
 RISK_HIERARCHY = {
     RiskLevel.SAFE: 0,
@@ -137,6 +144,22 @@ class RecoveryPlanner:
             context.update(root_cause.context)
         if task_context:
             context.update(task_context)
+
+        state_obj = kwargs.get("state")
+        exec_mode = (
+            kwargs.get("mode")
+            or getattr(getattr(state_obj, "metadata", None), "execution_mode", None)
+            or ExecutionMode.SAFE
+        )
+        orig_risk: Optional[RiskLevel] = None
+        if task_obj is not None:
+            orig_risk, _, _, _ = evaluate_task_risk_and_permissions(
+                task_obj, mode=exec_mode
+            )
+            if not context.get("target_tool") and getattr(
+                task_obj, "required_tool", None
+            ):
+                context["target_tool"] = task_obj.required_tool
 
         likely_cause = getattr(root_cause, "likely_root_cause", "")
         rc_cat_str = str(getattr(root_cause, "category", ""))
@@ -383,7 +406,12 @@ class RecoveryPlanner:
                     target_tool=target_tool,
                     required_capabilities=["task_execution"],
                     required_permissions=[],
-                    risk_level=RiskLevel.MEDIUM,
+                    risk_level=(
+                        orig_risk
+                        if orig_risk is not None
+                        and risk_rank(orig_risk) < risk_rank(RiskLevel.MEDIUM)
+                        else RiskLevel.MEDIUM
+                    ),
                     preconditions=["Extended timeout applied"],
                     success_criteria=["Task completed within extended window"],
                     failure_criteria=["Task timed out again after extended window"],
@@ -590,6 +618,13 @@ class RecoveryPlanner:
                 if getattr(task_obj, "required_tool", None) == "browser_tool"
                 else "web_research"
             )
+            alt_inputs = copy.deepcopy(getattr(task_obj, "inputs", None) or {})
+            alt_risk = SafeExecutionPolicy.classify_risk(alt_tool, alt_inputs)
+            if orig_risk is not None and risk_rank(orig_risk) < risk_rank(alt_risk):
+                alt_risk_str = getattr(orig_risk, "value", str(orig_risk))
+            else:
+                alt_risk_str = getattr(alt_risk, "value", str(alt_risk))
+            orig_task_perms = list(getattr(task_obj, "permissions", None) or [])
             alt_task = Task(
                 task_id=uuid4(),
                 workflow_id=task_obj.workflow_id,
@@ -598,9 +633,20 @@ class RecoveryPlanner:
                 required_tool=alt_tool,
                 category=task_obj.category,
                 expected_output=task_obj.expected_output,
+                permissions=orig_task_perms,
+                risk_level=alt_risk_str,
+                inputs=alt_inputs,
                 retry_count=getattr(task_obj, "retry_count", 0) + 1,
             )
             plan.replacement_tasks = [alt_task]
 
-        validate_recovery_plan(plan)
+        is_valid, _ = validate_recovery_plan(
+            plan,
+            original_task=task_obj,
+            mode=exec_mode,
+        )
+        if not is_valid:
+            plan.is_viable = False
+            plan.replacement_tasks = []
+            plan.strategy_name = "ESCALATE_USER"
         return plan

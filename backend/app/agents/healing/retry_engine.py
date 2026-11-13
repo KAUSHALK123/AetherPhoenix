@@ -9,7 +9,7 @@ from shared.contracts.execution import (
     TaskError,
     WorkerReexecutionRequest,
 )
-from shared.contracts.permission import PermissionStatus, PermissionType
+from shared.contracts.permission import PermissionStatus, PermissionType, RiskLevel
 from shared.contracts.retry import (
     RecoveryPlan,
     RetryRequest,
@@ -19,8 +19,15 @@ from shared.contracts.retry import (
 from shared.contracts.task import Task, TaskStatus
 from shared.contracts.workflow import SharedWorkflowState, WorkflowStatus
 
+from app.agents.healing.validator import (
+    PROTECTED_TASK_IDENTITY_KEYS,
+    simulate_task_patch,
+    validate_retry_plan_security,
+)
 from app.agents.worker.reexecution import WorkerReexecutionManager
 from app.core.events.bus import EventBus
+from app.core.permissions.models import ExecutionMode
+from app.core.permissions.policies import evaluate_task_risk_and_permissions
 from app.engine.workflow import WorkflowEngine
 
 logger = logging.getLogger(__name__)
@@ -73,12 +80,14 @@ class RetryEngine:
         base_backoff_seconds: float = 1.0,
         max_backoff_seconds: float = 60.0,
         reexecution_manager: Optional[WorkerReexecutionManager] = None,
+        permission_manager: Optional[Any] = None,
     ) -> None:
         self.event_bus = event_bus
         self.default_max_retries = default_max_retries
         self.default_max_healing_attempts = default_max_healing_attempts
         self.base_backoff_seconds = base_backoff_seconds
         self.max_backoff_seconds = max_backoff_seconds
+        self.permission_manager = permission_manager
 
         self.reexecution_manager = reexecution_manager or WorkerReexecutionManager()
 
@@ -474,11 +483,109 @@ class RetryEngine:
                     msg,
                 )
 
+        # 9. Monotonic privilege-invariance and parameter-aware security check.
+        sec_ok, sec_reason = self._verify_monotonic_and_policy(
+            task=task,
+            state=state,
+            recovery_plan=recovery_plan,
+        )
+        if not sec_ok:
+            logger.warning(
+                "Retry eligibility rejected for task %s due to security invariant: %s",
+                task.task_id,
+                sec_reason,
+            )
+            return (
+                False,
+                RetryStatus.REJECTED_PERMISSION_DENIED,
+                sec_reason,
+            )
+
         return (
             True,
             RetryStatus.TRIGGERED,
             "Task is eligible for retry.",
         )
+
+    def _verify_monotonic_and_policy(
+        self,
+        task: Task,
+        state: SharedWorkflowState,
+        recovery_plan: Optional[Any] = None,
+        original_baseline: Optional[Tuple[RiskLevel, set[str]]] = None,
+    ) -> Tuple[bool, str]:
+        """
+        Enforce monotonic privilege invariance and parameter-aware policy evaluation
+        before any retry mutation, replacement task, or re-enqueueing occurs.
+        """
+        exec_mode = (
+            getattr(getattr(state, "metadata", None), "execution_mode", None)
+            or getattr(self.permission_manager, "mode", None)
+            or ExecutionMode.SAFE
+        )
+        baseline = original_baseline
+        if baseline is None:
+            orig_risk, orig_perms, _, _ = evaluate_task_risk_and_permissions(
+                task, mode=exec_mode
+            )
+            baseline = (orig_risk, orig_perms)
+
+        if recovery_plan is not None:
+            is_sec_valid, sec_errors = validate_retry_plan_security(
+                recovery_plan,
+                original_task=task,
+                mode=exec_mode,
+                original_baseline=baseline,
+            )
+            if not is_sec_valid:
+                return False, "; ".join(sec_errors)
+
+        updated_params = (
+            getattr(recovery_plan, "updated_task_params", None)
+            if recovery_plan is not None
+            else None
+        )
+        candidate_task = (
+            simulate_task_patch(task, updated_params)
+            if isinstance(updated_params, dict) and updated_params
+            else task
+        )
+
+        # If replacement tasks are present, they were validated above; validate candidate retry too
+        cand_risk, cand_perms, cand_decision, cand_ctx = (
+            evaluate_task_risk_and_permissions(candidate_task, mode=exec_mode)
+        )
+        if not cand_decision.allowed:
+            return (
+                False,
+                f"Policy blocked recovery task ({cand_decision.risk_level.value}): "
+                f"{cand_decision.reason}",
+            )
+        if cand_risk == RiskLevel.CRITICAL:
+            return (
+                False,
+                f"CRITICAL-risk operation '{cand_decision.action}' cannot be auto-healed.",
+            )
+
+        # Verify grant-reuse isolation when PermissionManager is attached
+        if self.permission_manager is not None and cand_perms:
+            for perm_str in cand_perms:
+                try:
+                    perm_type = PermissionType(perm_str.upper())
+                except ValueError:
+                    continue
+                if hasattr(self.permission_manager, "has_valid_grant_for"):
+                    ok, reason = self.permission_manager.has_valid_grant_for(
+                        workflow_id=task.workflow_id,
+                        permission_type=perm_type,
+                        action=cand_decision.action,
+                        context=cand_ctx,
+                        task_id=task.task_id,
+                    )
+                    if not ok:
+                        return False, reason
+
+        return True, "Monotonic privilege invariance and policy verified."
 
     async def execute_retry(
         self,
@@ -652,11 +759,17 @@ class RetryEngine:
         # Update retry count.
         task.retry_count += 1
 
-        # Apply recovery-plan task parameter changes.
+        # Apply recovery-plan task parameter changes safely.
         if request.recovery_plan and request.recovery_plan.updated_task_params:
-            for key, value in request.recovery_plan.updated_task_params.items():
+            patched = simulate_task_patch(
+                task, request.recovery_plan.updated_task_params
+            )
+            for key in request.recovery_plan.updated_task_params.keys():
+                if key in PROTECTED_TASK_IDENTITY_KEYS:
+                    continue
                 if hasattr(task, key):
-                    setattr(task, key, value)
+                    setattr(task, key, getattr(patched, key))
+            task.inputs = patched.inputs
 
         # Append execution log.
         log_entry = (
@@ -867,6 +980,41 @@ class RetryEngine:
             )
 
         try:
+            # Verify monotonic privilege-invariance and parameter safety before any mutation/enqueue
+            sec_ok, sec_reason = self._verify_monotonic_and_policy(
+                task=task,
+                state=state,
+                recovery_plan=plan,
+            )
+            if not sec_ok:
+                logger.warning(
+                    "RetryEngine.execute_recovery blocked unsafe plan for task %s: %s",
+                    task.task_id,
+                    sec_reason,
+                )
+                if self.event_bus:
+                    await self.event_bus.publish(
+                        RuntimeEvent(
+                            workflow_id=state.metadata.workflow_id,
+                            task_id=task.task_id,
+                            event_type=EventType.HEALING_FAILED,
+                            source_component=EventSource.HEALING,
+                            payload={
+                                "reason": sec_reason,
+                                "security_violation": True,
+                            },
+                        )
+                    )
+                return HealingResult(
+                    task_id=task.task_id,
+                    workflow_id=task.workflow_id,
+                    root_cause=root_cause_category,
+                    recovery_strategy=strategy_val,
+                    replacement_tasks=[],
+                    attempt_number=attempt_number,
+                    success=False,
+                )
+
             # Record failure signature.
             desc = getattr(
                 plan,
