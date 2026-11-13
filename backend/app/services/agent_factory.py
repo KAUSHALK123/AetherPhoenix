@@ -8,8 +8,8 @@ Provides initialized singleton instances for:
 - HealingAgent
 - PipelineOrchestrator
 """
+
 import logging
-from typing import Optional
 
 from app.core.events.bus import get_event_bus
 from app.core.permissions.manager import get_permission_manager

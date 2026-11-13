@@ -1,42 +1,21 @@
-import json
-import os
-import shutil
 import tempfile
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from shared.contracts.task import Task, TaskCategory, TaskType
 
-from app.main import app
 from app.agents.planner.agent import PlannerAgent
-from app.planner.analyzer import RequirementAnalyzer
-from app.planner.clarifier import ClarificationEngine
-from app.planner.decomposer import TaskDecompositionEngine
-from app.planner.goal_engine import GoalExtractionEngine
-from app.planner.llm_planner import LLMPlanner, get_default_tool_registry
-from app.planner.normalizer import normalize_text
+from app.core.permissions.manager import PermissionManager
+from app.main import app
 from app.services.agent_factory import (
-    get_pipeline_orchestrator,
-    get_shared_tool_registry,
-    get_worker_agent,
     reset_orchestrator,
 )
-from app.core.permissions.manager import PermissionManager
-from app.services.artifact_storage import get_artifact_storage_service
 from app.tools.file_explorer.adapter import FileExplorerToolAdapter
 from app.tools.file_explorer.executor import FileExplorerExecutor
 from app.tools.git.adapter import GitToolAdapter
 from app.tools.ppt.adapter import PPTToolAdapter
-from shared.contracts.artifact import ArtifactType
-from shared.contracts.planner import PlannerRequest
-from shared.contracts.task import Task, TaskCategory, TaskPriority, TaskStatus, TaskType
-from shared.contracts.workflow import (
-    ExecutionMode,
-    SharedWorkflowState,
-    WorkflowMetadata,
-    WorkflowStatus,
-)
 
 client = TestClient(app)
 
@@ -87,9 +66,7 @@ def test_scenario_a_vscode_project_workflow(planner_stack):
     assert any(t in ("terminal_tool", "file_explorer") for t in tools_used)
 
     # Check VS Code task specifics
-    vscode_task = next(
-        t for t in leaf_tasks if t.required_tool == "desktop_automation"
-    )
+    vscode_task = next(t for t in leaf_tasks if t.required_tool == "desktop_automation")
     assert vscode_task.category == TaskCategory.DESKTOP
     assert (
         vscode_task.inputs.get("app_name") in ("code", "Visual Studio Code")
@@ -97,9 +74,7 @@ def test_scenario_a_vscode_project_workflow(planner_stack):
     )
 
     # Check terminal task dependency on prior setup
-    terminal_tasks = [
-        t for t in leaf_tasks if t.required_tool == "terminal_tool"
-    ]
+    terminal_tasks = [t for t in leaf_tasks if t.required_tool == "terminal_tool"]
     if terminal_tasks:
         assert len(terminal_tasks[0].dependencies) > 0
 

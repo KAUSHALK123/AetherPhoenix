@@ -114,7 +114,8 @@ class ClarificationResult(BaseModel):
         default_factory=list, description="List of missing required fields."
     )
     options: list[str] | None = Field(
-        default=None, description="Contextual dynamic clarification options if applicable."
+        default=None,
+        description="Contextual dynamic clarification options if applicable.",
     )
 
 
@@ -152,11 +153,13 @@ class PlannerResponse(BaseModel):
         description="Status of the request (e.g., 'clarifying', 'planning', 'ready', 'chat', 'error').",
     )
     reply: str | None = Field(
-        None, description="A text reply, usually a clarification question, direct answer, or plan JSON."
+        None,
+        description="A text reply, usually a clarification question, direct answer, or plan JSON.",
     )
     action: str | None = Field(None, description="The next action if applicable.")
     options: list[str] | None = Field(
-        default=None, description="Structured dynamic clarification options if clarifying."
+        default=None,
+        description="Structured dynamic clarification options if clarifying.",
     )
 
 

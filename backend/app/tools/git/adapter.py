@@ -53,9 +53,9 @@ class GitToolAdapter(BaseToolAdapter):
 
             raw_inputs["operation"] = op
             if "working_directory" not in raw_inputs:
-                raw_inputs["working_directory"] = (
-                    raw_inputs.get("repo_path") or raw_inputs.get("path")
-                )
+                raw_inputs["working_directory"] = raw_inputs.get(
+                    "repo_path"
+                ) or raw_inputs.get("path")
 
             input_data = GitToolInput(**raw_inputs)
 

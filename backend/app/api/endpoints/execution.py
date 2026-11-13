@@ -8,6 +8,7 @@ as a non-blocking background asyncio.Task.
 Returns workflow_id immediately so the frontend can poll
 GET /api/v1/dashboard/workflows/{workflow_id} for live status.
 """
+
 import asyncio
 import json
 import logging
@@ -61,9 +62,8 @@ async def execute_workflow(request: ExecuteWorkflowRequest):
     except (ValueError, AttributeError):
         workflow_id = uuid.uuid4()
 
-    goal = (
-        plan_data.get("metadata", {}).get("goal")
-        or plan_data.get("workflow_spec", "Autonomous Workflow")
+    goal = plan_data.get("metadata", {}).get("goal") or plan_data.get(
+        "workflow_spec", "Autonomous Workflow"
     )
     session_id = request.session_id or str(workflow_id)
 
