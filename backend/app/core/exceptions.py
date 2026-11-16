@@ -179,6 +179,18 @@ class ValidationException(AetherPhoenixException):
         super().__init__(message=message, code=code, details=details)
 
 
+class DeliverableCorruptedError(ValidationException):
+    """Raised when generated deliverable artifacts (e.g. PDF, PPTX) fail structural integrity checks."""
+
+    def __init__(
+        self,
+        message: str,
+        code: str = "CORRUPTED_DELIVERABLE",
+        details: Any = None,
+    ) -> None:
+        super().__init__(message=message, code=code, details=details)
+
+
 class SchemaValidationException(ValidationException):
     """
     Raised when a Pydantic model cannot be constructed from the

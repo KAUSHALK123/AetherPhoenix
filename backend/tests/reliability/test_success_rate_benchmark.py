@@ -467,17 +467,13 @@ def create_reliability_environment(config_type: str, fault_injector: FaultInject
 
             if attempt <= 3:
                 task.retry_count = attempt
-                if err_code == "FILE_NOT_FOUND":
-                    task.inputs["path"] = "."
-                    task.inputs["patched"] = True
-                elif err_code == "SYNTAX_ERROR":
-                    task.inputs["command"] = "ipconfig"
-                    task.inputs["patched"] = True
-                elif err_code == "INVALID_ARGUMENTS":
-                    task.inputs["url"] = "http://localhost:8000/health"
-                    task.inputs["patched"] = True
-                else:
-                    task.inputs["patched"] = True
+                from app.agents.healing.patch_generator import LLMParameterPatcher
+
+                patcher = LLMParameterPatcher()
+                task.inputs = patcher.repair_parameters(
+                    task, result.error if result else err_code
+                )
+                task.inputs["patched"] = True
 
                 task.status = TaskStatus.READY
                 if state:

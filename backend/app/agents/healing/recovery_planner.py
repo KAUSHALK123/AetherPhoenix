@@ -1,7 +1,10 @@
 import copy
+import logging
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
+
+logger = logging.getLogger(__name__)
 
 from shared.contracts.execution import FailureType
 from shared.contracts.permission import PermissionType, RiskLevel
@@ -588,6 +591,40 @@ class RecoveryPlanner:
 
         overall_risk = _determine_highest_risk(risk_levels)
 
+        # Strategy demotion and parameter patching for parameter/syntax/argument faults
+        raw_msg_lower = (
+            str(getattr(parsed_error, "raw_error_message", ""))
+            or str(getattr(parsed_error, "message", ""))
+            or ""
+        ).lower()
+        err_code_upper = str(getattr(parsed_error, "normalized_code", "")).upper()
+        task_retry_count = getattr(task_obj, "retry_count", 0) if task_obj else 0
+        is_param_error = (
+            "syntax" in raw_msg_lower
+            or "argument" in raw_msg_lower
+            or "parameter" in raw_msg_lower
+            or "file not found" in raw_msg_lower
+            or "invalid" in raw_msg_lower
+            or "near '|'" in raw_msg_lower
+            or "SYNTAX" in err_code_upper
+            or "ARGUMENT" in err_code_upper
+            or "PARAM" in err_code_upper
+        )
+
+        patched_task_params = {}
+        if (is_param_error or task_retry_count > 0) and task_obj is not None:
+            try:
+                from app.agents.healing.patch_generator import LLMParameterPatcher
+
+                patcher = LLMParameterPatcher()
+                patched_task_params = patcher.repair_parameters(
+                    task_obj, parsed_error, mode=exec_mode
+                )
+                if patched_task_params:
+                    strategy_name = "PARAMETER_PATCH_RECOVERY"
+            except Exception as e:
+                logger.warning(f"Parameter patcher error: {e}")
+
         plan = RecoveryPlan(
             plan_id=uuid4(),
             failure_id=parsed_error.failure_id,
@@ -603,6 +640,7 @@ class RecoveryPlanner:
             max_retries=max_retries,
             is_viable=True,
             task_context=context,
+            updated_task_params=patched_task_params,
         )
 
         # Generate replacement tasks for alternative tool recovery when applicable

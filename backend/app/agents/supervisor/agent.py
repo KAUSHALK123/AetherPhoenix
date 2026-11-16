@@ -256,10 +256,13 @@ class SupervisorAgent(BaseAgent):
                 task.status = TaskStatus.FAILED
                 if task.task_id not in state.failed_tasks:
                     state.failed_tasks.append(task.task_id)
+                error_code = "SUPERVISOR_VALIDATION_FAILED"
+                if any("corrupted deliverable" in str(i).lower() for i in issues):
+                    error_code = "CORRUPTED_DELIVERABLE"
                 self.task_history_service.record_task_failed(
                     task_id=task.task_id,
                     error=TaskError(
-                        error_code="SUPERVISOR_VALIDATION_FAILED",
+                        error_code=error_code,
                         error_message=(
                             "; ".join(issues) if issues else "Validation failed"
                         ),
