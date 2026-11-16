@@ -210,23 +210,45 @@ class PipelineOrchestrator:
                                 },
                             )
 
-                            # 3. If failed, evaluate and trigger retry
-                            retried = await self.supervisor.execute(
-                                t,
-                                state=state,
-                                error=res.error
-                                or TaskError(
-                                    error_code="VALIDATION_FAILED",
-                                    error_message=(
-                                        "Supervisor output validation failed."
+                            # 3. If failed, evaluate and trigger healing or retry
+                            retried = False
+                            healing_res = None
+                            if self.healing and t.retry_count < max_retries:
+                                logger.info(
+                                    f"Invoking Healing Agent for task {t.task_id}"
+                                )
+                                healing_res = await self.healing.execute(
+                                    t, result=res, state=state
+                                )
+                                if healing_res and healing_res.success:
+                                    retried = True
+                                    t.status = TaskStatus.READY
+                                    engine.update_task_status(
+                                        t.task_id, TaskStatus.READY
+                                    )
+                                    if t.task_id in state.failed_tasks:
+                                        state.failed_tasks.remove(t.task_id)
+                                    if t.task_id not in state.execution_queue:
+                                        state.execution_queue.append(t.task_id)
+
+                            if not retried:
+                                retried = await self.supervisor.execute(
+                                    t,
+                                    state=state,
+                                    error=res.error
+                                    or TaskError(
+                                        error_code="VALIDATION_FAILED",
+                                        error_message=(
+                                            "Supervisor output validation failed."
+                                        ),
                                     ),
-                                ),
-                                max_retries=max_retries,
-                            )
+                                    max_retries=max_retries,
+                                )
+
                             if retried:
                                 logger.info(
                                     f"Task {t.task_id} failed validation. "
-                                    "Controlled retry triggered."
+                                    "Controlled retry / healing triggered."
                                 )
                                 await self._emit_orchestrator_event(
                                     event_type=EventType.TASK_RETRIED,
@@ -244,38 +266,29 @@ class PipelineOrchestrator:
                                         f"Task '{t.task_name}' ({t.task_id}) exhausted maximum retry budget "
                                         f"(K_max={max_retries}). Halting retries and terminating workflow execution."
                                     )
-                                    engine.update_task_status(
-                                        t.task_id, TaskStatus.FAILED
+                                engine.update_task_status(t.task_id, TaskStatus.FAILED)
+
+                                # Generate Planner Feedback
+                                from app.agents.planner.feedback import (
+                                    PlannerFeedbackLoop,
+                                )
+
+                                feedback_loop = PlannerFeedbackLoop(self.event_bus)
+
+                                failure_report = (
+                                    self.supervisor.failure_detector.check_failure(
+                                        t, res, state
                                     )
-                                else:
-                                    healing_res = None
-                                    if self.healing:
-                                        logger.info(
-                                            f"Invoking Healing Agent for task {t.task_id}"
-                                        )
-                                        healing_res = await self.healing.execute(
-                                            t, result=res, state=state
-                                        )
+                                )
 
-                                    # Generate Planner Feedback
-                                    from app.agents.planner.feedback import (
-                                        PlannerFeedbackLoop,
-                                    )
-
-                                    feedback_loop = PlannerFeedbackLoop(self.event_bus)
-
-                                    failure_report = (
-                                        self.supervisor.failure_detector.check_failure(
-                                            t, res, state
-                                        )
-                                    )
-
-                                    feedback = await feedback_loop.process_and_publish_feedback(
+                                feedback = (
+                                    await feedback_loop.process_and_publish_feedback(
                                         state=state,
                                         failure_report=failure_report,
                                         healing_result=healing_res,
                                     )
-                                    state.feedback = feedback
+                                )
+                                state.feedback = feedback
 
                         return validation
 

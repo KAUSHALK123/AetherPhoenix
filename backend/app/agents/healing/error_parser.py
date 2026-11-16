@@ -377,9 +377,11 @@ class ErrorParser:
             "invalid artifact" in msg_lower
             or "artifact validation failed" in msg_lower
             or "corrupted artifact" in msg_lower
+            or "corrupted deliverable" in msg_lower
             or "missing required artifact" in msg_lower
             or "output missing" in msg_lower
             or "ARTIFACT" in code_upper
+            or "DELIVERABLE" in code_upper
             or context.get("failure_type")
             in (
                 FailureType.ARTIFACT_VALIDATION_FAILED.value,
