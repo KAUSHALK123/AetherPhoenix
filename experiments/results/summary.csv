@@ -1,34 +1,22 @@
-experiment,config,metric,mean,std,median,iqr,ci_95_low,ci_95_high,n
-125_fault_suite_synthetic,phoenix,overall_recovery_rate,0.4,0.0,0.4,0.0,0.3183,0.4876,125
-125_fault_suite_synthetic,phoenix_TIMEOUT,class_recovery_rate,1.0,0.0,1.0,0.0,0.8668,1.0,25
-125_fault_suite_synthetic,phoenix_MISSING_RESOURCE,class_recovery_rate,1.0,0.0,1.0,0.0,0.8668,1.0,25
-125_fault_suite_synthetic,phoenix_TOOL_ADAPTER_FAILURE,class_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.1332,25
-125_fault_suite_synthetic,phoenix_PERMISSION_DENIED,class_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.1332,25
-125_fault_suite_synthetic,phoenix_UNMAPPED_EXCEPTION,class_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.1332,25
-125_fault_suite_synthetic,retry_only,overall_recovery_rate,0.2,0.0,0.2,0.0,0.1393,0.2786,125
-125_fault_suite_synthetic,retry_only_TIMEOUT,class_recovery_rate,1.0,0.0,1.0,0.0,0.8668,1.0,25
-125_fault_suite_synthetic,retry_only_MISSING_RESOURCE,class_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.1332,25
-125_fault_suite_synthetic,retry_only_TOOL_ADAPTER_FAILURE,class_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.1332,25
-125_fault_suite_synthetic,retry_only_PERMISSION_DENIED,class_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.1332,25
-125_fault_suite_synthetic,retry_only_UNMAPPED_EXCEPTION,class_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.1332,25
-125_fault_suite_synthetic,no_recovery,overall_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.0298,125
-125_fault_suite_synthetic,no_recovery_TIMEOUT,class_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.1332,25
-125_fault_suite_synthetic,no_recovery_MISSING_RESOURCE,class_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.1332,25
-125_fault_suite_synthetic,no_recovery_TOOL_ADAPTER_FAILURE,class_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.1332,25
-125_fault_suite_synthetic,no_recovery_PERMISSION_DENIED,class_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.1332,25
-125_fault_suite_synthetic,no_recovery_UNMAPPED_EXCEPTION,class_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.1332,25
-125_fault_suite_real_exception,phoenix,overall_recovery_rate,0.4,0.0,0.4,0.0,0.3183,0.4876,125
-125_fault_suite_real_exception,phoenix_TIMEOUT,class_recovery_rate,1.0,0.0,1.0,0.0,0.8668,1.0,25
-125_fault_suite_real_exception,phoenix_MISSING_RESOURCE,class_recovery_rate,1.0,0.0,1.0,0.0,0.8668,1.0,25
-125_fault_suite_real_exception,phoenix_TOOL_ADAPTER_FAILURE,class_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.1332,25
-125_fault_suite_real_exception,phoenix_PERMISSION_DENIED,class_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.1332,25
-125_fault_suite_real_exception,phoenix_UNMAPPED_EXCEPTION,class_recovery_rate,0.0,0.0,0.0,0.0,0.0,0.1332,25
-determinism_and_repeatability,synthetic_125,identical_outcomes_across_30_seeds,1.0,0.0,1.0,0.0,1.0,1.0,30
-determinism_and_repeatability,real_exception_125,identical_outcomes_across_30_seeds,1.0,0.0,1.0,0.0,1.0,1.0,30
-latency_tracing_off,phoenix,T_R_ms,1.9609,0.4052,1.9297,0.5214,1.0545,5.3369,1500
-latency_tracing_off,phoenix,T_rec_ms,1.9636,0.4056,1.9334,0.5214,1.0557,5.3407,1500
-latency_tracing_off,no_recovery,T_no_rec_ms,0.0011,0.0009,0.0009,0.0003,0.0005,0.0269,3750
-audit_investigations,audit_1_confidence_030,retried_proportion,0.0,0.0,0.0,0.0,0.0,0.1135,30
-audit_investigations,audit_2_spoofed_timeout_unsafe,executions_before_stop,1,0.0,1.0,0,1,1,30
-audit_investigations,audit_3_permission_misread_missing_dir,misread_proportion,0.0,0.0,0.0,0.0,0.0,0.1135,30
-held_out_50_suite,phoenix,handling_accuracy,0.66,0.0,0.66,0.0,0.5215,0.7756,50
+Metric_Category,Subcategory,Parameter,Phoenix_After,Phoenix_Before,Naive_Retry,Fail_Fast,Wilson_95_CI,Notes
+Latency,T_R (ms),Mean,2.3724,2.3724,N/A,N/A,N/A,Software recovery dispatch only (tracing OFF)
+Latency,T_R (ms),Std,1.0377,1.0377,N/A,N/A,N/A,Standard deviation
+Latency,T_R (ms),Median,2.0616,2.0616,N/A,N/A,N/A,Median
+Latency,T_R (ms),IQR,1.1143,1.1143,N/A,N/A,N/A,Interquartile range (Q3 - Q1)
+Latency,T_R (ms),Sample_N,2250,2250,N/A,N/A,N/A,Observations
+Latency,T_rec (ms),Mean,2.3753,2.3753,N/A,N/A,N/A,Full loop with mock execution & supervisor validation
+Latency,T_rec (ms),Std,1.0381,1.0381,N/A,N/A,N/A,Standard deviation
+Latency,T_rec (ms),Median,2.0647,2.0647,N/A,N/A,N/A,Median
+Latency,T_rec (ms),IQR,1.1142,1.1142,N/A,N/A,N/A,Interquartile range
+Latency,T_rec (ms),Sample_N,2250,2250,N/A,N/A,N/A,Observations
+Latency,T_no_rec (ms),Mean,N/A,N/A,N/A,0.0012,N/A,Immediate abort fail-fast baseline
+Latency,Real_FS_Latency (ms),Mean,1.3633,1.3633,N/A,N/A,N/A,Real NTFS directory creation & file payload write
+Fault_Class,TIMEOUT,Recovery_Count_of_25,25/25 (100.0%),25/25 (100.0%),25/25 (100.0%),0/25 (0.0%),"[86.7%, 100.0%]","Rejections: After=0/25, Before=0/25"
+Fault_Class,MISSING_RESOURCE,Recovery_Count_of_25,25/25 (100.0%),25/25 (100.0%),0/25 (0.0%),0/25 (0.0%),"[86.7%, 100.0%]","Rejections: After=0/25, Before=0/25"
+Fault_Class,TOOL_ADAPTER_FAILURE,Recovery_Count_of_25,25/25 (100.0%),0/25 (0.0%),0/25 (0.0%),0/25 (0.0%),"[86.7%, 100.0%]","Rejections: After=0/25, Before=25/25"
+Fault_Class,PERMISSION_DENIED,Recovery_Count_of_25,0/25 (0.0%),0/25 (0.0%),0/25 (0.0%),0/25 (0.0%),"[0.0%, 13.3%]","Rejections: After=25/25, Before=25/25"
+Fault_Class,UNMAPPED_EXCEPTION,Recovery_Count_of_25,0/25 (0.0%),0/25 (0.0%),0/25 (0.0%),0/25 (0.0%),"[0.0%, 13.3%]","Rejections: After=25/25, Before=25/25"
+Aggregate,Recoverable_Classes_Total,Rate_Over_75,75/75 (100.0%),50/75 (66.7%),25/75 (33.3%),0/75 (0.0%),"[95.1%, 100.0%]",Timeout + Missing Resource + Tool/Adapter Failure
+Aggregate,Non_Recoverable_Safe_Rejections,Rate_Over_50,50/50 (100.0%),50/50 (100.0%),0/50 (0.0%) [retried],50/50 (100.0%) [crashed],"[92.9%, 100.0%]",Permission Violation + Unmapped Exception safely rejected
+Aggregate,Overall_Rejections_Paper_Row,Rate_Over_125,50/125 (40.0%),75/125 (60.0%),0/125 (0.0%),125/125 (100.0%),"[51.2%, 68.2%]",Paper rejection row must be 75/125 (60.0%) when Tool/Adapter is rejected as COMMAND_FAILED
+Aggregate,Overall_Suite_Recovery,Rate_Over_125,75/125 (60.0%),50/125 (40.0%),25/125 (20.0%),0/125 (0.0%),"[51.2%, 68.2%]",All 125 distinct faults across 5 classes
