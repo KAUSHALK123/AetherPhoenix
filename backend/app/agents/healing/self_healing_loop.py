@@ -63,12 +63,16 @@ class SelfHealingLoop(BaseAgent):
         max_retries: int = 3,
         max_healing_attempts: int = 5,
         permission_manager: Optional[Any] = None,
+        tool_registry: Optional[Any] = None,
     ) -> None:
         self.event_bus = event_bus
         self.permission_manager = permission_manager
+        self.tool_registry = tool_registry
         self.error_parser = error_parser or ErrorParser()
         self.root_cause_analyzer = root_cause_analyzer or RootCauseAnalyzer()
-        self.recovery_planner = recovery_planner or RecoveryPlanner()
+        self.recovery_planner = recovery_planner or RecoveryPlanner(tool_registry=tool_registry)
+        if self.recovery_planner and getattr(self.recovery_planner, "tool_registry", None) is None:
+            self.recovery_planner.tool_registry = tool_registry
         self.retry_engine = retry_engine or RetryEngine(
             default_max_retries=max_retries,
             default_max_healing_attempts=max_healing_attempts,
@@ -265,6 +269,7 @@ class SelfHealingLoop(BaseAgent):
             state=state,
             max_healing_attempts=self.max_healing_attempts,
             mode=exec_mode,
+            tool_registry=self.tool_registry,
         )
         record_trace("stage3_strategy_selection_end", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
         logger.info(

@@ -59,6 +59,9 @@ class RecoveryPlanner:
     It DOES NOT execute them.
     """
 
+    def __init__(self, tool_registry: Optional[Any] = None) -> None:
+        self.tool_registry = tool_registry
+
     def plan(
         self,
         parsed_error: Any = None,
@@ -650,33 +653,97 @@ class RecoveryPlanner:
             or strategy_name in ("ALTERNATIVE_TOOL", "REPLACE_TOOL")
         ) and task_obj is not None:
             from shared.contracts.task import Task
+            from shared.contracts.tool import ToolHealth, ToolState
 
-            alt_tool = (
-                "web_research_tool"
-                if getattr(task_obj, "required_tool", None) == "browser_tool"
-                else "web_research"
-            )
-            alt_inputs = copy.deepcopy(getattr(task_obj, "inputs", None) or {})
-            alt_risk = SafeExecutionPolicy.classify_risk(alt_tool, alt_inputs)
-            if orig_risk is not None and risk_rank(orig_risk) < risk_rank(alt_risk):
-                alt_risk_str = getattr(orig_risk, "value", str(orig_risk))
+            orig_tool = getattr(task_obj, "required_tool", None)
+            registry = kwargs.get("tool_registry") or getattr(self, "tool_registry", None)
+            alt_tool = None
+
+            # Tool compatibility lookup mappings
+            compat_candidates = {
+                "browser_tool": ["web_research_tool", "web_research"],
+                "browser": ["web_research_tool", "web_research"],
+                "browser_automation": ["web_research_tool", "web_research"],
+                "web_scraping": ["web_research_tool", "web_research"],
+                "web_research": ["web_research_tool", "browser_tool"],
+                "web_research_tool": ["web_research", "browser_tool"],
+                "test_tool": ["web_research_tool", "web_research"],
+                "pdf_generator": ["pdf_tool", "document_generator"],
+                "pdf_tool": ["pdf_generator", "document_generator"],
+                "document_generator": ["content_tool", "pdf_generator"],
+                "ocr": ["ocr_tool"],
+                "ocr_tool": ["ocr"],
+                "file_explorer": ["file_manager_tool"],
+            }
+
+            if registry is not None:
+                # 1. First search registry for prioritized compatible tools
+                preferred = compat_candidates.get(orig_tool, [])
+                candidates = []
+                for cand_name in preferred:
+                    t = registry.get(cand_name)
+                    if t and t.status in (ToolState.READY, ToolState.INSTALLED) and t.health != ToolHealth.FAILED:
+                        candidates.append(cand_name)
+
+                # 2. Also search other ready tools in registry if no preferred found
+                if not candidates:
+                    for t in registry.list_all():
+                        if t.name != orig_tool and t.status in (ToolState.READY, ToolState.INSTALLED) and t.health != ToolHealth.FAILED:
+                            candidates.append(t.name)
+
+                # 3. Check monotonic risk and permission constraints for candidate tools
+                for cand_name in candidates:
+                    cand_inputs = copy.deepcopy(getattr(task_obj, "inputs", None) or {})
+                    cand_risk = SafeExecutionPolicy.classify_risk(cand_name, cand_inputs)
+                    cand_decision = SafeExecutionPolicy.evaluate(
+                        action=cand_name,
+                        mode=exec_mode,
+                        context=SafeExecutionPolicy.sanitize_context(cand_inputs, action=cand_name),
+                    )
+                    # Candidate must pass permission policy and never exceed original risk
+                    if cand_decision.allowed and (orig_risk is None or risk_rank(cand_risk) <= risk_rank(orig_risk)):
+                        alt_tool = cand_name
+                        break
             else:
+                # Fallback candidate when no registry is provided
+                fallback_preferred = compat_candidates.get(orig_tool, ["web_research_tool", "web_research"])
+                for cand_name in fallback_preferred:
+                    cand_inputs = copy.deepcopy(getattr(task_obj, "inputs", None) or {})
+                    cand_risk = SafeExecutionPolicy.classify_risk(cand_name, cand_inputs)
+                    cand_decision = SafeExecutionPolicy.evaluate(
+                        action=cand_name,
+                        mode=exec_mode,
+                        context=SafeExecutionPolicy.sanitize_context(cand_inputs, action=cand_name),
+                    )
+                    if cand_decision.allowed and (orig_risk is None or risk_rank(cand_risk) <= risk_rank(orig_risk)):
+                        alt_tool = cand_name
+                        break
+
+            if alt_tool is not None:
+                alt_inputs = copy.deepcopy(getattr(task_obj, "inputs", None) or {})
+                alt_risk = SafeExecutionPolicy.classify_risk(alt_tool, alt_inputs)
                 alt_risk_str = getattr(alt_risk, "value", str(alt_risk))
-            orig_task_perms = list(getattr(task_obj, "permissions", None) or [])
-            alt_task = Task(
-                task_id=uuid4(),
-                workflow_id=task_obj.workflow_id,
-                task_name=f"{task_obj.task_name} (Recovered)",
-                description=task_obj.description,
-                required_tool=alt_tool,
-                category=task_obj.category,
-                expected_output=task_obj.expected_output,
-                permissions=orig_task_perms,
-                risk_level=alt_risk_str,
-                inputs=alt_inputs,
-                retry_count=getattr(task_obj, "retry_count", 0) + 1,
-            )
-            plan.replacement_tasks = [alt_task]
+                orig_task_perms = list(getattr(task_obj, "permissions", None) or [])
+                alt_task = Task(
+                    task_id=uuid4(),
+                    workflow_id=task_obj.workflow_id,
+                    task_name=f"{task_obj.task_name} (Recovered)",
+                    description=task_obj.description,
+                    required_tool=alt_tool,
+                    category=task_obj.category,
+                    expected_output=task_obj.expected_output,
+                    permissions=orig_task_perms,
+                    risk_level=alt_risk_str,
+                    inputs=alt_inputs,
+                    retry_count=getattr(task_obj, "retry_count", 0) + 1,
+                )
+                plan.replacement_tasks = [alt_task]
+                plan.strategy_name = "ALTERNATIVE_TOOL"
+            else:
+                # No safe substitute adapter available; mark non-viable
+                plan.replacement_tasks = []
+                plan.is_viable = False
+                plan.strategy_name = "ESCALATE_USER"
 
         is_valid, _ = validate_recovery_plan(
             plan,
