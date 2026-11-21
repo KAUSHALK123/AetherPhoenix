@@ -28,6 +28,7 @@ from app.core.events.bus import EventBus
 from app.core.logging import get_logger
 from app.core.permissions.models import ExecutionMode
 from app.core.permissions.policies import evaluate_task_risk_and_permissions
+from app.core.tracing import record_trace
 from app.runtime.interfaces import AgentRegistration, BaseAgent
 
 logger = get_logger(__name__)
@@ -194,6 +195,8 @@ class SelfHealingLoop(BaseAgent):
             f"(Workflow: {workflow_id}, Attempt #{attempt_number})"
         )
 
+        record_trace("failure_detected", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
+
         self._set_task_state(workflow_id, task_id, HealingState.ANALYZING)
         await self._emit_healing_event(
             EventType.HEALING_STARTED,
@@ -206,7 +209,16 @@ class SelfHealingLoop(BaseAgent):
             },
         )
 
+        # Stage 1: Error Parsing
+        record_trace("stage1_error_parsing_start", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
         parsed_error: ParsedError = self.error_parser.parse(failure_input, task=task)
+        record_trace(
+            "stage1_error_parsing_end",
+            workflow_id=workflow_id,
+            task_id=task_id,
+            attempt=attempt_number,
+            fault_class=parsed_error.category.value if hasattr(parsed_error.category, "value") else str(parsed_error.category),
+        )
         logger.info(
             f"Step 1/4 - Error Parser normalized failure: "
             f"code={parsed_error.normalized_code}, "
@@ -215,10 +227,19 @@ class SelfHealingLoop(BaseAgent):
 
         self._set_task_state(workflow_id, task_id, HealingState.PLANNING)
 
+        # Stage 2: Root Cause Analysis
+        record_trace("stage2_root_cause_analysis_start", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
         root_cause: RootCauseAnalysis = self.root_cause_analyzer.analyze(
             parsed_error=parsed_error,
             task=task,
             state=state,
+        )
+        record_trace(
+            "stage2_root_cause_analysis_end",
+            workflow_id=workflow_id,
+            task_id=task_id,
+            attempt=attempt_number,
+            fault_class=root_cause.category.value if hasattr(root_cause.category, "value") else str(root_cause.category),
         )
         logger.info(
             f"Step 2/4 - Root Cause Analyzer result: "
@@ -236,6 +257,8 @@ class SelfHealingLoop(BaseAgent):
         )
         baseline = (orig_risk, orig_perms)
 
+        # Stage 3: Strategy Selection / Planning
+        record_trace("stage3_strategy_selection_start", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
         plan: RecoveryPlan = self.recovery_planner.plan(
             root_cause=root_cause,
             task=task,
@@ -243,6 +266,7 @@ class SelfHealingLoop(BaseAgent):
             max_healing_attempts=self.max_healing_attempts,
             mode=exec_mode,
         )
+        record_trace("stage3_strategy_selection_end", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
         logger.info(
             f"Step 3/4 - Recovery Planner strategy: "
             f"{plan.strategy.value}, executable={plan.is_executable}"
@@ -335,13 +359,15 @@ class SelfHealingLoop(BaseAgent):
 
             return result
 
-        # Enforce parameter-aware & monotonic privilege invariance on recovery plan
+        # Stage 4: Plan Validation
+        record_trace("stage4_plan_validation_start", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
         is_plan_valid, val_errors = validate_recovery_plan(
             plan,
             original_task=task,
             mode=exec_mode,
             original_baseline=baseline,
         )
+        record_trace("stage4_plan_validation_end", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
         if not is_plan_valid or not plan.is_viable:
             sec_reason = (
                 "; ".join(val_errors)
@@ -414,6 +440,8 @@ class SelfHealingLoop(BaseAgent):
         else:
             self._set_task_state(workflow_id, task_id, HealingState.RETRYING)
 
+        # Stage 5: Recovery Execution
+        record_trace("stage5_recovery_execution_start", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
         result = await self.retry_engine.execute_recovery(
             plan=plan,
             task=task,
@@ -421,6 +449,7 @@ class SelfHealingLoop(BaseAgent):
             root_cause=root_cause,
             attempt_number=attempt_number,
         )
+        record_trace("stage5_recovery_execution_end", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
 
         state.healing_history.append(result)
 
