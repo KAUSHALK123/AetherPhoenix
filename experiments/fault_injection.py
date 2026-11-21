@@ -87,6 +87,12 @@ class FaultInjector:
                 error_message="Subprocess returned non-zero exit status 1: Command failed in adapter",
                 is_recoverable=True,
             )
+        elif fault_class in ("TOOL_UNAVAILABLE", "TOOL_NOT_FOUND"):
+            err = TaskError(
+                error_code="TOOL_UNAVAILABLE",
+                error_message="ToolUnavailableException: browser_tool is not registered or unavailable on host",
+                is_recoverable=True,
+            )
         elif fault_class in ("INVALID_ACTION", "PERMISSION_DENIED"):
             err = TaskError(
                 error_code="PERMISSION_DENIED",
@@ -136,6 +142,10 @@ class FaultInjector:
                 )
             except Exception as e:
                 return e
+
+        elif fault_class in ("TOOL_UNAVAILABLE", "TOOL_NOT_FOUND"):
+            from app.core.exceptions import ToolNotFoundException
+            return ToolNotFoundException("ToolNotFoundException: browser_tool is not registered or unavailable on host")
 
         elif fault_class in ("INVALID_ACTION", "PERMISSION_DENIED"):
             temp_file = None

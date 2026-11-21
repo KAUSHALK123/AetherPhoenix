@@ -112,3 +112,27 @@ Prior to the bug fixes, git state was tagged `pre-bugfix` at commit `a049c412b87
 - **B2 (`retry_engine.py`):** In `can_retry()`, allowed missing directory/file infrastructure subtypes (`OUTPUT_DIRECTORY_MISSING`, `FILE_NOT_FOUND`, `FILE_OR_DIRECTORY_NOT_FOUND`) to be recoverable so that directory auto-creation can proceed, while keeping all other infrastructure subtypes blocked as non-recoverable. Additionally re-evaluates `evaluate_task_risk_and_permissions(task, mode=exec_mode)` before approving retries whenever `permission_manager` is attached.
 - **B3 (`root_cause_analyzer.py`):** Evaluates permission and security signals (`_inspect_permissions_and_security`) before inspecting filesystem and path existence. If a permission violation is detected, path inspection is bypassed and `PERMISSION_DENIED` is assigned with high confidence (0.98), preventing permission-denied tasks on non-existent directories from being misdiagnosed as missing directories.
 
+---
+
+## 5. Checkpoint 4 Audit: Tool/Adapter Discrepancy & B2 Safety Tests
+
+### 5.1 Tool/Adapter Harness Injection vs Real Adapter Emissions
+The original evaluation harness code for the Tool/Adapter Failure class injected `error_code="COMMAND_FAILED"`. However, inspection of the real adapter implementations (`backend/app/tools/**/adapter.py`) reveals that real tool adapters emit specific structured exceptions and error codes:
+- Core tool exceptions: `ToolNotFoundException(code="TOOL_NOT_FOUND")`, `ToolExecutionException(code="TOOL_EXECUTION_ERROR")`
+- Browser adapter: `ToolExecutionException(code="BROWSER_EXTENSION_ERROR")`
+- Terminal adapter: `ToolExecutionException(code="TERMINAL_COMMAND_FAILED")`, `TERMINAL_EXECUTION_ERROR`
+- Git adapter: `ToolExecutionException(code="GIT_COMMAND_FAILED")`, `GIT_EXECUTION_ERROR`
+- PPT adapter: `ToolExecutionException(code="PPT_GENERATION_FAILED")`
+- Web research adapter: `ToolExecutionException(code="WEB_RESEARCH_FAILED")`
+- Web scraping adapter: `ToolExecutionException(code="SCRAPING_FAILED")`
+- Unregistered / unserviceable tools: `TOOL_UNAVAILABLE`
+
+**Diagnosis and Planning Behavior:**
+Because `COMMAND_FAILED` was unmapped by `ErrorParser._classify()`, it was assigned `category=UNKNOWN` (confidence 0.30), which bug fix B1 correctly rejects as `NO_VIABLE_RECOVERY` (0/25 recovered). In contrast, real tool unavailable exceptions (`TOOL_UNAVAILABLE`, `ToolNotFoundException`) are mapped to `TOOL` and can trigger adapter substitution in `RecoveryPlanner`. Per instruction 1.c, the benchmark harness now evaluates both sub-classes (`COMMAND_FAILED` and `TOOL_UNAVAILABLE`) separately without altering rules.
+
+### 5.2 B2 Safety Verification (Protected Directory Rejection)
+Missing Resource recovery creates missing paths via `CREATE_DIRECTORY`. Dedicated tests were implemented to guarantee that paths in protected locations (e.g., `C:\Windows\System32\...`, `/etc/...`) or outside permitted workspace directories are rejected:
+- `test_missing_resource_protected_path_rejected_by_plan_validation`: Verifies `SafeExecutionPolicy` rejects protected paths during plan validation (`plan.is_viable is False`, `validation_status="INVALID"`), and confirms zero directories are created on disk.
+- `test_missing_resource_outside_workspace_rejected_and_never_created`: Verifies `FileSystemExecutor` raises `ValueError` on paths outside the workspace boundary, and end-to-end `SelfHealingLoop` aborts recovery before file-system creation.
+
+
