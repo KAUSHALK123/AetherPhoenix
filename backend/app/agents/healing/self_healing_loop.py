@@ -78,7 +78,32 @@ class SelfHealingLoop(BaseAgent):
         )
         self.max_retries = max_retries
         self.max_healing_attempts = max_healing_attempts
-        self.current_state: HealingState = HealingState.IDLE
+        self._default_state: HealingState = HealingState.IDLE
+        self._task_states: Dict[Tuple[UUID, UUID], HealingState] = {}
+
+    @property
+    def current_state(self) -> HealingState:
+        """Backward-compatible property returning the global/most recent healing state."""
+        return self._default_state
+
+    @current_state.setter
+    def current_state(self, state: HealingState) -> None:
+        self._default_state = state
+
+    def get_task_state(
+        self, workflow_id: Optional[UUID] = None, task_id: Optional[UUID] = None
+    ) -> HealingState:
+        """Returns the isolated lifecycle state for a specific task failure."""
+        if workflow_id is not None and task_id is not None:
+            return self._task_states.get((workflow_id, task_id), self._default_state)
+        return self._default_state
+
+    def _set_task_state(
+        self, workflow_id: UUID, task_id: UUID, state: HealingState
+    ) -> None:
+        """Sets the isolated lifecycle state for a specific task failure."""
+        self._task_states[(workflow_id, task_id)] = state
+        self._default_state = state
 
     @property
     def registration(self) -> AgentRegistration:
@@ -169,7 +194,7 @@ class SelfHealingLoop(BaseAgent):
             f"(Workflow: {workflow_id}, Attempt #{attempt_number})"
         )
 
-        self.current_state = HealingState.ANALYZING
+        self._set_task_state(workflow_id, task_id, HealingState.ANALYZING)
         await self._emit_healing_event(
             EventType.HEALING_STARTED,
             workflow_id=workflow_id,
@@ -177,7 +202,7 @@ class SelfHealingLoop(BaseAgent):
             payload={
                 "task_name": task.task_name,
                 "attempt_number": attempt_number,
-                "state": self.current_state.value,
+                "state": self.get_task_state(workflow_id, task_id).value,
             },
         )
 
@@ -188,7 +213,7 @@ class SelfHealingLoop(BaseAgent):
             f"category={parsed_error.category.value}"
         )
 
-        self.current_state = HealingState.PLANNING
+        self._set_task_state(workflow_id, task_id, HealingState.PLANNING)
 
         root_cause: RootCauseAnalysis = self.root_cause_analyzer.analyze(
             parsed_error=parsed_error,
@@ -238,11 +263,12 @@ class SelfHealingLoop(BaseAgent):
             )
             if hasattr(plan, "replacement_tasks"):
                 plan.replacement_tasks = []
-            self.current_state = (
+            st = (
                 HealingState.EXHAUSTED
                 if "limit" in reason.lower()
                 else HealingState.FAILED
             )
+            self._set_task_state(workflow_id, task_id, st)
             rc_cat = (
                 root_cause.category.value
                 if hasattr(root_cause.category, "value")
@@ -330,7 +356,7 @@ class SelfHealingLoop(BaseAgent):
             )
             plan.is_viable = False
             plan.replacement_tasks = []
-            self.current_state = HealingState.ESCALATED
+            self._set_task_state(workflow_id, task_id, HealingState.ESCALATED)
             rc_cat = (
                 root_cause.category.value
                 if hasattr(root_cause.category, "value")
@@ -384,9 +410,9 @@ class SelfHealingLoop(BaseAgent):
             return result
 
         if plan.replacement_tasks:
-            self.current_state = HealingState.GENERATING_TASKS
+            self._set_task_state(workflow_id, task_id, HealingState.GENERATING_TASKS)
         else:
-            self.current_state = HealingState.RETRYING
+            self._set_task_state(workflow_id, task_id, HealingState.RETRYING)
 
         result = await self.retry_engine.execute_recovery(
             plan=plan,
@@ -399,7 +425,7 @@ class SelfHealingLoop(BaseAgent):
         state.healing_history.append(result)
 
         if result.success:
-            self.current_state = HealingState.COMPLETED
+            self._set_task_state(workflow_id, task_id, HealingState.COMPLETED)
             logger.info(f"SelfHealingLoop successfully recovered task {task_id}.")
             await self._emit_healing_event(
                 EventType.HEALING_COMPLETED,
@@ -412,7 +438,7 @@ class SelfHealingLoop(BaseAgent):
                 },
             )
         else:
-            self.current_state = HealingState.FAILED
+            self._set_task_state(workflow_id, task_id, HealingState.FAILED)
             logger.error(f"SelfHealingLoop recovery failed for task {task_id}.")
             await self._emit_healing_event(
                 EventType.HEALING_FAILED,

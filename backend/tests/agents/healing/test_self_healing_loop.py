@@ -193,3 +193,19 @@ async def test_alternative_tool_recovery(healing_loop, workflow_state):
     rep = result.replacement_tasks[0]
     assert rep.required_tool == "web_research_tool"
     assert rep.task_id in workflow_state.execution_queue
+
+
+@pytest.mark.anyio
+async def test_concurrent_per_task_state_isolation(healing_loop, workflow_state):
+    """Verifies that SelfHealingLoop maintains isolated state per task (U1)."""
+    t1 = create_failed_task(workflow_state.metadata.workflow_id)
+    t2 = create_failed_task(workflow_state.metadata.workflow_id)
+
+    healing_loop._set_task_state(t1.workflow_id, t1.task_id, HealingState.ANALYZING)
+    healing_loop._set_task_state(t2.workflow_id, t2.task_id, HealingState.PLANNING)
+
+    assert healing_loop.get_task_state(t1.workflow_id, t1.task_id) == HealingState.ANALYZING
+    assert healing_loop.get_task_state(t2.workflow_id, t2.task_id) == HealingState.PLANNING
+
+    # Public API property preserves last set state
+    assert healing_loop.current_state == HealingState.PLANNING
