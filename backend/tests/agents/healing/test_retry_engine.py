@@ -378,3 +378,39 @@ async def test_retry_events_emitted(event_bus, retry_engine, sample_state, sampl
     assert EventType.HEALING_STARTED in event_types
     assert EventType.TASK_RETRIED in event_types
     assert EventType.HEALING_COMPLETED in event_types
+
+
+@pytest.mark.asyncio
+async def test_concurrent_failure_signature_counts_concurrency():
+    """Unit test for U2: 100 concurrent identical failures give the same counts as sequential processing."""
+    import asyncio
+    engine_concurrent = RetryEngine()
+    engine_sequential = RetryEngine()
+
+    wf_id = uuid4()
+    t_id = uuid4()
+    sig = "NETWORK_ERROR:Connection refused"
+
+    # Sequential processing of 100 identical failures
+    for _ in range(100):
+        engine_sequential.record_failure_signature(wf_id, t_id, sig)
+
+    # Concurrent processing of 100 identical failures
+    async def record_task():
+        await asyncio.sleep(0.0001)  # introduce event loop switching
+        return engine_concurrent.record_failure_signature(wf_id, t_id, sig)
+
+    await asyncio.gather(*(record_task() for _ in range(100)))
+
+    # Verify counts match exactly
+    seq_count = engine_sequential.get_failure_signature_count(wf_id, t_id, sig)
+    conc_count = engine_concurrent.get_failure_signature_count(wf_id, t_id, sig)
+
+    assert seq_count == 100
+    assert conc_count == 100
+    assert conc_count == seq_count
+
+    # Also test isolation: a different task_id in same workflow or different workflow has 0 count
+    t_id_other = uuid4()
+    assert engine_concurrent.get_failure_signature_count(wf_id, t_id_other, sig) == 0
+

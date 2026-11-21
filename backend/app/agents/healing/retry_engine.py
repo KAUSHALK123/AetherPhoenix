@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
@@ -92,7 +93,30 @@ class RetryEngine:
         self.reexecution_manager = reexecution_manager or WorkerReexecutionManager()
 
         # Used to prevent repeatedly attempting the exact same recovery.
+        # Keyed by (workflow_id, task_id, signature) for safe concurrency
         self._failure_signature_counts: Dict[Tuple[str, str, str], int] = {}
+        self._lock: Optional[asyncio.Lock] = None
+
+    def _get_lock(self) -> asyncio.Lock:
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
+
+    def record_failure_signature(
+        self, workflow_id: Any, task_id: Any, signature: str
+    ) -> int:
+        """Atomically records and increments the failure signature count (safe read-modify-write)."""
+        key = (str(workflow_id), str(task_id), str(signature))
+        current = self._failure_signature_counts.get(key, 0) + 1
+        self._failure_signature_counts[key] = current
+        return current
+
+    def get_failure_signature_count(
+        self, workflow_id: Any, task_id: Any, signature: str
+    ) -> int:
+        """Retrieves current failure count for a specific (workflow_id, task_id, signature)."""
+        key = (str(workflow_id), str(task_id), str(signature))
+        return self._failure_signature_counts.get(key, 0)
 
     def calculate_backoff_delay(
         self,
@@ -203,18 +227,19 @@ class RetryEngine:
             logger.info(msg)
             return False, msg
 
-        # 3. Infinite-loop protection.
+        # 3. Infinite-loop protection keyed by (workflow_id, task_id, signature)
         signature = (
+            str(getattr(task, "workflow_id", "")),
             str(task.task_id),
-            root_cause_category,
-            root_cause_summary,
+            f"{root_cause_category}:{root_cause_summary}",
         )
 
         current_count = self._failure_signature_counts.get(signature, 0)
         matching_counts = [
             count
-            for (t_id, _, _), count in self._failure_signature_counts.items()
-            if t_id == str(task.task_id)
+            for key, count in self._failure_signature_counts.items()
+            if (isinstance(key, tuple) and len(key) == 3 and key[0] == str(getattr(task, "workflow_id", "")) and key[1] == str(task.task_id))
+            or (isinstance(key, tuple) and len(key) == 3 and key[0] == str(task.task_id))
         ]
 
         if current_count >= 3 or (matching_counts and max(matching_counts) >= 3):
@@ -719,15 +744,11 @@ class RetryEngine:
                 message=reason,
             )
 
-        # Record the failure signature.
-        signature = (
-            str(task.task_id),
-            root_cause_category,
-            root_cause_summary,
-        )
-
-        self._failure_signature_counts[signature] = (
-            self._failure_signature_counts.get(signature, 0) + 1
+        # Record the failure signature keyed by (workflow_id, task_id, signature).
+        self.record_failure_signature(
+            getattr(task, "workflow_id", request.workflow_id),
+            task.task_id,
+            f"{root_cause_category}:{root_cause_summary}",
         )
 
         # Calculate backoff.
@@ -1026,12 +1047,12 @@ class RetryEngine:
                 ),
             )
             signature = (
+                str(getattr(task, "workflow_id", "")),
                 str(task.task_id),
-                root_cause_category,
-                desc,
+                f"{root_cause_category}:{desc}",
             )
             wf_task_key = (
-                str(task.workflow_id),
+                str(getattr(task, "workflow_id", "")),
                 str(getattr(task, "task_name", "")),
                 "WORKFLOW_TASK_LIMIT",
             )
@@ -1040,8 +1061,9 @@ class RetryEngine:
             wf_prior_count = self._failure_signature_counts.get(wf_task_key, 0)
             matching_counts = [
                 count
-                for (t_id, cat, _), count in self._failure_signature_counts.items()
-                if t_id == str(task.task_id) and cat == root_cause_category
+                for key, count in self._failure_signature_counts.items()
+                if (isinstance(key, tuple) and len(key) == 3 and key[0] == str(getattr(task, "workflow_id", "")) and key[1] == str(task.task_id) and root_cause_category in key[2])
+                or (isinstance(key, tuple) and len(key) == 3 and key[0] == str(task.task_id) and key[1] == root_cause_category)
             ]
             if (
                 prior_count >= 3
@@ -1065,6 +1087,7 @@ class RetryEngine:
                     success=False,
                 )
 
+            # Atomic read-modify-write without intervening await
             self._failure_signature_counts[signature] = prior_count + 1
             self._failure_signature_counts[wf_task_key] = wf_prior_count + 1
 
