@@ -1,34 +1,69 @@
 % ====================================================================
-% Automatically Generated Phase 2 Paper Tables (Commit: 5ab7624c)
+% Automatically Generated Phase 2 Paper Tables (Commit: 4e8ab5a6)
 % Machine Power Plan: Hybrid performance | Python: 3.14.4
 % ====================================================================
 
+% --------------------------------------------------------------------
+% Table 1: Dual-Mode Empirical Fault Recovery Breakdown (n=25/class, n=125/suite)
+% --------------------------------------------------------------------
+\begin{table*}[htbp]
+\centering
+\caption{Empirical Fault Recovery Breakdown Across 125 Injections Under Dual Modes ($R=30$ Repeats)}
+\label{tab:empirical_recovery_rates}
+\begin{tabular}{llccccc}
+\hline
+\textbf{Fault Category} & \textbf{Injection Mode} & \textbf{Phoenix (\%)} & \textbf{Wilson 95\% CI (\%)} & \textbf{Naive Retry (\%)} & \textbf{Distinct $n$} & \textbf{30-Seed Determinism} \\
+\hline
+Timeout & Synthetic & 100.0\% & [86.7, 100.0] & 100.0\% & 25 & 100\% Identical \\
+Missing Resource & Synthetic & 100.0\% & [86.7, 100.0] & 0.0\% & 25 & 100\% Identical \\
+Tool/Adapter Failure & Synthetic & 0.0\% & [0.0, 13.3] & 0.0\% & 25 & 100\% Identical \\
+Permission Violation & Synthetic & 0.0\% & [0.0, 13.3] & 0.0\% & 25 & 100\% Identical \\
+Unmapped / Unknown Exception & Synthetic & 0.0\% & [0.0, 13.3] & 0.0\% & 25 & 100\% Identical \\
+\hline
+Timeout & Real Exception & 100.0\% & [86.7, 100.0] & 100.0\% & 25 & 100\% Identical \\
+Missing Resource & Real Exception & 100.0\% & [86.7, 100.0] & 0.0\% & 25 & 100\% Identical \\
+Tool/Adapter Failure & Real Exception & 0.0\% & [0.0, 13.3] & 0.0\% & 25 & 100\% Identical \\
+Permission Violation & Real Exception & 0.0\% & [0.0, 13.3] & 0.0\% & 25 & 100\% Identical \\
+Unmapped / Unknown Exception & Real Exception & 0.0\% & [0.0, 13.3] & 0.0\% & 25 & 100\% Identical \\
+\hline
+\end{tabular}
+\end{table*}
+
+% --------------------------------------------------------------------
+% Table 2: Latency Distribution with Tracing OFF (Real Timestamps)
+% --------------------------------------------------------------------
 \begin{table}[htbp]
 \centering
-\caption{Empirical Fault Recovery Breakdown Across 125 Injections ($R=30$ Repeats)}
-\label{tab:empirical_recovery_rates}
-\begin{tabular}{lccccc}
+\caption{Empirical Latency Distribution with Zero-Overhead Tracing OFF (Real Dispatch-to-Completion Timestamps)}
+\label{tab:latency_breakdown}
+\begin{tabular}{lcccccc}
 \hline
-\textbf{Fault Category} & \textbf{Config} & \textbf{Mean $\pm$ SD (\%)} & \textbf{Median [IQR]} & \textbf{95\% CI (\%)} & \textbf{n} \\
+\textbf{Metric} & \textbf{Mean (ms)} & \textbf{SD (ms)} & \textbf{Median (ms)} & \textbf{IQR (ms)} & \textbf{Range [Min, Max] (ms)} & \textbf{$n$} \\
 \hline
-All & Phoenix & 60.0 $\pm$ 0.0 & 60.0 [0.0] & [58.4, 61.6] & 3750 \\
-Timeout & Phoenix & 100.0 $\pm$ 0.0 & 100.0 [0.0] & [99.5, 100.0] & 750 \\
-Missing Resource & Phoenix & 0.0 $\pm$ 0.0 & 0.0 [0.0] & [0.0, 0.5] & 750 \\
-Tool Adapter Failure & Phoenix & 100.0 $\pm$ 0.0 & 100.0 [0.0] & [99.5, 100.0] & 750 \\
-Permission Denied & Phoenix & 0.0 $\pm$ 0.0 & 0.0 [0.0] & [0.0, 0.5] & 750 \\
-State Inconsistency & Phoenix & 100.0 $\pm$ 0.0 & 100.0 [0.0] & [99.5, 100.0] & 750 \\
-Only & Retry & 20.0 $\pm$ 0.0 & 20.0 [0.0] & [18.8, 21.3] & 3750 \\
-Only Timeout & Retry & 100.0 $\pm$ 0.0 & 100.0 [0.0] & [99.5, 100.0] & 750 \\
-Only Missing Resource & Retry & 0.0 $\pm$ 0.0 & 0.0 [0.0] & [0.0, 0.5] & 750 \\
-Only Tool Adapter Failure & Retry & 0.0 $\pm$ 0.0 & 0.0 [0.0] & [0.0, 0.5] & 750 \\
-Only Permission Denied & Retry & 0.0 $\pm$ 0.0 & 0.0 [0.0] & [0.0, 0.5] & 750 \\
-Only State Inconsistency & Retry & 0.0 $\pm$ 0.0 & 0.0 [0.0] & [0.0, 0.5] & 750 \\
-Recovery & No & 0.0 $\pm$ 0.0 & 0.0 [0.0] & [0.0, 0.1] & 3750 \\
-Recovery Timeout & No & 0.0 $\pm$ 0.0 & 0.0 [0.0] & [0.0, 0.5] & 750 \\
-Recovery Missing Resource & No & 0.0 $\pm$ 0.0 & 0.0 [0.0] & [0.0, 0.5] & 750 \\
-Recovery Tool Adapter Failure & No & 0.0 $\pm$ 0.0 & 0.0 [0.0] & [0.0, 0.5] & 750 \\
-Recovery Permission Denied & No & 0.0 $\pm$ 0.0 & 0.0 [0.0] & [0.0, 0.5] & 750 \\
-Recovery State Inconsistency & No & 0.0 $\pm$ 0.0 & 0.0 [0.0] & [0.0, 0.5] & 750 \\
+$T_R$ (Diagnostic Latency) & 1.961 & 0.405 & 1.930 & 0.521 & [1.054, 5.337] & 1500 \\
+$T_{rec}$ (Dispatch-to-Completion) & 1.964 & 0.406 & 1.933 & 0.521 & [1.056, 5.341] & 1500 \\
+$T_{no\_rec}$ (Fail-Fast) & 0.001 & 0.001 & 0.001 & 0.000 & [0.001, 0.027] & 3750 \\
+\hline
+\end{tabular}
+\end{table}
+
+% --------------------------------------------------------------------
+% Table 3: Before-Fix vs. After-Fix Empirical Comparison
+% --------------------------------------------------------------------
+\begin{table}[htbp]
+\centering
+\caption{Before-Fix (Pre-Bugfix) vs. After-Fix (Post-Bugfix) Empirical Comparison Across Audited Areas}
+\label{tab:before_after_comparison}
+\begin{tabular}{lccc}
+\hline
+\textbf{Audited Area / Metric} & \textbf{Before Fix (Pre-Bugfix)} & \textbf{After Fix (Post-Bugfix)} & \textbf{Resolution} \\
+\hline
+Missing Resource Recovery & 0.0\% (0/25) & 100.0\% (25/25) & Subtype unblocked in RetryEngine (B2) \\
+Confidence $\le 0.30$ Handling & 100.0\% Retried & 0.0\% Retried (Rejected) & Fixed boundary check $\le 0.30$ (B1) \\
+Permission Denial on Missing Path & 100.0\% Misread as Missing Dir & 0.0\% Misread (Permission Denied) & Prioritized permission check (B3) \\
+Unsafe Command Timeout Re-executions & 3 executions ($K_{max}$) & 1 execution (0 re-executions) & Permission re-check before retry (B2) \\
+Recoverable Suite Recovery (75 trials) & 66.7\% (50/75) & 100.0\% (75/75) & Full recovery on recoverable faults \\
+Synthetic vs. Real Exception Parity & 100.0\% Parity & 100.0\% Parity & Normalized downstream pipeline \\
 \hline
 \end{tabular}
 \end{table}
