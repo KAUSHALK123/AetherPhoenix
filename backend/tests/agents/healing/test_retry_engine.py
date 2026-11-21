@@ -414,3 +414,41 @@ async def test_concurrent_failure_signature_counts_concurrency():
     t_id_other = uuid4()
     assert engine_concurrent.get_failure_signature_count(wf_id, t_id_other, sig) == 0
 
+
+@pytest.mark.asyncio
+async def test_infrastructure_subtype_recoverability_b2(retry_engine, sample_state, sample_task):
+    """Unit test for B2: only OUTPUT_DIRECTORY_MISSING / FILE_NOT_FOUND is recoverable under INFRASTRUCTURE."""
+    # 1. Allowed subtype: OUTPUT_DIRECTORY_MISSING -> retry permitted
+    allowed, msg = retry_engine.can_retry(
+        task=sample_task,
+        state=sample_state,
+        root_cause_category="INFRASTRUCTURE",
+        root_cause_summary="OUTPUT_DIRECTORY_MISSING: missing target dir",
+        is_recoverable=False,  # Even if marked non-recoverable by generic logic, allowed subtype is recoverable
+    )
+    assert allowed is True
+    assert "permitted" in msg.lower()
+
+    # 2. Allowed subtype: FILE_NOT_FOUND -> retry permitted
+    allowed_fnf, msg_fnf = retry_engine.can_retry(
+        task=sample_task,
+        state=sample_state,
+        root_cause_category="INFRASTRUCTURE",
+        root_cause_summary="FILE_NOT_FOUND: target file does not exist",
+        is_recoverable=False,
+    )
+    assert allowed_fnf is True
+    assert "permitted" in msg_fnf.lower()
+
+    # 3. Disallowed subtype under INFRASTRUCTURE: DISK_FAILURE -> blocked
+    disallowed, msg_dis = retry_engine.can_retry(
+        task=sample_task,
+        state=sample_state,
+        root_cause_category="INFRASTRUCTURE",
+        root_cause_summary="DISK_HARDWARE_CORRUPTION",
+        is_recoverable=True,  # Even if initially True, disallowed infra is blocked
+    )
+    assert disallowed is False
+    assert "non-recoverable" in msg_dis.lower()
+
+

@@ -198,6 +198,21 @@ class RetryEngine:
             logger.info(msg)
             return False, msg
 
+        # Permission re-check before retry
+        if self.permission_manager is not None:
+            exec_mode = (
+                getattr(getattr(state, "metadata", None), "execution_mode", None)
+                or getattr(self.permission_manager, "mode", None)
+                or ExecutionMode.SAFE
+            )
+            _, _, cand_decision, _ = evaluate_task_risk_and_permissions(
+                task, mode=exec_mode
+            )
+            if not cand_decision.allowed:
+                msg = f"Task {task.task_id} failed permission policy: {cand_decision.reason}"
+                logger.warning(msg)
+                return False, msg
+
         limit_retries = (
             max_retries if max_retries is not None else self.default_max_retries
         )
@@ -251,7 +266,24 @@ class RetryEngine:
             return False, msg
 
         # 4. Root-cause recoverability.
-        if not is_recoverable and not has_replacements:
+        if cat_upper == "INFRASTRUCTURE":
+            is_allowed_infra = any(
+                sub in sum_upper or sub in cat_upper
+                for sub in (
+                    "OUTPUT_DIRECTORY_MISSING",
+                    "FILE_NOT_FOUND",
+                    "FILE_OR_DIRECTORY_NOT_FOUND",
+                )
+            )
+            if not is_allowed_infra:
+                msg = f"Root cause '{root_cause_category}' ({root_cause_summary}) is non-recoverable."
+                logger.info(msg)
+                return False, msg
+            effective_recoverable = True
+        else:
+            effective_recoverable = is_recoverable
+
+        if not effective_recoverable and not has_replacements:
             msg = f"Root cause '{root_cause_category}' is non-recoverable."
             logger.info(msg)
             return False, msg
