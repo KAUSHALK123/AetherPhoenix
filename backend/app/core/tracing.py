@@ -1,7 +1,9 @@
 import json
 import os
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+
+_TRACE_BUFFER: List[Dict[str, Any]] = []
 
 
 def is_trace_enabled() -> bool:
@@ -22,15 +24,12 @@ def record_trace(
     extra: Optional[Dict[str, Any]] = None,
 ) -> Optional[Dict[str, Any]]:
     """
-    Records an opt-in nanosecond execution trace event.
+    Records an opt-in nanosecond execution trace event into an in-memory buffer.
+    Never performs disk I/O inside timed regions to prevent latency distortions.
     Trace fields: run_id, seed, config, workflow_id, task_id, fault_class, attempt, stage, timestamp_ns.
     """
     if not is_trace_enabled():
         return None
-
-    target_file = trace_file or os.environ.get(
-        "PHOENIX_TRACE_FILE", "experiments/results/trace.jsonl"
-    )
 
     try:
         seed_val = int(seed if seed is not None else os.environ.get("PHOENIX_SEED", 42))
@@ -50,14 +49,51 @@ def record_trace(
     }
     if extra:
         entry["extra"] = extra
+    if trace_file:
+        entry["_target_file"] = trace_file
 
+    _TRACE_BUFFER.append(entry)
+    return entry
+
+
+def get_trace_buffer() -> List[Dict[str, Any]]:
+    """Returns a copy of all trace events currently in memory."""
+    return list(_TRACE_BUFFER)
+
+
+def clear_trace_buffer() -> None:
+    """Clears all in-memory trace events."""
+    global _TRACE_BUFFER
+    _TRACE_BUFFER.clear()
+
+
+def flush_trace_buffer(trace_file: Optional[str] = None) -> int:
+    """
+    Flushes all buffered trace events to disk in a single batch I/O operation.
+    Must be called outside timed regions (e.g. after a trial completes).
+    Returns the number of events flushed.
+    """
+    global _TRACE_BUFFER
+    if not _TRACE_BUFFER:
+        return 0
+
+    target_file = trace_file or os.environ.get(
+        "PHOENIX_TRACE_FILE", "experiments/results/trace.jsonl"
+    )
+
+    count = len(_TRACE_BUFFER)
     try:
         dir_path = os.path.dirname(os.path.abspath(target_file))
         if dir_path:
             os.makedirs(dir_path, exist_ok=True)
         with open(target_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(entry) + "\n")
+            for item in _TRACE_BUFFER:
+                # Remove internal routing metadata if present
+                clean_item = {k: v for k, v in item.items() if not k.startswith("_")}
+                f.write(json.dumps(clean_item) + "\n")
     except Exception:
         pass
+    finally:
+        _TRACE_BUFFER.clear()
 
-    return entry
+    return count

@@ -35,6 +35,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 from experiments.fault_injection import FaultInjector
 from experiments.compute_trace_latencies import compute_latencies
+from app.core.tracing import flush_trace_buffer
 
 
 def get_git_commit_hash() -> str:
@@ -153,6 +154,8 @@ async def run_single_repeat(repeat_idx: int, seed: int, mode: str, output_dir: P
                 "root_cause": res.root_cause,
                 "strategy": res.recovery_strategy,
             })
+            # Flush buffered trace outside the timed recovery region
+            flush_trace_buffer(str(trace_path))
 
         ci_low, ci_high = wilson_score_interval(success_count, total_trials)
         class_stats[fc] = {

@@ -1,0 +1,22 @@
+{
+  "trials": 100,
+  "tracing_off_ms": {
+    "mean": 1.895805,
+    "median": 1.92595,
+    "std": 0.46047477307819384,
+    "min": 1.1928,
+    "max": 4.3302,
+    "n": 100
+  },
+  "tracing_on_ms": {
+    "mean": 2.542978,
+    "median": 2.3537999999999997,
+    "std": 1.5143895357455945,
+    "min": 1.5312,
+    "max": 15.2782,
+    "n": 100
+  },
+  "delta_mean_ms": 0.6472,
+  "delta_median_ms": 0.4278,
+  "overhead_percent": 34.14
+}

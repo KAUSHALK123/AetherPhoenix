@@ -6,7 +6,13 @@ from uuid import uuid4
 
 import pytest
 from app.agents.healing.self_healing_loop import SelfHealingLoop
-from app.core.tracing import is_trace_enabled, record_trace
+from app.core.tracing import (
+    clear_trace_buffer,
+    flush_trace_buffer,
+    get_trace_buffer,
+    is_trace_enabled,
+    record_trace,
+)
 from shared.contracts.task import Task, TaskCategory, TaskPriority, TaskStatus
 from shared.contracts.workflow import SharedWorkflowState, WorkflowMetadata, WorkflowStatus
 
@@ -54,6 +60,15 @@ def test_tracing_records_all_required_fields(monkeypatch):
         assert isinstance(entry["timestamp_ns"], int)
         assert entry["timestamp_ns"] > 0
 
+        # Memory buffer holds entry before flush, file does not exist yet
+        assert len(get_trace_buffer()) == 1
+        assert not Path(trace_file).exists()
+
+        # Flush buffer to file outside timed region
+        flushed = flush_trace_buffer(trace_file)
+        assert flushed == 1
+        assert len(get_trace_buffer()) == 0
+
         # Check file content
         assert Path(trace_file).exists()
         lines = Path(trace_file).read_text(encoding="utf-8").splitlines()
@@ -92,6 +107,9 @@ async def test_self_healing_loop_tracing_integration(monkeypatch):
 
         loop = SelfHealingLoop()
         await loop.process_failure(task, "TimeoutException: Request timed out", state)
+
+        # Flush buffered events to disk
+        flush_trace_buffer(trace_file)
 
         # Check trace lines written
         assert Path(trace_file).exists()
