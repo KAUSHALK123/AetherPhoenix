@@ -20,3 +20,25 @@ Aggregate,Recoverable_Classes_Total,Rate_Over_75,75/75 (100.0%),50/75 (66.7%),25
 Aggregate,Non_Recoverable_Safe_Rejections,Rate_Over_50,50/50 (100.0%),50/50 (100.0%),0/50 (0.0%) [retried],50/50 (100.0%) [crashed],"[92.9%, 100.0%]",Permission Violation + Unmapped Exception safely rejected
 Aggregate,Overall_Rejections_Paper_Row,Rate_Over_125,50/125 (40.0%),75/125 (60.0%),0/125 (0.0%),125/125 (100.0%),"[51.2%, 68.2%]",Paper rejection row must be 75/125 (60.0%) when Tool/Adapter is rejected as COMMAND_FAILED
 Aggregate,Overall_Suite_Recovery,Rate_Over_125,75/125 (60.0%),50/125 (40.0%),25/125 (20.0%),0/125 (0.0%),"[51.2%, 68.2%]",All 125 distinct faults across 5 classes
+Scenario_S2_Real_Adapters,real_file_locked,Completion_Rate,0/10 (0.0%),N/A,N/A,N/A,N/A,Classified as PERMISSION; Latency mean=1.9532ms
+Scenario_S2_Real_Adapters,real_missing_path,Completion_Rate,0/10 (0.0%),N/A,N/A,N/A,N/A,Classified as PERMISSION; Latency mean=1.8105ms
+Scenario_S2_Real_Adapters,real_subprocess_timeout,Completion_Rate,10/10 (100.0%),N/A,N/A,N/A,N/A,Classified as RUNTIME; Latency mean=8.3855ms
+Scenario_S2_Real_Adapters,real_unreachable_browser_port,Completion_Rate,0/10 (0.0%),N/A,N/A,N/A,N/A,Classified as PERMISSION; Latency mean=2.0586ms
+Scenario_S2_Real_Adapters,real_readonly_directory,Completion_Rate,0/10 (0.0%),N/A,N/A,N/A,N/A,Classified as PERMISSION; Latency mean=2.7935ms
+Scenario_S3_Large_Workflows,10_task_linear_first,Workflow_Completion_Rate,25/25 (100.0%),N/A,N/A,N/A,N/A,"Retries=25, T_R mean=5.093ms, total_wf_time mean=5.1658ms"
+Scenario_S3_Large_Workflows,10_task_linear_middle,Workflow_Completion_Rate,25/25 (100.0%),N/A,N/A,N/A,N/A,"Retries=25, T_R mean=2.5161ms, total_wf_time mean=2.553ms"
+Scenario_S3_Large_Workflows,10_task_linear_last,Workflow_Completion_Rate,25/25 (100.0%),N/A,N/A,N/A,N/A,"Retries=25, T_R mean=2.228ms, total_wf_time mean=2.2542ms"
+Scenario_S3_Large_Workflows,10_task_branching_first,Workflow_Completion_Rate,25/25 (100.0%),N/A,N/A,N/A,N/A,"Retries=25, T_R mean=2.6111ms, total_wf_time mean=2.6435ms"
+Scenario_S3_Large_Workflows,10_task_branching_middle,Workflow_Completion_Rate,25/25 (100.0%),N/A,N/A,N/A,N/A,"Retries=25, T_R mean=2.9967ms, total_wf_time mean=3.03ms"
+Scenario_S3_Large_Workflows,10_task_branching_last,Workflow_Completion_Rate,25/25 (100.0%),N/A,N/A,N/A,N/A,"Retries=25, T_R mean=3.7061ms, total_wf_time mean=3.7408ms"
+Scenario_S3_Large_Workflows,20_task_linear_first,Workflow_Completion_Rate,25/25 (100.0%),N/A,N/A,N/A,N/A,"Retries=25, T_R mean=3.7125ms, total_wf_time mean=3.7694ms"
+Scenario_S3_Large_Workflows,20_task_linear_middle,Workflow_Completion_Rate,25/25 (100.0%),N/A,N/A,N/A,N/A,"Retries=25, T_R mean=3.3235ms, total_wf_time mean=3.3677ms"
+Scenario_S3_Large_Workflows,20_task_linear_last,Workflow_Completion_Rate,25/25 (100.0%),N/A,N/A,N/A,N/A,"Retries=25, T_R mean=4.2252ms, total_wf_time mean=4.2723ms"
+Scenario_S3_Large_Workflows,20_task_branching_first,Workflow_Completion_Rate,25/25 (100.0%),N/A,N/A,N/A,N/A,"Retries=25, T_R mean=4.1571ms, total_wf_time mean=4.216ms"
+Scenario_S3_Large_Workflows,20_task_branching_middle,Workflow_Completion_Rate,25/25 (100.0%),N/A,N/A,N/A,N/A,"Retries=25, T_R mean=5.2475ms, total_wf_time mean=5.3096ms"
+Scenario_S3_Large_Workflows,20_task_branching_last,Workflow_Completion_Rate,25/25 (100.0%),N/A,N/A,N/A,N/A,"Retries=25, T_R mean=5.4707ms, total_wf_time mean=5.5198ms"
+Scenario_S4_Additional_Faults,network_connection_refused,Handling_Outcome,"recovered=10/10, rejected=0/10, retried=0/10",N/A,N/A,N/A,N/A,"Classified=UNKNOWN/NETWORK, conf=0.85, matches_intended=True"
+Scenario_S4_Additional_Faults,file_locked,Handling_Outcome,"recovered=0/10, rejected=10/10, retried=0/10",N/A,N/A,N/A,N/A,"Classified=PERMISSION_DENIED/PERMISSION, conf=0.98, matches_intended=True"
+Scenario_S4_Additional_Faults,disk_full,Handling_Outcome,"recovered=0/10, rejected=10/10, retried=0/10",N/A,N/A,N/A,N/A,"Classified=UNKNOWN/UNKNOWN, conf=0.3, matches_intended=True"
+Scenario_S4_Additional_Faults,malformed_json_tool_output,Handling_Outcome,"recovered=0/10, rejected=10/10, retried=0/10",N/A,N/A,N/A,N/A,"Classified=UNKNOWN/UNKNOWN, conf=0.3, matches_intended=True"
+Scenario_S4_Additional_Faults,unknown_adapter_name,Handling_Outcome,"recovered=10/10, rejected=0/10, retried=0/10",N/A,N/A,N/A,N/A,"Classified=TOOL_UNAVAILABLE/TOOL, conf=0.9, matches_intended=True"

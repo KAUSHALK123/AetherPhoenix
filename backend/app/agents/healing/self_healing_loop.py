@@ -199,7 +199,13 @@ class SelfHealingLoop(BaseAgent):
             f"(Workflow: {workflow_id}, Attempt #{attempt_number})"
         )
 
-        record_trace("failure_detected", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
+        record_trace(
+            "failure_detected",
+            workflow_id=workflow_id,
+            task_id=task_id,
+            attempt=attempt_number,
+            extra={"error_text": str(failure_input), "retry_count_k": task.retry_count},
+        )
 
         self._set_task_state(workflow_id, task_id, HealingState.ANALYZING)
         await self._emit_healing_event(
@@ -222,6 +228,11 @@ class SelfHealingLoop(BaseAgent):
             task_id=task_id,
             attempt=attempt_number,
             fault_class=parsed_error.category.value if hasattr(parsed_error.category, "value") else str(parsed_error.category),
+            extra={
+                "error_text": parsed_error.raw_message or str(failure_input),
+                "parsed_category": parsed_error.category.value if hasattr(parsed_error.category, "value") else str(parsed_error.category),
+                "normalized_code": parsed_error.normalized_code,
+            },
         )
         logger.info(
             f"Step 1/4 - Error Parser normalized failure: "
@@ -244,6 +255,11 @@ class SelfHealingLoop(BaseAgent):
             task_id=task_id,
             attempt=attempt_number,
             fault_class=root_cause.category.value if hasattr(root_cause.category, "value") else str(root_cause.category),
+            extra={
+                "confidence": root_cause.confidence_score,
+                "root_cause_category": root_cause.category.value if hasattr(root_cause.category, "value") else str(root_cause.category),
+                "root_cause_summary": root_cause.root_cause_summary,
+            },
         )
         logger.info(
             f"Step 2/4 - Root Cause Analyzer result: "
@@ -271,7 +287,18 @@ class SelfHealingLoop(BaseAgent):
             mode=exec_mode,
             tool_registry=self.tool_registry,
         )
-        record_trace("stage3_strategy_selection_end", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
+        plan_strat_str = plan.strategy.value if hasattr(plan.strategy, "value") else str(plan.strategy)
+        record_trace(
+            "stage3_strategy_selection_end",
+            workflow_id=workflow_id,
+            task_id=task_id,
+            attempt=attempt_number,
+            extra={
+                "plan_chosen": plan_strat_str,
+                "patch_applied": getattr(plan, "updated_task_params", {}) or {},
+                "is_viable": plan.is_viable,
+            },
+        )
         logger.info(
             f"Step 3/4 - Recovery Planner strategy: "
             f"{plan.strategy.value}, executable={plan.is_executable}"
@@ -307,6 +334,20 @@ class SelfHealingLoop(BaseAgent):
                 plan.strategy.value
                 if hasattr(plan.strategy, "value")
                 else str(plan.strategy)
+            )
+            record_trace(
+                "stage3_retry_check_blocked",
+                workflow_id=workflow_id,
+                task_id=task_id,
+                attempt=attempt_number,
+                fault_class=rc_cat,
+                extra={
+                    "supervisor_result": f"BLOCKED: {reason}",
+                    "final_status": st.value if hasattr(st, "value") else str(st),
+                    "retry_count_k": task.retry_count,
+                    "plan_chosen": strat_val,
+                    "patch_applied": getattr(plan, "updated_task_params", {}) or {},
+                },
             )
             result = HealingResult(
                 task_id=task_id,
@@ -398,6 +439,20 @@ class SelfHealingLoop(BaseAgent):
                 if hasattr(plan.strategy, "value")
                 else str(plan.strategy)
             )
+            record_trace(
+                "stage4_plan_validation_rejected",
+                workflow_id=workflow_id,
+                task_id=task_id,
+                attempt=attempt_number,
+                fault_class=rc_cat,
+                extra={
+                    "supervisor_result": f"REJECTED: {sec_reason}",
+                    "final_status": HealingState.ESCALATED.value,
+                    "retry_count_k": task.retry_count,
+                    "plan_chosen": strat_val,
+                    "patch_applied": getattr(plan, "updated_task_params", {}) or {},
+                },
+            )
             result = HealingResult(
                 task_id=task_id,
                 workflow_id=workflow_id,
@@ -454,7 +509,20 @@ class SelfHealingLoop(BaseAgent):
             root_cause=root_cause,
             attempt_number=attempt_number,
         )
-        record_trace("stage5_recovery_execution_end", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
+        record_trace(
+            "stage5_recovery_execution_end",
+            workflow_id=workflow_id,
+            task_id=task_id,
+            attempt=attempt_number,
+            fault_class=root_cause.category.value if hasattr(root_cause.category, "value") else str(root_cause.category),
+            extra={
+                "supervisor_result": "PASSED: recovery executed successfully" if result.success else "FAILED: retry engine execution failed",
+                "final_status": HealingState.COMPLETED.value if result.success else HealingState.FAILED.value,
+                "retry_count_k": task.retry_count,
+                "plan_chosen": plan.strategy.value if hasattr(plan.strategy, "value") else str(plan.strategy),
+                "patch_applied": getattr(plan, "updated_task_params", {}) or {},
+            },
+        )
 
         state.healing_history.append(result)
 
