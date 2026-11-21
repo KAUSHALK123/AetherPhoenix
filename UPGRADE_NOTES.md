@@ -94,3 +94,21 @@ Per the strict scope rules ("Do NOT change any classification rule, regex, confi
 3. **Adversarial Guardrail Bypass via Error Message Spoofing:**
    - **Location:** `backend/app/agents/healing/retry_engine.py` line ~200.
    - **Bug:** If a shell command contains an unlisted destructive command (e.g., `DROP DATABASE`, `taskkill /f /im edr_agent.exe`) that fails and reports `"TIMEOUT"`, `RetryEngine` re-authorizes retries up to $K_{\max}=3$ without checking task command parameters against permissions prior to retry dispatch.
+
+---
+
+## 4. Bug Fixes for Checkpoint 3 (B1 - B3)
+
+Prior to the bug fixes, git state was tagged `pre-bugfix` at commit `a049c412b8760b1f8b13d11576139bc45f6b2476`. The three targeted fixes were implemented in small isolated commits with dedicated passing unit tests:
+
+| ID | Title | Commit Hash | Touched Files | Dedicated Unit Tests |
+|---|---|---|---|---|
+| **B1** | Confidence $\le 0.30$ Boundary Guard | `78ced7f` | `backend/app/agents/healing/recovery_planner.py`, `backend/tests/agents/healing/test_recovery_planner.py` | `test_recovery_planner_low_confidence_boundary_030` |
+| **B2** | Allowed Infrastructure Subtypes & Permission Re-checks in RetryEngine | `44bfa8b` | `backend/app/agents/healing/retry_engine.py`, `backend/tests/agents/healing/test_retry_engine.py` | `test_infrastructure_subtype_recoverability_b2` |
+| **B3** | Prioritize Permission & Security Signals over Filesystem Paths | `bf66e0a` | `backend/app/agents/healing/root_cause_analyzer.py`, `backend/tests/agents/healing/test_root_cause_analyzer.py` | `test_permission_signal_prioritized_over_missing_path_b3` |
+
+### Details of Fixes:
+- **B1 (`recovery_planner.py`):** Changed the boundary check from `< 0.30` to `<= 0.30` (`root_cause.confidence_score <= 0.30`). When unmapped or unknown errors produce a confidence score of exactly 0.30, the planner now deterministically outputs `NO_VIABLE_RECOVERY` instead of falling through to generic tool retries.
+- **B2 (`retry_engine.py`):** In `can_retry()`, allowed missing directory/file infrastructure subtypes (`OUTPUT_DIRECTORY_MISSING`, `FILE_NOT_FOUND`, `FILE_OR_DIRECTORY_NOT_FOUND`) to be recoverable so that directory auto-creation can proceed, while keeping all other infrastructure subtypes blocked as non-recoverable. Additionally re-evaluates `evaluate_task_risk_and_permissions(task, mode=exec_mode)` before approving retries whenever `permission_manager` is attached.
+- **B3 (`root_cause_analyzer.py`):** Evaluates permission and security signals (`_inspect_permissions_and_security`) before inspecting filesystem and path existence. If a permission violation is detected, path inspection is bypassed and `PERMISSION_DENIED` is assigned with high confidence (0.98), preventing permission-denied tasks on non-existent directories from being misdiagnosed as missing directories.
+
