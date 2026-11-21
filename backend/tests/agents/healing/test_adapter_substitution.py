@@ -132,10 +132,10 @@ async def test_adapter_substitution_rejected_when_higher_risk():
     registry = ToolRegistry()
     registry.register(
         Tool(
-            name="web_reader",
+            name="web_research",
             status=ToolState.UNAVAILABLE,
             health=ToolHealth.FAILED,
-            adapter="WebReaderAdapter",
+            adapter="WebResearchAdapter",
         )
     )
     # Only available substitute in registry is terminal_tool, which has HIGH risk
@@ -159,8 +159,8 @@ async def test_adapter_substitution_rejected_when_higher_risk():
         category=TaskCategory.WEB_RESEARCH,
         priority=TaskPriority.LOW,
         status=TaskStatus.FAILED,
-        required_tool="web_reader",
-        inputs={"url": "https://example.com"},
+        required_tool="web_research",
+        inputs={"query": "python"},
         risk_level=RiskLevel.LOW.value,
         expected_output="done",
     )
@@ -173,7 +173,7 @@ async def test_adapter_substitution_rejected_when_higher_risk():
         tasks={t_id: task},
     )
 
-    fault = ToolExecutionException("Tool crashed: web_reader")
+    fault = ToolExecutionException("Tool crashed: web_research")
     result = await loop.process_failure(task, fault, state)
 
     # Must be safely rejected, not substituted with high-risk terminal_tool
