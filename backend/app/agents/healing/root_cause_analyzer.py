@@ -73,9 +73,9 @@ class RootCauseAnalyzer:
     ]
 
     PERMISSION_PATTERNS = [
-        re.compile(r"permission\s*denied", re.IGNORECASE),
+        re.compile(r"permission\s*(?:is\s*)?denied", re.IGNORECASE),
         re.compile(r"permissionerror", re.IGNORECASE),
-        re.compile(r"access\s*denied", re.IGNORECASE),
+        re.compile(r"access\s*(?:is\s*)?denied", re.IGNORECASE),
         re.compile(r"unauthorized", re.IGNORECASE),
         re.compile(r"user\s*rejected", re.IGNORECASE),
         re.compile(r"forbidden", re.IGNORECASE),
