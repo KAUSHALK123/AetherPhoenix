@@ -81,7 +81,7 @@ def test_retryable_tool_failure(base_ids):
         task_id=base_ids["task_id"],
         workflow_id=base_ids["workflow_id"],
         failure_type=FailureType.TOOL_ERROR,
-        message="Tool execution failed for browser_tool: network error",
+        message="Tool execution failed for browser_tool: tool unavailable",
         retryability=True,
         execution_context={"target_tool": "browser_tool"},
     )
@@ -321,3 +321,56 @@ def test_healing_integration_non_executing(base_ids):
     # Recovery plan contains full structured details
     assert recovery_plan.validation_status == "VALID"
     assert len(recovery_plan.actions) > 0
+
+
+def test_recovery_planner_low_confidence_boundary_030(base_ids):
+    """
+    Unit test for B1: Confidence <= 0.30 boundary produces NO_VIABLE_RECOVERY.
+    """
+    error_parser = ErrorParser()
+    planner = RecoveryPlanner()
+
+    failure_report = TaskFailureReport(
+        failure_id=base_ids["failure_id"],
+        task_id=base_ids["task_id"],
+        workflow_id=base_ids["workflow_id"],
+        failure_type=FailureType.TOOL_UNAVAILABLE,
+        message="Unrecognized error with low diagnostic confidence",
+        retryability=True,
+    )
+    parsed_error = error_parser.parse(failure_report)
+
+    # Test confidence exactly 0.30
+    rc_030 = RootCauseAnalysis(
+        analysis_id=uuid4(),
+        failure_id=base_ids["failure_id"],
+        task_id=base_ids["task_id"],
+        workflow_id=base_ids["workflow_id"],
+        category="TOOL",
+        root_cause_summary="Generic uncertain tool fault",
+        diagnostic_explanation="Explanation with low confidence",
+        confidence_score=0.30,
+        is_recoverable=True,
+    )
+
+    plan = planner.plan(parsed_error, rc_030)
+    assert plan.strategy_name == "NO_VIABLE_RECOVERY"
+    assert plan.is_viable is False
+    assert len(plan.actions) == 0
+
+    # Also verify confidence 0.25 <= 0.30 produces NO_VIABLE_RECOVERY
+    rc_025 = RootCauseAnalysis(
+        analysis_id=uuid4(),
+        failure_id=base_ids["failure_id"],
+        task_id=base_ids["task_id"],
+        workflow_id=base_ids["workflow_id"],
+        category="TOOL",
+        root_cause_summary="Generic uncertain tool fault",
+        diagnostic_explanation="Explanation with low confidence",
+        confidence_score=0.25,
+        is_recoverable=True,
+    )
+    plan_025 = planner.plan(parsed_error, rc_025)
+    assert plan_025.strategy_name == "NO_VIABLE_RECOVERY"
+    assert plan_025.is_viable is False
+

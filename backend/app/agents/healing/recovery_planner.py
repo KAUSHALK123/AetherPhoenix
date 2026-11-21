@@ -195,7 +195,7 @@ class RecoveryPlanner:
                 )
             )
             or rc_cat_str == "UNRECOVERABLE"
-            or root_cause.confidence_score < 0.3
+            or root_cause.confidence_score <= 0.30
             or err_type == FailureType.UNEXPECTED_EXCEPTION
         ):
             unviable_plan = RecoveryPlan(
