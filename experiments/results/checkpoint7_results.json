@@ -1,0 +1,522 @@
+{
+  "checkpoint": "Checkpoint 7: Scenario Round",
+  "commit_hash": "911284f2137eea8971d38e0caede17a689165896",
+  "timestamp": "2026-11-21T23:33:20.903978",
+  "S1_worked_examples": {
+    "scenario_a": {
+      "error_text": "[Errno 2] No such file or directory: 'C:/nonexistent_dir_0xdead/report.json'",
+      "parsed_category": "FILE_NOT_FOUND",
+      "confidence": 0.95,
+      "plan_chosen": "MISSING_DIRECTORY_RECOVERY",
+      "patch_applied": {},
+      "retry_count_k": 1,
+      "supervisor_result": "PASSED: recovery executed successfully",
+      "final_status": "COMPLETED"
+    },
+    "scenario_b": {
+      "error_text": "[WinError 5] Access is denied: 'C:\\Windows\\System32'",
+      "parsed_category": "PERMISSION_DENIED",
+      "confidence": 0.98,
+      "plan_chosen": "PERMISSION_ELEVATION_RECOVERY",
+      "patch_applied": {},
+      "retry_count_k": 0,
+      "supervisor_result": "BLOCKED: Root cause 'PERMISSION' (PERMISSION_DENIED) is non-retryable.",
+      "final_status": "FAILED"
+    },
+    "scenario_c": {
+      "error_text": "Fatal ASIC microcode parity divergence at address 0xDEADBEEF01",
+      "parsed_category": "UNKNOWN",
+      "confidence": 0.3,
+      "plan_chosen": "NO_VIABLE_RECOVERY",
+      "patch_applied": {},
+      "retry_count_k": 0,
+      "supervisor_result": "REJECTED: Recovery plan marked non-viable",
+      "final_status": "ESCALATED"
+    },
+    "trace_file": "experiments/results/s1_traces.jsonl",
+    "output_file": "experiments/results/worked_examples.md"
+  },
+  "S2_real_adapters": {
+    "real_file_locked": {
+      "classification": "PERMISSION",
+      "recovered": 0,
+      "rejected": 10,
+      "completion_rate": "0/10 (0.0%)",
+      "latency_ms": {
+        "mean": 1.9532,
+        "std": 0.4027,
+        "median": 1.8907,
+        "iqr": 0.607,
+        "min": 1.342,
+        "max": 2.6642,
+        "n": 10
+      }
+    },
+    "real_missing_path": {
+      "classification": "PERMISSION",
+      "recovered": 0,
+      "rejected": 10,
+      "completion_rate": "0/10 (0.0%)",
+      "latency_ms": {
+        "mean": 1.8105,
+        "std": 0.7456,
+        "median": 1.6582,
+        "iqr": 0.4494,
+        "min": 1.0765,
+        "max": 3.761,
+        "n": 10
+      }
+    },
+    "real_subprocess_timeout": {
+      "classification": "RUNTIME",
+      "recovered": 10,
+      "rejected": 0,
+      "completion_rate": "10/10 (100.0%)",
+      "latency_ms": {
+        "mean": 8.3855,
+        "std": 12.0916,
+        "median": 4.6929,
+        "iqr": 1.0648,
+        "min": 3.8055,
+        "max": 42.7548,
+        "n": 10
+      }
+    },
+    "real_unreachable_browser_port": {
+      "classification": "PERMISSION",
+      "recovered": 0,
+      "rejected": 10,
+      "completion_rate": "0/10 (0.0%)",
+      "latency_ms": {
+        "mean": 2.0586,
+        "std": 0.2757,
+        "median": 2.0799,
+        "iqr": 0.445,
+        "min": 1.5713,
+        "max": 2.4914,
+        "n": 10
+      }
+    },
+    "real_readonly_directory": {
+      "classification": "PERMISSION",
+      "recovered": 0,
+      "rejected": 10,
+      "completion_rate": "0/10 (0.0%)",
+      "latency_ms": {
+        "mean": 2.7935,
+        "std": 0.7764,
+        "median": 2.4962,
+        "iqr": 0.9556,
+        "min": 1.9453,
+        "max": 4.4602,
+        "n": 10
+      }
+    }
+  },
+  "S3_large_workflows": {
+    "10_task_linear": {
+      "first": {
+        "fault_position": "first",
+        "fault_task_index": 0,
+        "completed": 25,
+        "total_trials": 25,
+        "completion_rate": "25/25 (100.0%)",
+        "retries": 25,
+        "avg_retries_per_trial": 1.0,
+        "T_R_ms": {
+          "mean": 5.093,
+          "std": 10.9343,
+          "median": 2.5128,
+          "iqr": 1.8294,
+          "min": 1.5634,
+          "max": 57.1368,
+          "n": 25
+        },
+        "total_workflow_time_ms": {
+          "mean": 5.1658,
+          "std": 10.9339,
+          "median": 2.5553,
+          "iqr": 1.8421,
+          "min": 1.6148,
+          "max": 57.176,
+          "n": 25
+        }
+      },
+      "middle": {
+        "fault_position": "middle",
+        "fault_task_index": 5,
+        "completed": 25,
+        "total_trials": 25,
+        "completion_rate": "25/25 (100.0%)",
+        "retries": 25,
+        "avg_retries_per_trial": 1.0,
+        "T_R_ms": {
+          "mean": 2.5161,
+          "std": 0.5952,
+          "median": 2.438,
+          "iqr": 0.6341,
+          "min": 1.6065,
+          "max": 4.299,
+          "n": 25
+        },
+        "total_workflow_time_ms": {
+          "mean": 2.553,
+          "std": 0.5984,
+          "median": 2.4693,
+          "iqr": 0.6512,
+          "min": 1.6291,
+          "max": 4.3377,
+          "n": 25
+        }
+      },
+      "last": {
+        "fault_position": "last",
+        "fault_task_index": 9,
+        "completed": 25,
+        "total_trials": 25,
+        "completion_rate": "25/25 (100.0%)",
+        "retries": 25,
+        "avg_retries_per_trial": 1.0,
+        "T_R_ms": {
+          "mean": 2.228,
+          "std": 0.3398,
+          "median": 2.2221,
+          "iqr": 0.5693,
+          "min": 1.5961,
+          "max": 2.671,
+          "n": 25
+        },
+        "total_workflow_time_ms": {
+          "mean": 2.2542,
+          "std": 0.3428,
+          "median": 2.2497,
+          "iqr": 0.5693,
+          "min": 1.6147,
+          "max": 2.702,
+          "n": 25
+        }
+      }
+    },
+    "10_task_branching": {
+      "first": {
+        "fault_position": "first",
+        "fault_task_index": 0,
+        "completed": 25,
+        "total_trials": 25,
+        "completion_rate": "25/25 (100.0%)",
+        "retries": 25,
+        "avg_retries_per_trial": 1.0,
+        "T_R_ms": {
+          "mean": 2.6111,
+          "std": 0.5191,
+          "median": 2.6763,
+          "iqr": 0.6229,
+          "min": 1.8867,
+          "max": 4.4358,
+          "n": 25
+        },
+        "total_workflow_time_ms": {
+          "mean": 2.6435,
+          "std": 0.5217,
+          "median": 2.7142,
+          "iqr": 0.6315,
+          "min": 1.9067,
+          "max": 4.4698,
+          "n": 25
+        }
+      },
+      "middle": {
+        "fault_position": "middle",
+        "fault_task_index": 5,
+        "completed": 25,
+        "total_trials": 25,
+        "completion_rate": "25/25 (100.0%)",
+        "retries": 25,
+        "avg_retries_per_trial": 1.0,
+        "T_R_ms": {
+          "mean": 2.9967,
+          "std": 0.5291,
+          "median": 2.9686,
+          "iqr": 0.5097,
+          "min": 2.2536,
+          "max": 4.8674,
+          "n": 25
+        },
+        "total_workflow_time_ms": {
+          "mean": 3.03,
+          "std": 0.5308,
+          "median": 2.9928,
+          "iqr": 0.5239,
+          "min": 2.281,
+          "max": 4.9064,
+          "n": 25
+        }
+      },
+      "last": {
+        "fault_position": "last",
+        "fault_task_index": 9,
+        "completed": 25,
+        "total_trials": 25,
+        "completion_rate": "25/25 (100.0%)",
+        "retries": 25,
+        "avg_retries_per_trial": 1.0,
+        "T_R_ms": {
+          "mean": 3.7061,
+          "std": 0.6975,
+          "median": 3.4289,
+          "iqr": 1.0365,
+          "min": 2.6641,
+          "max": 5.4198,
+          "n": 25
+        },
+        "total_workflow_time_ms": {
+          "mean": 3.7408,
+          "std": 0.7024,
+          "median": 3.4864,
+          "iqr": 1.0417,
+          "min": 2.6886,
+          "max": 5.4749,
+          "n": 25
+        }
+      }
+    },
+    "20_task_linear": {
+      "first": {
+        "fault_position": "first",
+        "fault_task_index": 0,
+        "completed": 25,
+        "total_trials": 25,
+        "completion_rate": "25/25 (100.0%)",
+        "retries": 25,
+        "avg_retries_per_trial": 1.0,
+        "T_R_ms": {
+          "mean": 3.7125,
+          "std": 0.5423,
+          "median": 3.6815,
+          "iqr": 0.4889,
+          "min": 2.623,
+          "max": 4.8267,
+          "n": 25
+        },
+        "total_workflow_time_ms": {
+          "mean": 3.7694,
+          "std": 0.5492,
+          "median": 3.7346,
+          "iqr": 0.4988,
+          "min": 2.6611,
+          "max": 4.8983,
+          "n": 25
+        }
+      },
+      "middle": {
+        "fault_position": "middle",
+        "fault_task_index": 10,
+        "completed": 25,
+        "total_trials": 25,
+        "completion_rate": "25/25 (100.0%)",
+        "retries": 25,
+        "avg_retries_per_trial": 1.0,
+        "T_R_ms": {
+          "mean": 3.3235,
+          "std": 0.7846,
+          "median": 3.066,
+          "iqr": 1.3255,
+          "min": 2.4666,
+          "max": 4.764,
+          "n": 25
+        },
+        "total_workflow_time_ms": {
+          "mean": 3.3677,
+          "std": 0.7947,
+          "median": 3.1002,
+          "iqr": 1.3402,
+          "min": 2.4981,
+          "max": 4.831,
+          "n": 25
+        }
+      },
+      "last": {
+        "fault_position": "last",
+        "fault_task_index": 19,
+        "completed": 25,
+        "total_trials": 25,
+        "completion_rate": "25/25 (100.0%)",
+        "retries": 25,
+        "avg_retries_per_trial": 1.0,
+        "T_R_ms": {
+          "mean": 4.2252,
+          "std": 0.4818,
+          "median": 4.2392,
+          "iqr": 0.4658,
+          "min": 2.8876,
+          "max": 5.0292,
+          "n": 25
+        },
+        "total_workflow_time_ms": {
+          "mean": 4.2723,
+          "std": 0.4844,
+          "median": 4.2764,
+          "iqr": 0.4909,
+          "min": 2.9187,
+          "max": 5.0942,
+          "n": 25
+        }
+      }
+    },
+    "20_task_branching": {
+      "first": {
+        "fault_position": "first",
+        "fault_task_index": 0,
+        "completed": 25,
+        "total_trials": 25,
+        "completion_rate": "25/25 (100.0%)",
+        "retries": 25,
+        "avg_retries_per_trial": 1.0,
+        "T_R_ms": {
+          "mean": 4.1571,
+          "std": 0.6319,
+          "median": 4.2899,
+          "iqr": 1.1952,
+          "min": 3.0426,
+          "max": 4.9741,
+          "n": 25
+        },
+        "total_workflow_time_ms": {
+          "mean": 4.216,
+          "std": 0.6421,
+          "median": 4.3798,
+          "iqr": 1.2141,
+          "min": 3.0842,
+          "max": 5.038,
+          "n": 25
+        }
+      },
+      "middle": {
+        "fault_position": "middle",
+        "fault_task_index": 10,
+        "completed": 25,
+        "total_trials": 25,
+        "completion_rate": "25/25 (100.0%)",
+        "retries": 25,
+        "avg_retries_per_trial": 1.0,
+        "T_R_ms": {
+          "mean": 5.2475,
+          "std": 0.9778,
+          "median": 5.2179,
+          "iqr": 0.4756,
+          "min": 3.1763,
+          "max": 9.1141,
+          "n": 25
+        },
+        "total_workflow_time_ms": {
+          "mean": 5.3096,
+          "std": 0.9824,
+          "median": 5.2902,
+          "iqr": 0.5056,
+          "min": 3.213,
+          "max": 9.1875,
+          "n": 25
+        }
+      },
+      "last": {
+        "fault_position": "last",
+        "fault_task_index": 19,
+        "completed": 25,
+        "total_trials": 25,
+        "completion_rate": "25/25 (100.0%)",
+        "retries": 25,
+        "avg_retries_per_trial": 1.0,
+        "T_R_ms": {
+          "mean": 5.4707,
+          "std": 0.679,
+          "median": 5.58,
+          "iqr": 1.0195,
+          "min": 3.7703,
+          "max": 6.4482,
+          "n": 25
+        },
+        "total_workflow_time_ms": {
+          "mean": 5.5198,
+          "std": 0.68,
+          "median": 5.6387,
+          "iqr": 1.0292,
+          "min": 3.8024,
+          "max": 6.4798,
+          "n": 25
+        }
+      }
+    }
+  },
+  "S4_additional_faults": {
+    "network_connection_refused": {
+      "parsed_category": "UNKNOWN",
+      "normalized_code": "CONNECTIONREFUSEDERROR",
+      "root_cause_category": "NETWORK",
+      "confidence": 0.85,
+      "handling": {
+        "recovered": 10,
+        "rejected": 0,
+        "retried": 0
+      },
+      "outcome_rate": "recovered=10/10, rejected=0/10, retried=0/10",
+      "intended_behavior": "Transient network failure: retried with backoff",
+      "outcome_matches_intended": true
+    },
+    "file_locked": {
+      "parsed_category": "PERMISSION_DENIED",
+      "normalized_code": "PERMISSIONERROR",
+      "root_cause_category": "PERMISSION",
+      "confidence": 0.98,
+      "handling": {
+        "recovered": 0,
+        "rejected": 10,
+        "retried": 0
+      },
+      "outcome_rate": "recovered=0/10, rejected=10/10, retried=0/10",
+      "intended_behavior": "Resource access contention: safely rejected under SAFE permission policy without unapproved elevation",
+      "outcome_matches_intended": true
+    },
+    "disk_full": {
+      "parsed_category": "UNKNOWN",
+      "normalized_code": "OSERROR",
+      "root_cause_category": "UNKNOWN",
+      "confidence": 0.3,
+      "handling": {
+        "recovered": 0,
+        "rejected": 10,
+        "retried": 0
+      },
+      "outcome_rate": "recovered=0/10, rejected=10/10, retried=0/10",
+      "intended_behavior": "Unmapped OS capacity error: rejected as NO_VIABLE_RECOVERY (non-recoverable without admin intervention)",
+      "outcome_matches_intended": true
+    },
+    "malformed_json_tool_output": {
+      "parsed_category": "UNKNOWN",
+      "normalized_code": "JSONDECODEERROR",
+      "root_cause_category": "UNKNOWN",
+      "confidence": 0.3,
+      "handling": {
+        "recovered": 0,
+        "rejected": 10,
+        "retried": 0
+      },
+      "outcome_rate": "recovered=0/10, rejected=10/10, retried=0/10",
+      "intended_behavior": "Malformed payload structure: rejected as unmapped parser failure (confidence <= 0.30)",
+      "outcome_matches_intended": true
+    },
+    "unknown_adapter_name": {
+      "parsed_category": "TOOL_UNAVAILABLE",
+      "normalized_code": "TOOL_NOT_FOUND",
+      "root_cause_category": "TOOL",
+      "confidence": 0.9,
+      "handling": {
+        "recovered": 10,
+        "rejected": 0,
+        "retried": 0
+      },
+      "outcome_rate": "recovered=10/10, rejected=0/10, retried=0/10",
+      "intended_behavior": "Tool not found: classified as TOOL_UNAVAILABLE; retried or substituted if candidate exists, else rejected",
+      "outcome_matches_intended": true
+    }
+  }
+}

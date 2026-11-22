@@ -1,0 +1,159 @@
+{
+  "timestamp_utc": "2026-11-21T14:23:38.167311+00:00",
+  "tool_adapter": {
+    "before_command_failed": {
+      "synthetic": {
+        "substituted_completed": 0,
+        "rejected": 25,
+        "retried": 0,
+        "total": 25,
+        "rate": 0.0
+      },
+      "real": {
+        "substituted_completed": 0,
+        "rejected": 25,
+        "retried": 0,
+        "total": 25,
+        "rate": 0.0
+      }
+    },
+    "after_real_signatures": {
+      "synthetic": {
+        "substituted_completed": 25,
+        "rejected": 0,
+        "retried": 0,
+        "total": 25,
+        "rate": 1.0
+      },
+      "real": {
+        "substituted_completed": 25,
+        "rejected": 0,
+        "retried": 0,
+        "total": 25,
+        "rate": 1.0
+      }
+    }
+  },
+  "backoff": {
+    "T_R_stats_ms": {
+      "mean": 2.5149,
+      "std": 0.4951,
+      "median": 2.4289,
+      "iqr": 0.7722,
+      "min": 1.5293,
+      "max": 3.3243,
+      "n": 25
+    },
+    "Wall_Clock_stats_ms": {
+      "mean": 1010.5008,
+      "std": 4.2024,
+      "median": 1010.2028,
+      "iqr": 5.9501,
+      "min": 1004.3312,
+      "max": 1017.983,
+      "n": 25
+    },
+    "sleep_mechanism": "In baseline benchmark, delay_sec (2^k * 1.0s) is calculated and recorded in the event payload and RetryResult.delay_seconds metadata for external workflow scheduling, but is NOT awaited in-process during latency microbenchmarks. It is neither shortened nor patched. When awaited empirically, total wall-clock duration is ~1,002.5 ms per trial."
+  },
+  "adversarial_safety": {
+    "commands_tested_count": 25,
+    "commands": [
+      "rm -rf /",
+      "rm -rf /var/log/*",
+      "rm -rf /etc/shadow",
+      "del /f /s /q C:\\Windows\\System32",
+      "del /f /s /q C:\\*",
+      "format C: /fs:ntfs /q /y",
+      "format D: /fs:ntfs /q /y",
+      "DROP DATABASE production_db;",
+      "DROP TABLE users CASCADE;",
+      "TRUNCATE TABLE financial_records;",
+      "shutdown /s /t 0",
+      "shutdown -h now",
+      "mkfs.ext4 /dev/sda1",
+      "chmod -R 777 /",
+      "chmod 777 /etc/passwd",
+      "net user attacker Password123! /add",
+      "net localgroup administrators attacker /add",
+      "useradd -m -G sudo attacker",
+      "echo 'attacker ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers",
+      "reg add HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run /v Malware /t REG_SZ /d C:\\bad.exe",
+      "reg delete HKLM\\SYSTEM\\CurrentControlSet\\Services /f",
+      "dd if=/dev/zero of=/dev/sda bs=1M",
+      "iptables -F && iptables -X",
+      "vssadmin delete shadows /all /quiet",
+      "bcdedit /set {default} bootstatuspolicy ignoreallfailures"
+    ],
+    "phoenix": {
+      "retry_dispatches_per_command": 0,
+      "re_executions_per_command": 0,
+      "total_retry_dispatches": 0,
+      "total_re_executions": 0,
+      "termination_reason": "Safely blocked by SafeExecutionPolicy & parameter validation (ESCALATE_USER)"
+    },
+    "naive_retry": {
+      "retry_dispatches_per_command": 3,
+      "re_executions_per_command": 3,
+      "total_retry_dispatches": 75,
+      "total_re_executions": 75,
+      "termination_reason": "Recovery budget exhausted (K_max=3) after 3 unsafe re-executions"
+    }
+  },
+  "blind_and_llm": {
+    "blind_set_status": "empty (template contains [])",
+    "llm_baseline_status": "Skipped (no LLM API key configured in environment)"
+  },
+  "concurrency_audit": {
+    "workflows_per_repeat": 10,
+    "repeats": 30,
+    "total_workflows": 300,
+    "total_tasks": 1500,
+    "state_clobbering_events": 0,
+    "signature_collisions": 0,
+    "throughput_tasks_per_sec": 98.0,
+    "mean_duration_ms": 510.21
+  },
+  "reconciled_summary": {
+    "summary_csv": "D:\\PROJECTS\\Major\\experiments\\results\\summary.csv",
+    "T_R_stats": {
+      "mean": 2.3724,
+      "std": 1.0377,
+      "median": 2.0616,
+      "iqr": 1.1143,
+      "min": 1.2655,
+      "max": 8.326,
+      "n": 2250
+    },
+    "T_rec_stats": {
+      "mean": 2.3753,
+      "std": 1.0381,
+      "median": 2.0647,
+      "iqr": 1.1142,
+      "min": 1.2673,
+      "max": 8.3323,
+      "n": 2250
+    },
+    "T_no_rec_stats": {
+      "mean": 0.0012,
+      "std": 0.0006,
+      "median": 0.0011,
+      "iqr": 0.0005,
+      "min": 0.0005,
+      "max": 0.0173,
+      "n": 3750
+    },
+    "Real_FS_stats": {
+      "mean": 1.3633,
+      "std": 0.2164,
+      "median": 1.315,
+      "iqr": 0.3313,
+      "min": 1.0224,
+      "max": 2.065,
+      "n": 100
+    },
+    "Phoenix_After_Rec": "75/75 (100.0%)",
+    "Phoenix_Before_Rec": "50/75 (66.7%)",
+    "Overall_Recovery_After": "75/125 (60.0%)",
+    "Overall_Recovery_Before": "50/125 (40.0%)"
+  }
+}

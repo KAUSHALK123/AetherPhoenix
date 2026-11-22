@@ -22,6 +22,7 @@ from app.core.exceptions import (
     AgentRuntimeException,
     PermissionDeniedException,
     PermissionException,
+    ToolException,
     ToolExecutionException,
     ToolNotFoundException,
 )
@@ -332,15 +333,63 @@ class ErrorParser:
                 False,
             )
 
-        # 4. Tool Unavailable Errors
-        if (
+        # 4. Tool Unavailable / Tool Adapter Failure Errors
+        real_adapter_signatures = (
+            "TOOL_UNAVAILABLE",
+            "TOOL_NOT_FOUND",
+            "TOOL_ERROR",
+            "TOOL_EXECUTION_ERROR",
+            "ADAPTER_ERROR",
+            "TERMINAL_EXECUTION_ERROR",
+            "GIT_EXECUTION_ERROR",
+            "BROWSER_EXTENSION_ERROR",
+            "OCR_EXTRACTION_FAILED",
+            "PPT_GENERATION_FAILED",
+            "WEB_RESEARCH_FAILED",
+            "EXPORT_FAILED",
+        )
+        is_tool_exception = (
             isinstance(raw_error, ToolNotFoundException)
+            or type(raw_error).__name__
+            in (
+                "ToolNotFoundException",
+                "BrowserExtensionActionError",
+            )
+            or (
+                isinstance(raw_error, (ToolExecutionException, ToolException))
+                and any(
+                    t in msg_lower
+                    for t in (
+                        "adapter",
+                        "crashed",
+                        "tool execution crashed",
+                        "tool unavailable",
+                        "unregistered",
+                        "not found",
+                    )
+                )
+            )
+        )
+        is_script_exit = any(
+            term in msg_lower for term in ("powershell script", "cmd script")
+        )
+        if not is_script_exit and (
+            is_tool_exception
             or "tool unavailable" in msg_lower
             or "tool not found" in msg_lower
             or "tool plugin missing" in msg_lower
             or "unregistered tool" in msg_lower
-            or "TOOL_UNAVAILABLE" in code_upper
-            or "TOOL_NOT_FOUND" in code_upper
+            or "adapter error" in msg_lower
+            or "tool execution crashed" in msg_lower
+            or any(sig in code_upper for sig in real_adapter_signatures)
+            or any(
+                sig.lower() in msg_lower
+                for sig in (
+                    "tool_unavailable",
+                    "tool_not_found",
+                    "adapter_error",
+                )
+            )
             or context.get("failure_type") == FailureType.TOOL_UNAVAILABLE.value
         ):
             return (
@@ -395,15 +444,13 @@ class ErrorParser:
                 True,
             )
 
-        # 7. Worker / Process / Tool Execution Errors
+        # 7. Worker / Process Execution Errors
         if (
             isinstance(raw_error, (ToolExecutionException, AgentRuntimeException))
             or "EXECUTION" in code_upper
-            or "TOOL_ERROR" in code_upper
             or "WORKER_FAILURE" in code_upper
             or context.get("exit_code") is not None
-            or context.get("failure_type")
-            in (FailureType.WORKER_FAILURE.value, FailureType.TOOL_ERROR.value)
+            or context.get("failure_type") == FailureType.WORKER_FAILURE.value
         ):
             source = ErrorSource.WORKER
             if (

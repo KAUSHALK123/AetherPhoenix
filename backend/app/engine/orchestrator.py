@@ -12,6 +12,7 @@ from app.agents.supervisor.agent import SupervisorAgent
 from app.agents.worker.agent import WorkerAgent
 from app.core.events.bus import EventBus
 from app.core.logging import get_logger
+from app.core.tracing import record_trace
 from app.engine.workflow import WorkflowEngine
 
 logger = get_logger(__name__)
@@ -113,6 +114,7 @@ class PipelineOrchestrator:
                     # Remove from queue and mark as RUNNING
                     state.execution_queue.remove(task_id)
                     engine.update_task_status(task_id, TaskStatus.RUNNING)
+                    record_trace("task_dispatch", workflow_id=workflow_id, task_id=task_id, attempt=task.retry_count + 1)
 
                     # Update progress state
                     self.supervisor.monitor.update_progress_state(state)
@@ -155,6 +157,7 @@ class PipelineOrchestrator:
                         if validation.is_valid:
                             t.status = TaskStatus.COMPLETED
                             engine.update_task_status(t.task_id, TaskStatus.COMPLETED)
+                            record_trace("task_completion", workflow_id=workflow_id, task_id=t.task_id, attempt=t.retry_count + 1)
 
                             # Persist task output and artifacts in SharedWorkflowState
                             if res.output is not None:
@@ -193,6 +196,13 @@ class PipelineOrchestrator:
                         else:
                             t.status = TaskStatus.FAILED
                             engine.update_task_status(t.task_id, TaskStatus.FAILED)
+                            record_trace(
+                                "failure_detected",
+                                workflow_id=workflow_id,
+                                task_id=t.task_id,
+                                attempt=t.retry_count + 1,
+                                fault_class=res.error.error_code if res.error else "VALIDATION_FAILED",
+                            )
                             if res.output is not None:
                                 state.task_outputs[t.task_name] = res.output
                                 state.task_outputs[str(t.task_id)] = res.output
@@ -230,6 +240,7 @@ class PipelineOrchestrator:
                                         state.failed_tasks.remove(t.task_id)
                                     if t.task_id not in state.execution_queue:
                                         state.execution_queue.append(t.task_id)
+                                        record_trace("re_enqueue", workflow_id=workflow_id, task_id=t.task_id, attempt=t.retry_count + 1)
 
                             if not retried:
                                 retried = await self.supervisor.execute(

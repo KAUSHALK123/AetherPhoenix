@@ -109,3 +109,8 @@ tmp/
 temp/
 
 
+
+# Generated run artifacts
+backend/artifacts/
+artifacts/
+

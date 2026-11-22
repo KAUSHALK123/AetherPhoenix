@@ -378,3 +378,77 @@ async def test_retry_events_emitted(event_bus, retry_engine, sample_state, sampl
     assert EventType.HEALING_STARTED in event_types
     assert EventType.TASK_RETRIED in event_types
     assert EventType.HEALING_COMPLETED in event_types
+
+
+@pytest.mark.asyncio
+async def test_concurrent_failure_signature_counts_concurrency():
+    """Unit test for U2: 100 concurrent identical failures give the same counts as sequential processing."""
+    import asyncio
+    engine_concurrent = RetryEngine()
+    engine_sequential = RetryEngine()
+
+    wf_id = uuid4()
+    t_id = uuid4()
+    sig = "NETWORK_ERROR:Connection refused"
+
+    # Sequential processing of 100 identical failures
+    for _ in range(100):
+        engine_sequential.record_failure_signature(wf_id, t_id, sig)
+
+    # Concurrent processing of 100 identical failures
+    async def record_task():
+        await asyncio.sleep(0.0001)  # introduce event loop switching
+        return engine_concurrent.record_failure_signature(wf_id, t_id, sig)
+
+    await asyncio.gather(*(record_task() for _ in range(100)))
+
+    # Verify counts match exactly
+    seq_count = engine_sequential.get_failure_signature_count(wf_id, t_id, sig)
+    conc_count = engine_concurrent.get_failure_signature_count(wf_id, t_id, sig)
+
+    assert seq_count == 100
+    assert conc_count == 100
+    assert conc_count == seq_count
+
+    # Also test isolation: a different task_id in same workflow or different workflow has 0 count
+    t_id_other = uuid4()
+    assert engine_concurrent.get_failure_signature_count(wf_id, t_id_other, sig) == 0
+
+
+@pytest.mark.asyncio
+async def test_infrastructure_subtype_recoverability_b2(retry_engine, sample_state, sample_task):
+    """Unit test for B2: only OUTPUT_DIRECTORY_MISSING / FILE_NOT_FOUND is recoverable under INFRASTRUCTURE."""
+    # 1. Allowed subtype: OUTPUT_DIRECTORY_MISSING -> retry permitted
+    allowed, msg = retry_engine.can_retry(
+        task=sample_task,
+        state=sample_state,
+        root_cause_category="INFRASTRUCTURE",
+        root_cause_summary="OUTPUT_DIRECTORY_MISSING: missing target dir",
+        is_recoverable=False,  # Even if marked non-recoverable by generic logic, allowed subtype is recoverable
+    )
+    assert allowed is True
+    assert "permitted" in msg.lower()
+
+    # 2. Allowed subtype: FILE_NOT_FOUND -> retry permitted
+    allowed_fnf, msg_fnf = retry_engine.can_retry(
+        task=sample_task,
+        state=sample_state,
+        root_cause_category="INFRASTRUCTURE",
+        root_cause_summary="FILE_NOT_FOUND: target file does not exist",
+        is_recoverable=False,
+    )
+    assert allowed_fnf is True
+    assert "permitted" in msg_fnf.lower()
+
+    # 3. Disallowed subtype under INFRASTRUCTURE: DISK_FAILURE -> blocked
+    disallowed, msg_dis = retry_engine.can_retry(
+        task=sample_task,
+        state=sample_state,
+        root_cause_category="INFRASTRUCTURE",
+        root_cause_summary="DISK_HARDWARE_CORRUPTION",
+        is_recoverable=True,  # Even if initially True, disallowed infra is blocked
+    )
+    assert disallowed is False
+    assert "non-recoverable" in msg_dis.lower()
+
+
