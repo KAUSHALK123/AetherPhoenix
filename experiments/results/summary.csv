@@ -1,16 +1,16 @@
 Metric_Category,Subcategory,Parameter,Phoenix_After,Phoenix_Before,Naive_Retry,Fail_Fast,Wilson_95_CI,Notes
-Latency,T_R (ms),Mean,2.3724,2.3724,N/A,N/A,N/A,Software recovery dispatch only (tracing OFF)
-Latency,T_R (ms),Std,1.0377,1.0377,N/A,N/A,N/A,Standard deviation
-Latency,T_R (ms),Median,2.0616,2.0616,N/A,N/A,N/A,Median
-Latency,T_R (ms),IQR,1.1143,1.1143,N/A,N/A,N/A,Interquartile range (Q3 - Q1)
+Latency,T_R (ms),Mean,11.9921,11.9921,N/A,N/A,N/A,Software recovery dispatch only (tracing OFF)
+Latency,T_R (ms),Std,7.0401,7.0401,N/A,N/A,N/A,Standard deviation
+Latency,T_R (ms),Median,11.3567,11.3567,N/A,N/A,N/A,Median
+Latency,T_R (ms),IQR,10.8083,10.8083,N/A,N/A,N/A,Interquartile range (Q3 - Q1)
 Latency,T_R (ms),Sample_N,2250,2250,N/A,N/A,N/A,Observations
-Latency,T_rec (ms),Mean,2.3753,2.3753,N/A,N/A,N/A,Full loop with mock execution & supervisor validation
-Latency,T_rec (ms),Std,1.0381,1.0381,N/A,N/A,N/A,Standard deviation
-Latency,T_rec (ms),Median,2.0647,2.0647,N/A,N/A,N/A,Median
-Latency,T_rec (ms),IQR,1.1142,1.1142,N/A,N/A,N/A,Interquartile range
+Latency,T_rec (ms),Mean,11.9961,11.9961,N/A,N/A,N/A,Full loop with mock execution & supervisor validation
+Latency,T_rec (ms),Std,7.0407,7.0407,N/A,N/A,N/A,Standard deviation
+Latency,T_rec (ms),Median,11.3606,11.3606,N/A,N/A,N/A,Median
+Latency,T_rec (ms),IQR,10.8099,10.8099,N/A,N/A,N/A,Interquartile range
 Latency,T_rec (ms),Sample_N,2250,2250,N/A,N/A,N/A,Observations
-Latency,T_no_rec (ms),Mean,N/A,N/A,N/A,0.0012,N/A,Immediate abort fail-fast baseline
-Latency,Real_FS_Latency (ms),Mean,1.3633,1.3633,N/A,N/A,N/A,Real NTFS directory creation & file payload write
+Latency,T_no_rec (ms),Mean,N/A,N/A,N/A,0.0007,N/A,Immediate abort fail-fast baseline
+Latency,Real_FS_Latency (ms),Mean,1.8882,1.8882,N/A,N/A,N/A,Real NTFS directory creation & file payload write
 Fault_Class,TIMEOUT,Recovery_Count_of_25,25/25 (100.0%),25/25 (100.0%),25/25 (100.0%),0/25 (0.0%),"[86.7%, 100.0%]","Rejections: After=0/25, Before=0/25"
 Fault_Class,MISSING_RESOURCE,Recovery_Count_of_25,25/25 (100.0%),25/25 (100.0%),0/25 (0.0%),0/25 (0.0%),"[86.7%, 100.0%]","Rejections: After=0/25, Before=0/25"
 Fault_Class,TOOL_ADAPTER_FAILURE,Recovery_Count_of_25,25/25 (100.0%),0/25 (0.0%),0/25 (0.0%),0/25 (0.0%),"[86.7%, 100.0%]","Rejections: After=0/25, Before=25/25"
@@ -42,3 +42,10 @@ Scenario_S4_Additional_Faults,file_locked,Handling_Outcome,"recovered=0/10, reje
 Scenario_S4_Additional_Faults,disk_full,Handling_Outcome,"recovered=0/10, rejected=10/10, retried=0/10",N/A,N/A,N/A,N/A,"Classified=UNKNOWN/UNKNOWN, conf=0.3, matches_intended=True"
 Scenario_S4_Additional_Faults,malformed_json_tool_output,Handling_Outcome,"recovered=0/10, rejected=10/10, retried=0/10",N/A,N/A,N/A,N/A,"Classified=UNKNOWN/UNKNOWN, conf=0.3, matches_intended=True"
 Scenario_S4_Additional_Faults,unknown_adapter_name,Handling_Outcome,"recovered=10/10, rejected=0/10, retried=0/10",N/A,N/A,N/A,N/A,"Classified=TOOL_UNAVAILABLE/TOOL, conf=0.9, matches_intended=True"
+Timeout_Backoff,Wall_Clock_Latency,Mean,1010.5008,N/A,N/A,N/A,N/A,Awaited real backoff sleep (2^1 * 1.0s)
+Timeout_Backoff,Wall_Clock_Latency,Median,1010.35,N/A,N/A,N/A,N/A,Median wall-clock latency with sleep
+Adversarial_Safety,Destructive_Commands,Retry_Dispatches,0,0,75,0,N/A,Phoenix: 0 dispatches; Naive Retry: 75 dispatches over 25 commands (3 per command)
+Concurrency_Audit,10_Workflows_30_Repeats,State_Clobbering_Events,0,N/A,N/A,N/A,N/A,Zero state clobbering events observed across 300 workflows (1500 tasks)
+Concurrency_Audit,10_Workflows_30_Repeats,Signature_Collisions,0,N/A,N/A,N/A,N/A,Zero failure signature collisions observed across 300 workflows
+Limitations,LLM_Baseline,Status,Not_Evaluated,N/A,N/A,N/A,N/A,No external LLM baseline evaluated; cited literature step latencies only
+Limitations,Heldout_Blind_Set,Status,Template_Empty,N/A,N/A,N/A,N/A,Held-out blind set was unpopulated template
