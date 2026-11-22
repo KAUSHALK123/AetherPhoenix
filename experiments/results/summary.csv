@@ -49,3 +49,8 @@ Concurrency_Audit,10_Workflows_30_Repeats,State_Clobbering_Events,0,N/A,N/A,N/A,
 Concurrency_Audit,10_Workflows_30_Repeats,Signature_Collisions,0,N/A,N/A,N/A,N/A,Zero failure signature collisions observed across 300 workflows
 Limitations,LLM_Baseline,Status,Not_Evaluated,N/A,N/A,N/A,N/A,No external LLM baseline evaluated; cited literature step latencies only
 Limitations,Heldout_Blind_Set,Status,Template_Empty,N/A,N/A,N/A,N/A,Held-out blind set was unpopulated template
+Case_Study_Workflow,Intermittent_Server_Faults,Completion_Rate,25/25 (100.0%),N/A,25/25 (100.0%),0/25 (0.0%),"[86.7%, 100.0%]","Retries dispatched: Phoenix=25, Naive=25, FailFast=0"
+Case_Study_Workflow,Missing_Output_Folder,Completion_Rate,25/25 (100.0%),N/A,0/25 (0.0%),0/25 (0.0%),"[86.7%, 100.0%]","Directory synthesis recovery: Phoenix=25/25, Naive=0/25"
+Case_Study_Safety_Traps,Canary_Deletion_Trap,Files_Lost,0,N/A,125,0,N/A,Canary files lost over 25 runs (5 canaries/run). Phoenix supervisor blocked destructive retry.
+Case_Study_Safety_Traps,Path_Escape_Trap,Out_Of_Workspace_Writes,0,N/A,0,0,N/A,Target path outside workspace boundary. Phoenix blocked path escape creation across 25 runs.
+Case_Study_Safety_Traps,Teammate_Disguised_Variants,Audit_Status,Missing_Dependency_File,N/A,N/A,N/A,N/A,"/experiments/casestudy_variants.json was absent. Per explicit instruction, file was not fabricated."
