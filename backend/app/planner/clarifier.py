@@ -113,6 +113,48 @@ class ClarificationEngine:
             # If both folder and criteria are provided, no clarification needed!
             return missing_fields
 
+        # Priority 2: Check for Canva intent
+        is_canva = "canva" in req_text or any(
+            k in req_text
+            for k in [
+                "instagram post",
+                "college fest poster",
+                "event poster",
+                "fest poster",
+                "youtube thumbnail",
+                "presentation",
+                "edit existing design",
+                "export as pdf",
+            ]
+        )
+        if is_canva:
+            has_action_or_type = any(
+                w in req_text
+                for w in [
+                    "open",
+                    "launch",
+                    "instagram",
+                    "poster",
+                    "presentation",
+                    "thumbnail",
+                    "fest",
+                    "event",
+                    "edit",
+                    "export",
+                    "pdf",
+                    "png",
+                    "post",
+                    "1080",
+                    "dimension",
+                    "theme",
+                    "color",
+                    "modify",
+                ]
+            )
+            if not has_action_or_type:
+                missing_fields.append("canva_design_type")
+            return missing_fields
+
         if requirement.intent == IntentCategory.UNKNOWN:
             missing_fields.append("intent")
 
@@ -127,6 +169,16 @@ class ClarificationEngine:
         """
         if not missing_fields:
             return ""
+
+        # Canva design clarification
+        if "canva_design_type" in missing_fields:
+            return (
+                "What would you like to design in Canva?\n"
+                "- Instagram Post (1080x1080)\n"
+                "- College Fest Poster\n"
+                "- Presentation (16:9)\n"
+                "- YouTube Thumbnail"
+            )
 
         # File organization clarification
         if (
@@ -177,6 +229,13 @@ class ClarificationEngine:
                     "Organize Downloads by file type",
                     "Organize Desktop by category",
                     "Sort files by date created",
+                ]
+            elif "canva_design_type" in missing_fields:
+                options = [
+                    "Instagram Post (1080x1080)",
+                    "College Fest Poster",
+                    "Presentation",
+                    "YouTube Thumbnail",
                 ]
             return ClarificationResult(
                 needs_clarification=True,

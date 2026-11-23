@@ -120,6 +120,13 @@ def get_default_tool_registry() -> ToolRegistry:
     except Exception as e:
         logger.debug(f"Could not register browser_extension: {e}")
 
+    try:
+        from app.tools.canva import register_canva_tool
+
+        register_canva_tool(registry)
+    except Exception as e:
+        logger.debug(f"Could not register canva_tool: {e}")
+
     return registry
 
 
@@ -392,6 +399,69 @@ class LLMPlanner:
                     confidence_score=0.85,
                     execution_summary=f"**Execution Plan Summary**\n- **Goal**: {request.message}\n- **Tasks**: 2\n- **Tool**: file_explorer\n",
                     parallel_groups=[[leaf.task_id]],
+                )
+                return PlannerResponse(
+                    session_id=request.session_id,
+                    status="ready",
+                    reply=output.model_dump_json(),
+                    action="execute_plan",
+                )
+
+        # Canva Design Automation
+        if (
+            any(
+                w in lower
+                for w in [
+                    "canva",
+                    "instagram post",
+                    "fest poster",
+                    "event poster",
+                    "college fest",
+                    "youtube thumbnail",
+                    "edit existing design",
+                ]
+            )
+            or ("export as pdf" in lower and ("design" in lower or "canva" in lower))
+            or lower.strip()
+            in [
+                "open canva",
+                "create presentation",
+                "edit existing design",
+                "export as pdf",
+            ]
+        ):
+            if "canva_tool" in registered_tools:
+                from app.planner.decomposer import TaskDecompositionEngine
+
+                canva_tasks = TaskDecompositionEngine()._decompose_canva_goal(
+                    request.message, workflow_id
+                )
+                leaf_tasks = [t for t in canva_tasks if t.task_type == TaskType.LEAF]
+                output = PlannerOutput(
+                    metadata=PlanMetadata(
+                        workflow_id=str(workflow_id),
+                        session_id=request.session_id,
+                        goal=request.message,
+                    ),
+                    workflow_spec=f"Canva Workflow for {request.message}",
+                    tasks=canva_tasks,
+                    dependency_graph={
+                        t.task_id: [str(d) for d in t.dependencies] for t in leaf_tasks
+                    },
+                    estimated_time_seconds=60,
+                    risks=[
+                        "Live browser execution requires active network connectivity"
+                    ],
+                    required_permissions=["BROWSER_ACCESS", "INTERNET"],
+                    expected_outputs=[
+                        "Completed Canva design and exported deliverable"
+                    ],
+                    confidence_score=0.95,
+                    execution_summary=(
+                        f"**Canva Execution Plan**\n- **Goal**: {request.message}\n"
+                        f"- **Tasks**: {len(canva_tasks)}\n- **Tool**: canva_tool\n"
+                    ),
+                    parallel_groups=[[t.task_id] for t in leaf_tasks],
                 )
                 return PlannerResponse(
                     session_id=request.session_id,

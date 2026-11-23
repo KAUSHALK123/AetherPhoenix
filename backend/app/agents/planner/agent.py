@@ -41,6 +41,7 @@ class PlannerAgent:
 
         # Initialize CapabilityRegistry with mock defaults for Planner V1 testing
         from shared.contracts.capability import Capability
+        from shared.contracts.permission import PermissionType
         from shared.contracts.task import TaskCategory
 
         from app.engine.registry import CapabilityRegistry
@@ -120,6 +121,21 @@ class PlannerAgent:
                 description="Controls web browser navigation, interaction and scraping",
                 category=TaskCategory.BROWSER,
                 required_tools=["browser_automation"],
+            )
+        )
+        cap_reg.register(
+            Capability(
+                name="canva_design",
+                description=(
+                    "Automates natural-language Canva design creation, editing, "
+                    "templates, and export via live browser runtime"
+                ),
+                category=TaskCategory.BROWSER,
+                required_tools=["canva_tool"],
+                required_permissions=[
+                    PermissionType.BROWSER_ACCESS.value,
+                    PermissionType.INTERNET.value,
+                ],
             )
         )
         cap_reg.register(

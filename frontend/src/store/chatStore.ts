@@ -207,11 +207,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const isBrowserTask = plan.tasks?.some(t => 
       t.required_tool === 'browser_extension' || 
       t.required_tool === 'browser_automation' || 
+      t.required_tool === 'canva_tool' ||
       t.category === 'BROWSER' ||
-      (t.inputs && (t.inputs.url || t.inputs.action === 'navigate'))
+      (t.inputs && (t.inputs.url || t.inputs.action === 'navigate' || t.inputs.action === 'open_canva' || t.inputs.action === 'create_design'))
     ) || (plan.required_permissions && plan.required_permissions.some(p => p.includes('BROWSER') || p.includes('INTERNET')));
 
     const isBrowser = !isTerminalIntent && (isBrowserTask || 
+      lowerGoal.includes('canva') ||
+      lowerGoal.includes('instagram post') ||
+      lowerGoal.includes('poster') ||
+      lowerGoal.includes('thumbnail') ||
       lowerGoal.includes('github') ||
       lowerGoal.includes('gitlab') ||
       lowerGoal.includes('pull request') ||
@@ -250,7 +255,25 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       if (!immediateTargetUrl) {
-        if (lowerGoal.includes('github') || lowerGoal.includes('issue') || lowerGoal.includes('gitlab')) {
+        if (lowerGoal.includes('canva') || lowerGoal.includes('instagram post') || lowerGoal.includes('poster') || lowerGoal.includes('thumbnail') || plan.tasks?.some(t => t.required_tool === 'canva_tool')) {
+          immediateSiteName = 'Canva Design Studio';
+          if (lowerGoal.includes('instagram')) {
+            immediateTargetUrl = 'https://www.canva.com/create/instagram-posts/';
+            immediateQuery = 'Instagram Post (1080 x 1080)';
+          } else if (lowerGoal.includes('poster') || lowerGoal.includes('fest')) {
+            immediateTargetUrl = 'https://www.canva.com/create/posters/';
+            immediateQuery = 'Event Poster';
+          } else if (lowerGoal.includes('presentation')) {
+            immediateTargetUrl = 'https://www.canva.com/create/presentations/';
+            immediateQuery = 'Presentation (16:9)';
+          } else if (lowerGoal.includes('thumbnail')) {
+            immediateTargetUrl = 'https://www.canva.com/create/youtube-thumbnails/';
+            immediateQuery = 'YouTube Thumbnail';
+          } else {
+            immediateTargetUrl = 'https://www.canva.com';
+            immediateQuery = 'Canva Design';
+          }
+        } else if (lowerGoal.includes('github') || lowerGoal.includes('issue') || lowerGoal.includes('gitlab')) {
           immediateSiteName = 'GitHub';
           const repoMatch = (planName + ' ' + rawGoal).match(/([a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+)/);
           const repo = repoMatch ? repoMatch[1] : 'KAUSHALK123/AetherPhoenix';

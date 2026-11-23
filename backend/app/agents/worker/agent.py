@@ -210,6 +210,18 @@ class WorkerAgent(BaseAgent):
                                 "app.tools.desktop.interface",
                                 "DesktopToolAdapter",
                             ),
+                            "CanvaToolAdapter": (
+                                "app.tools.canva.adapter",
+                                "CanvaToolAdapter",
+                            ),
+                            "canva_tool": (
+                                "app.tools.canva.adapter",
+                                "CanvaToolAdapter",
+                            ),
+                            "canva": (
+                                "app.tools.canva.adapter",
+                                "CanvaToolAdapter",
+                            ),
                             "ScreenshotToolAdapter": (
                                 "app.tools.screenshot.tool",
                                 "ScreenshotToolAdapter",
