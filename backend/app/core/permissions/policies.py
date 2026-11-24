@@ -97,6 +97,34 @@ class SafeExecutionPolicy:
         "export_design": RiskLevel.LOW,
         "canva_tool": RiskLevel.LOW,
         "canva": RiskLevel.LOW,
+        # Canva skills (Phase 3)
+        "canva_skill_open": RiskLevel.LOW,
+        "canva_skill_create_design": RiskLevel.LOW,
+        "canva_skill_pick_template": RiskLevel.LOW,
+        "canva_skill_edit_text": RiskLevel.LOW,
+        "canva_skill_add_slide": RiskLevel.LOW,
+        "canva_skill_upload_image": RiskLevel.LOW,
+        "canva_skill_apply_brand_colors": RiskLevel.LOW,
+        "canva_skill_export": RiskLevel.LOW,
+        "canva_skill_adapter": RiskLevel.LOW,
+        "pick_template": RiskLevel.LOW,
+        "add_slide": RiskLevel.LOW,
+        "upload_image": RiskLevel.LOW,
+        "apply_brand_colors": RiskLevel.LOW,
+        "export": RiskLevel.LOW,
+        # Canva critical actions (require explicit approval)
+        "publish_design": RiskLevel.CRITICAL,
+        "canva_publish_design": RiskLevel.CRITICAL,
+        "canva_skill_publish": RiskLevel.CRITICAL,
+        "canva_skill_publish_design": RiskLevel.CRITICAL,
+        "share_design": RiskLevel.CRITICAL,
+        "canva_share_design": RiskLevel.CRITICAL,
+        "canva_skill_share": RiskLevel.CRITICAL,
+        "canva_skill_share_design": RiskLevel.CRITICAL,
+        "purchase_template": RiskLevel.CRITICAL,
+        "canva_purchase_template": RiskLevel.CRITICAL,
+        "canva_skill_purchase": RiskLevel.CRITICAL,
+        "canva_skill_purchase_template": RiskLevel.CRITICAL,
         # Browser medium / high risk
         "browser_navigate": RiskLevel.MEDIUM,
         "navigate": RiskLevel.MEDIUM,
@@ -192,6 +220,27 @@ class SafeExecutionPolicy:
             for token in DESTRUCTIVE_COMMAND_TOKENS:
                 if token in cmd:
                     return RiskLevel.CRITICAL
+
+        # Check for Critical Canva actions: publishing, sharing, and purchasing templates
+        critical_canva_actions = {
+            "publish_design",
+            "canva_publish_design",
+            "canva_skill_publish",
+            "canva_skill_publish_design",
+            "share_design",
+            "canva_share_design",
+            "canva_skill_share",
+            "canva_skill_share_design",
+            "purchase_template",
+            "canva_purchase_template",
+            "canva_skill_purchase",
+            "canva_skill_purchase_template",
+        }
+        if norm_action in critical_canva_actions or any(
+            ca in norm_action
+            for ca in ("publish_design", "share_design", "purchase_template")
+        ):
+            return RiskLevel.CRITICAL
 
         # Check for high-risk browser interactions (clicks/actions that submit, publish, delete or pay)
         high_risk_interaction_keywords = {

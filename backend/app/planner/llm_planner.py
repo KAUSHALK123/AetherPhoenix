@@ -121,11 +121,12 @@ def get_default_tool_registry() -> ToolRegistry:
         logger.debug(f"Could not register browser_extension: {e}")
 
     try:
-        from app.tools.canva import register_canva_tool
+        from app.tools.canva import register_canva_skills, register_canva_tool
 
         register_canva_tool(registry)
+        register_canva_skills(registry)
     except Exception as e:
-        logger.debug(f"Could not register canva_tool: {e}")
+        logger.debug(f"Could not register canva_tool / canva_skills: {e}")
 
     return registry
 

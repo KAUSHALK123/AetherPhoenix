@@ -222,6 +222,62 @@ class WorkerAgent(BaseAgent):
                                 "app.tools.canva.adapter",
                                 "CanvaToolAdapter",
                             ),
+                            "CanvaSkillAdapter": (
+                                "app.tools.canva.skill_adapter",
+                                "CanvaSkillAdapter",
+                            ),
+                            "canva_skill_adapter": (
+                                "app.tools.canva.skill_adapter",
+                                "CanvaSkillAdapter",
+                            ),
+                            "canva_skills": (
+                                "app.tools.canva.skill_adapter",
+                                "CanvaSkillAdapter",
+                            ),
+                            "canva_skill_open": (
+                                "app.tools.canva.skill_adapter",
+                                "CanvaSkillAdapter",
+                            ),
+                            "canva_skill_create_design": (
+                                "app.tools.canva.skill_adapter",
+                                "CanvaSkillAdapter",
+                            ),
+                            "canva_skill_pick_template": (
+                                "app.tools.canva.skill_adapter",
+                                "CanvaSkillAdapter",
+                            ),
+                            "canva_skill_edit_text": (
+                                "app.tools.canva.skill_adapter",
+                                "CanvaSkillAdapter",
+                            ),
+                            "canva_skill_add_slide": (
+                                "app.tools.canva.skill_adapter",
+                                "CanvaSkillAdapter",
+                            ),
+                            "canva_skill_upload_image": (
+                                "app.tools.canva.skill_adapter",
+                                "CanvaSkillAdapter",
+                            ),
+                            "canva_skill_apply_brand_colors": (
+                                "app.tools.canva.skill_adapter",
+                                "CanvaSkillAdapter",
+                            ),
+                            "canva_skill_export": (
+                                "app.tools.canva.skill_adapter",
+                                "CanvaSkillAdapter",
+                            ),
+                            "canva_skill_publish": (
+                                "app.tools.canva.skill_adapter",
+                                "CanvaSkillAdapter",
+                            ),
+                            "canva_skill_share": (
+                                "app.tools.canva.skill_adapter",
+                                "CanvaSkillAdapter",
+                            ),
+                            "canva_skill_purchase": (
+                                "app.tools.canva.skill_adapter",
+                                "CanvaSkillAdapter",
+                            ),
                             "ScreenshotToolAdapter": (
                                 "app.tools.screenshot.tool",
                                 "ScreenshotToolAdapter",

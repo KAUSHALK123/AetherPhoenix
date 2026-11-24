@@ -312,6 +312,10 @@ class BrowserController:
             logger.error(f"Failed to close browser session: {e}")
             raise BrowserActionError("Failed to close browser") from e
 
+    async def close(self) -> BrowserResult:
+        """Alias for close_session to support standard controller lifecycle."""
+        return await self.close_session()
+
     async def _animate_cursor(self, x: float, y: float, click: bool = False) -> None:
         """Triggers visible cursor movement and optional click highlight ripple."""
         if not self._page:

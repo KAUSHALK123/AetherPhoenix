@@ -1772,12 +1772,23 @@ class TaskDecompositionEngine:
         custom_w = int(dim_match.group(1)) if dim_match else None
         custom_h = int(dim_match.group(2)) if dim_match else None
 
+        # Extract slide count if present (e.g. 5 slide, 5 slides, 3 pages)
+        slide_match = re.search(r"(\d+)\s*(?:slide|slides|page|pages)", lower_goal)
+        num_slides = int(slide_match.group(1)) if slide_match else 1
+
+        # Extract topic from "on X in canva" or "about X"
+        topic_match = re.search(
+            r"\b(?:on|about|for)\s+([a-zA-Z0-9_\s]+?)(?:\s+in\s+canva|\s+using\s+canva|$)",
+            lower_goal,
+        )
+        extracted_topic = topic_match.group(1).strip().title() if topic_match else None
+
         # Scenario 1: Just Open Canva
         if clean_str in ["open canva", "launch canva", "open canva in browser"] or (
             "open canva" in lower_goal
             and not any(
                 k in lower_goal
-                for k in ["create", "design", "edit", "export", "post", "poster", "ppt", "presentation", "template", "content", "contents", "paste", "pasting"]
+                for k in ["create", "design", "edit", "export", "post", "poster", "ppt", "presentation", "template", "content", "contents", "paste", "pasting", "slide", "slides"]
             )
         ):
             phase_root = Task(
@@ -1786,7 +1797,7 @@ class TaskDecompositionEngine:
                 description="Open and initialize Canva in the live browser runtime",
                 task_type=TaskType.PHASE,
                 assigned_agent="System",
-                success_criteria=["Canva homepage opened in browser"],
+                success_criteria=["Canva homepage opened and verified via OCR"],
                 failure_criteria=["Failed to open Canva browser session"],
                 required_tool="",
                 category=TaskCategory.BROWSER,
@@ -1799,17 +1810,18 @@ class TaskDecompositionEngine:
                 parent_task_id=phase_root.task_id,
                 workflow_id=workflow_id,
                 task_name="Open Canva in Browser",
-                description="Launch browser and navigate to Canva homepage",
+                description="Launch browser, verify session or hand off cleanly at sign-in",
                 assigned_agent="WorkerAgent",
-                required_tool="canva_tool",
+                required_tool="canva_skill_open",
                 category=TaskCategory.BROWSER,
                 priority=TaskPriority.HIGH,
                 dependencies=[],
-                expected_output="Canva homepage opened in live browser",
-                success_criteria=["Canva browser session active"],
+                expected_output="Canva homepage opened and verified in live browser",
+                success_criteria=["Canva dashboard verified via OCR or clean handoff"],
                 failure_criteria=["Navigation to Canva failed"],
                 status=TaskStatus.CREATED,
                 inputs={
+                    "skill": "open_canva",
                     "action": "open_canva",
                     "url": "https://www.canva.com",
                     "headless": False,
@@ -1846,15 +1858,16 @@ class TaskDecompositionEngine:
                 task_name="Modify Existing Canva Design",
                 description="Open existing design in Canva editor and apply modifications",
                 assigned_agent="WorkerAgent",
-                required_tool="canva_tool",
+                required_tool="canva_skill_edit_text",
                 category=TaskCategory.BROWSER,
                 priority=TaskPriority.HIGH,
                 dependencies=[],
                 expected_output="Updated Canva design in editor",
-                success_criteria=["Design successfully edited"],
+                success_criteria=["Design successfully edited and verified"],
                 failure_criteria=["Failed to access or modify design"],
                 status=TaskStatus.CREATED,
                 inputs={
+                    "skill": "edit_text",
                     "action": "edit_design",
                     "design_url": "https://www.canva.com/design",
                     "description": goal,
@@ -1889,7 +1902,7 @@ class TaskDecompositionEngine:
                 task_name="Apply Theme & Color Palette",
                 description="Change active design colors in Canva editor",
                 assigned_agent="WorkerAgent",
-                required_tool="canva_tool",
+                required_tool="canva_skill_apply_brand_colors",
                 category=TaskCategory.BROWSER,
                 priority=TaskPriority.MEDIUM,
                 dependencies=[],
@@ -1898,6 +1911,7 @@ class TaskDecompositionEngine:
                 failure_criteria=["Failed to apply colors"],
                 status=TaskStatus.CREATED,
                 inputs={
+                    "skill": "apply_brand_colors",
                     "action": "change_colors",
                     "palette": ["#7D2AE8", "#00C4CC", "#FFFFFF"],
                 },
@@ -1930,7 +1944,7 @@ class TaskDecompositionEngine:
                 task_name="Export Canva Design as PDF",
                 description="Trigger Canva download and register PDF artifact in storage",
                 assigned_agent="WorkerAgent",
-                required_tool="canva_tool",
+                required_tool="canva_skill_export",
                 category=TaskCategory.BROWSER,
                 priority=TaskPriority.HIGH,
                 dependencies=[],
@@ -1938,19 +1952,18 @@ class TaskDecompositionEngine:
                 success_criteria=["PDF artifact registered with download URL"],
                 failure_criteria=["Export failed"],
                 status=TaskStatus.CREATED,
-                inputs={"action": "export_design", "format": "pdf"},
+                inputs={"skill": "export", "action": "export_design", "format": "pdf"},
             )
             return [phase_root, task_export]
 
-        # Scenario 5: Create Design (Instagram Post, Poster, Presentation, YouTube Thumbnail, etc.)
-        # Determine design type and dimensions
+        # Scenario 5: Create Design (Presentation, Poster, Instagram Post, etc.)
         if "instagram" in lower_goal or "insta" in lower_goal:
             design_type = "instagram_post"
             target_w = custom_w or 1080
             target_h = custom_h or 1080
-            topic = "Instagram Post"
+            topic = extracted_topic or "Instagram Post"
             title = "Instagram Post 1080x1080"
-            text_content = "Special Announcement"
+            text_content = f"{topic} - Special Announcement"
         elif (
             "poster" in lower_goal
             or "postr" in lower_goal
@@ -1961,13 +1974,16 @@ class TaskDecompositionEngine:
             target_w = custom_w or 1080
             target_h = custom_h or 1920
             topic = (
-                "College Fest"
-                if (
-                    "college" in lower_goal
-                    or "colledge" in lower_goal
-                    or "fest" in lower_goal
+                extracted_topic
+                or (
+                    "College Fest"
+                    if (
+                        "college" in lower_goal
+                        or "colledge" in lower_goal
+                        or "fest" in lower_goal
+                    )
+                    else "Event Poster"
                 )
-                else "Event Poster"
             )
             title = f"{topic} Poster"
             text_content = f"{topic} 2026 - Join the Celebration!"
@@ -1975,31 +1991,31 @@ class TaskDecompositionEngine:
             design_type = "presentation"
             target_w = custom_w or 1920
             target_h = custom_h or 1080
-            topic = "Presentation"
-            title = "Canva Presentation"
-            text_content = "Executive Overview & Strategy"
+            topic = extracted_topic or "Presentation"
+            title = f"{topic} Presentation" if topic != "Presentation" else "Canva Presentation"
+            text_content = f"{topic} - Overview & Strategy"
         elif "thumbnail" in lower_goal or "youtube" in lower_goal:
             design_type = "youtube_thumbnail"
             target_w = custom_w or 1280
             target_h = custom_h or 720
-            topic = "YouTube Thumbnail"
+            topic = extracted_topic or "YouTube Thumbnail"
             title = "YouTube Video Thumbnail"
             text_content = "Watch Now!"
         else:
             design_type = "custom"
             target_w = custom_w or 1080
             target_h = custom_h or 1080
-            topic = "Creative Design"
+            topic = extracted_topic or "Creative Design"
             title = "Canva Design"
             text_content = "Creative Design"
 
         phase_root = Task(
             workflow_id=workflow_id,
             task_name=f"Phase 1: Canva {title} Creation",
-            description=f"Automate Canva to create {title} ({target_w}x{target_h}px)",
+            description=f"Automate Canva skills to create {title} ({target_w}x{target_h}px)",
             task_type=TaskType.PHASE,
             assigned_agent="System",
-            success_criteria=["Design created in Canva editor with correct dimensions"],
+            success_criteria=["Design created and verified in Canva editor"],
             failure_criteria=["Failed to create design in Canva"],
             required_tool="",
             category=TaskCategory.BROWSER,
@@ -2009,21 +2025,45 @@ class TaskDecompositionEngine:
             status=TaskStatus.CREATED,
         )
 
+        # 1. Open Canva
+        task_open = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name="Open Canva in Browser",
+            description="Launch browser and verify Canva session or hand off cleanly at sign-in",
+            assigned_agent="WorkerAgent",
+            required_tool="canva_skill_open",
+            category=TaskCategory.BROWSER,
+            priority=TaskPriority.HIGH,
+            dependencies=[],
+            expected_output="Active Canva browser session",
+            success_criteria=["Canva dashboard verified via OCR or clean handoff"],
+            failure_criteria=["Failed to open Canva"],
+            status=TaskStatus.CREATED,
+            inputs={
+                "skill": "open_canva",
+                "action": "open_canva",
+                "url": "https://www.canva.com",
+            },
+        )
+
+        # 2. Create Design
         task_create = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
             task_name=f"Create {title} ({target_w}x{target_h}px)",
-            description=f"Open Canva, configure dimensions ({target_w}x{target_h}px), and open editor",
+            description=f"Open Canva {design_type} editor with dimensions ({target_w}x{target_h}px)",
             assigned_agent="WorkerAgent",
-            required_tool="canva_tool",
+            required_tool="canva_skill_create_design",
             category=TaskCategory.BROWSER,
             priority=TaskPriority.HIGH,
-            dependencies=[],
+            dependencies=[task_open.task_id],
             expected_output=f"Canva editor open with {target_w}x{target_h}px canvas",
-            success_criteria=["Design editor initialized with dimensions"],
+            success_criteria=["Design editor initialized and verified by OCR"],
             failure_criteria=["Failed to initialize design editor"],
             status=TaskStatus.CREATED,
             inputs={
+                "skill": "create_design",
                 "action": "create_design",
                 "design_type": design_type,
                 "width": target_w,
@@ -2035,75 +2075,131 @@ class TaskDecompositionEngine:
             },
         )
 
-        tasks = [phase_root, task_create]
+        tasks = [phase_root, task_open, task_create]
 
-        # If user explicitly requested choosing/applying a template, add template task
-        if "template" in lower_goal:
-            tmpl_name = "default" if "default" in lower_goal else (topic or "Presentation")
+        # 3. Apply Template (always for presentations or if template requested)
+        if design_type == "presentation" or "template" in lower_goal or "default" in lower_goal:
+            tmpl_name = (
+                topic if topic and topic != "Presentation"
+                else ("default" if "default" in lower_goal else "Presentation")
+            )
             task_template = Task(
                 parent_task_id=phase_root.task_id,
                 workflow_id=workflow_id,
                 task_name=f"Apply {tmpl_name.capitalize()} Template",
                 description=f"Select and apply {tmpl_name} template in Canva editor",
                 assigned_agent="WorkerAgent",
-                required_tool="canva_tool",
+                required_tool="canva_skill_pick_template",
                 category=TaskCategory.BROWSER,
                 priority=TaskPriority.HIGH,
                 dependencies=[task_create.task_id],
                 expected_output=f"Applied {tmpl_name} template to Canva canvas",
-                success_criteria=["Template loaded onto canvas"],
+                success_criteria=["Template loaded onto canvas and verified via OCR"],
                 failure_criteria=["Failed to apply template"],
                 status=TaskStatus.CREATED,
-                inputs={"action": "apply_template", "template_name": tmpl_name},
+                inputs={
+                    "skill": "pick_template",
+                    "action": "apply_template",
+                    "query": tmpl_name,
+                },
             )
             tasks.append(task_template)
 
-        # If user requested making or pasting contents, add text/content insertion task
-        if any(
-            k in lower_goal
-            for k in ["content", "contents", "paste", "pasting", "making", "text", "heading"]
-        ):
-            prev_dep = tasks[-1].task_id if len(tasks) > 1 else task_create.task_id
-            task_content = Task(
-                parent_task_id=phase_root.task_id,
-                workflow_id=workflow_id,
-                task_name="Add & Paste Presentation Content",
-                description=f"Paste and format presentation content '{text_content}' on Canva canvas",
-                assigned_agent="WorkerAgent",
-                required_tool="canva_tool",
-                category=TaskCategory.BROWSER,
-                priority=TaskPriority.HIGH,
-                dependencies=[prev_dep],
-                expected_output="Formatted content added to Canva canvas",
-                success_criteria=["Content added successfully to canvas"],
-                failure_criteria=["Failed to add content"],
-                status=TaskStatus.CREATED,
-                inputs={"action": "add_text", "text": text_content, "text_type": "heading"},
-            )
-            tasks.append(task_content)
+        # 4. Content / Heading Text
+        prev_dep = tasks[-1].task_id
+        task_content = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name="Edit Slide 1 Heading & Content",
+            description=f"Paste and format content '{text_content}' on Canva canvas",
+            assigned_agent="WorkerAgent",
+            required_tool="canva_skill_edit_text",
+            category=TaskCategory.BROWSER,
+            priority=TaskPriority.HIGH,
+            dependencies=[prev_dep],
+            expected_output="Formatted content added to Canva canvas",
+            success_criteria=["Content added and verified via OCR"],
+            failure_criteria=["Failed to add content"],
+            status=TaskStatus.CREATED,
+            inputs={
+                "skill": "edit_text",
+                "action": "add_text",
+                "text": text_content,
+                "text_type": "heading",
+            },
+        )
+        tasks.append(task_content)
 
-        # If user explicitly requested export as well, add export task
+        # 5. Additional Slides (if num_slides > 1)
+        if num_slides > 1:
+            for slide_idx in range(2, num_slides + 1):
+                prev_dep = tasks[-1].task_id
+                task_add_slide = Task(
+                    parent_task_id=phase_root.task_id,
+                    workflow_id=workflow_id,
+                    task_name=f"Add Slide {slide_idx}",
+                    description=f"Add slide {slide_idx} to Canva presentation",
+                    assigned_agent="WorkerAgent",
+                    required_tool="canva_skill_add_slide",
+                    category=TaskCategory.BROWSER,
+                    priority=TaskPriority.HIGH,
+                    dependencies=[prev_dep],
+                    expected_output=f"Slide {slide_idx} added to presentation",
+                    success_criteria=["New slide added and verified via OCR"],
+                    failure_criteria=["Failed to add slide"],
+                    status=TaskStatus.CREATED,
+                    inputs={
+                        "skill": "add_slide",
+                        "slide_number": slide_idx,
+                    },
+                )
+                tasks.append(task_add_slide)
+
+                slide_text = f"{topic} - Key Insights Part {slide_idx}"
+                task_slide_text = Task(
+                    parent_task_id=phase_root.task_id,
+                    workflow_id=workflow_id,
+                    task_name=f"Edit Slide {slide_idx} Content",
+                    description=f"Add content '{slide_text}' to slide {slide_idx}",
+                    assigned_agent="WorkerAgent",
+                    required_tool="canva_skill_edit_text",
+                    category=TaskCategory.BROWSER,
+                    priority=TaskPriority.MEDIUM,
+                    dependencies=[task_add_slide.task_id],
+                    expected_output=f"Slide {slide_idx} content updated",
+                    success_criteria=["Slide text updated and verified via OCR"],
+                    failure_criteria=["Failed to update slide content"],
+                    status=TaskStatus.CREATED,
+                    inputs={
+                        "skill": "edit_text",
+                        "text": slide_text,
+                        "text_type": "body",
+                    },
+                )
+                tasks.append(task_slide_text)
+
+        # 6. Export task if requested or specified
         if any(
             w in lower_goal
-            for w in ["export", "download", "save as pdf", "save as png"]
+            for w in ["export", "download", "save as pdf", "save as png", "save as pptx", "pdf", "pptx"]
         ):
-            export_fmt = "pdf" if "pdf" in lower_goal else "png"
+            export_fmt = "pdf" if "pdf" in lower_goal else ("pptx" if "pptx" in lower_goal else "png")
             prev_dep = tasks[-1].task_id
             task_export = Task(
                 parent_task_id=phase_root.task_id,
                 workflow_id=workflow_id,
                 task_name=f"Export Design as {export_fmt.upper()}",
-                description=f"Export finished Canva design as {export_fmt.upper()} artifact",
+                description=f"Export finished Canva design as verified {export_fmt.upper()} artifact",
                 assigned_agent="WorkerAgent",
-                required_tool="canva_tool",
+                required_tool="canva_skill_export",
                 category=TaskCategory.BROWSER,
                 priority=TaskPriority.MEDIUM,
                 dependencies=[prev_dep],
                 expected_output=f"Downloadable {export_fmt.upper()} artifact",
-                success_criteria=["Artifact generated and registered in storage"],
+                success_criteria=["Artifact verified on disk and registered in storage"],
                 failure_criteria=["Export failed"],
                 status=TaskStatus.CREATED,
-                inputs={"action": "export_design", "format": export_fmt},
+                inputs={"skill": "export", "action": "export_design", "format": export_fmt},
             )
             tasks.append(task_export)
 
