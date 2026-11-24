@@ -59,6 +59,15 @@ export interface BrowserAutomationData {
   status: 'COMPLETED' | 'RUNNING' | 'FAILED';
 }
 
+export interface HumanHandoffData {
+  reason: string;
+  url?: string;
+  screenshot?: string;
+  workflowId?: string;
+  taskId?: string;
+  status: 'WAITING_FOR_HUMAN' | 'RESUMED' | 'TIMED_OUT';
+}
+
 export interface Message {
   id: string;
   role: MessageRole;
@@ -75,6 +84,7 @@ export interface Message {
   desktopAppData?: DesktopAppData;
   webResearchData?: WebResearchData;
   browserData?: BrowserAutomationData;
+  humanHandoffData?: HumanHandoffData;
 }
 
 export interface PlannerTask {

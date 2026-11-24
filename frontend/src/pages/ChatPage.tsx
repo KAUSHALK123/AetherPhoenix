@@ -10,6 +10,7 @@ import { TerminalPopcard } from '../components/chat/TerminalPopcard';
 import { FileExplorerPopcard } from '../components/chat/FileExplorerPopcard';
 import { DesktopAppPopcard } from '../components/chat/DesktopAppPopcard';
 import { BrowserPopcard } from '../components/chat/BrowserPopcard';
+import { HumanHandoffCard } from '../components/chat/HumanHandoffCard';
 
 export const ChatPage: React.FC = () => {
   const messages = useChatStore((state) => state.messages);
@@ -187,6 +188,17 @@ export const ChatPage: React.FC = () => {
                       <BrowserPopcard data={msg.browserData} />
                     )}
 
+                    {/* Human Handoff Popcard */}
+                    {msg.role !== 'user' && msg.humanHandoffData && (
+                      <HumanHandoffCard
+                        reason={msg.humanHandoffData.reason}
+                        url={msg.humanHandoffData.url}
+                        screenshot={msg.humanHandoffData.screenshot}
+                        workflowId={msg.humanHandoffData.workflowId}
+                        taskId={msg.humanHandoffData.taskId}
+                      />
+                    )}
+
                     {/* Standard Agent Text Message */}
                     {msg.role !== 'user' &&
                       !msg.planData &&
@@ -194,6 +206,7 @@ export const ChatPage: React.FC = () => {
                       !msg.workflowData &&
                       !msg.artifactData &&
                       !msg.browserData &&
+                      !msg.humanHandoffData &&
                       !msg.terminalOutputData &&
                       !msg.fileExplorerData &&
                       !msg.desktopAppData &&

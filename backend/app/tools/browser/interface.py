@@ -89,11 +89,28 @@ class BrowserAdapter(BaseToolAdapter):
                 output = {"status": "ok", "action": action, "available": True}
 
             elif action == "start_session":
-                logs.append("Starting browser session...")
+                headless = inputs.get("headless", False)
+                persistent = inputs.get("persistent", True)
+                user_data_dir = inputs.get("user_data_dir")
+                logs.append(
+                    f"Starting browser session (headless={headless}, persistent={persistent})..."
+                )
                 res = await self.controller.start_session(
-                    workflow_id=workflow_id, task_id=task_id
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                    headless=headless,
+                    persistent=persistent,
+                    user_data_dir=user_data_dir,
                 )
                 output = res.data
+
+            elif action in ("resume", "resume_handoff"):
+                logs.append("Resuming browser human handoff...")
+                success = self.controller.resume_human_handoff(
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                )
+                output = {"resumed": success}
 
             elif action == "close_session":
                 logs.append("Closing browser session...")
@@ -226,7 +243,7 @@ class BrowserTool:
 
     async def start_session(self) -> None:
         self._check_permission(PermissionType.BROWSER_ACCESS)
-        res = await self.controller.start_session()
+        res = await self.controller.start_session(headless=True, persistent=False)
         if not res.success:
             raise RuntimeError(res.error)
 

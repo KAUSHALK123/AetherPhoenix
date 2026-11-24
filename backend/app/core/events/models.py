@@ -31,6 +31,8 @@ class EventType(str, Enum):
     TASK_COMPLETED = "TaskCompleted"
     TASK_FAILED = "TaskFailed"
     TASK_RETRIED = "TaskRetried"
+    TASK_NEEDS_HUMAN = "task.needs_human"
+    TASK_HUMAN_RESUMED = "task.human_resumed"
 
     # Permission
     PERMISSION_REQUESTED = "PermissionRequested"

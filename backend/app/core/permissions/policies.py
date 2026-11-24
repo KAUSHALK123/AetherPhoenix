@@ -193,6 +193,62 @@ class SafeExecutionPolicy:
                 if token in cmd:
                     return RiskLevel.CRITICAL
 
+        # Check for high-risk browser interactions (clicks/actions that submit, publish, delete or pay)
+        high_risk_interaction_keywords = {
+            "submit",
+            "publish",
+            "delete",
+            "remove",
+            "pay",
+            "payment",
+            "checkout",
+            "buy",
+            "purchase",
+            "order",
+            "destroy",
+            "subscribe",
+            "transfer",
+        }
+        if norm_action in (
+            "interact",
+            "browser_interact",
+            "click",
+            "mouse_click",
+            "mouse_double_click",
+            "keyboard_press",
+        ):
+            target_str = str(
+                ctx.get("selector")
+                or ctx.get("text")
+                or ctx.get("target_text")
+                or ctx.get("interaction_action")
+                or ctx.get("value")
+                or ""
+            ).lower()
+            if any(kw in target_str for kw in high_risk_interaction_keywords):
+                return RiskLevel.HIGH
+
+        # Check for opening new sites in browser automation
+        if norm_action in ("navigate", "browser_navigate", "open_site", "open_url"):
+            if ctx.get("new_site") or ctx.get("is_new_site"):
+                return RiskLevel.HIGH
+            if "url" in ctx:
+                url_str = str(ctx.get("url", "")).lower()
+                is_safe_default = any(
+                    safe_dom in url_str
+                    for safe_dom in [
+                        "canva.com",
+                        "localhost",
+                        "127.0.0.1",
+                        "0.0.0.0",
+                        "example.com",
+                    ]
+                )
+                if not is_safe_default and (
+                    url_str.startswith("http://") or url_str.startswith("https://")
+                ):
+                    return RiskLevel.HIGH
+
         # Check for trusted Canva actions and domain navigation
         if "url" in ctx and "canva.com" in str(ctx.get("url", "")).lower():
             if norm_action in ("navigate", "browser_navigate", "browser_start_session"):
