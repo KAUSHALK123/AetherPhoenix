@@ -1674,7 +1674,38 @@ class TaskDecompositionEngine:
         if "canva" in lower_goal:
             return True
 
-        # 2. Mandatory Test Scenarios & key design patterns
+        # 2. Design or template requests specifying PPT / presentation / slides / posters / posts
+        if (
+            "design" in lower_goal
+            and any(
+                w in lower_goal
+                for w in [
+                    "ppt",
+                    "presentation",
+                    "slide",
+                    "slides",
+                    "template",
+                    "poster",
+                    "post",
+                    "thumbnail",
+                    "particular design",
+                    "contents",
+                    "pasting",
+                ]
+            )
+        ):
+            return True
+
+        if (
+            "template" in lower_goal
+            and any(
+                w in lower_goal
+                for w in ["ppt", "presentation", "slide", "slides", "pasting", "contents", "default"]
+            )
+        ):
+            return True
+
+        # 3. Mandatory Test Scenarios & key design patterns
         if (
             "instagram" in lower_goal
             or "insta" in lower_goal
@@ -1701,7 +1732,7 @@ class TaskDecompositionEngine:
         ):
             return True
 
-        # 3. Exact matching for mandatory test phrases
+        # 4. Exact matching for mandatory test phrases
         if clean_str in [
             "open canva",
             "create instagram post 1080 1080",
@@ -1746,7 +1777,7 @@ class TaskDecompositionEngine:
             "open canva" in lower_goal
             and not any(
                 k in lower_goal
-                for k in ["create", "design", "edit", "export", "post", "poster"]
+                for k in ["create", "design", "edit", "export", "post", "poster", "ppt", "presentation", "template", "content", "contents", "paste", "pasting"]
             )
         ):
             phase_root = Task(
@@ -1940,13 +1971,13 @@ class TaskDecompositionEngine:
             )
             title = f"{topic} Poster"
             text_content = f"{topic} 2026 - Join the Celebration!"
-        elif "presentation" in lower_goal:
+        elif "presentation" in lower_goal or "ppt" in lower_goal or "slide" in lower_goal:
             design_type = "presentation"
             target_w = custom_w or 1920
             target_h = custom_h or 1080
             topic = "Presentation"
             title = "Canva Presentation"
-            text_content = "Executive Overview"
+            text_content = "Executive Overview & Strategy"
         elif "thumbnail" in lower_goal or "youtube" in lower_goal:
             design_type = "youtube_thumbnail"
             target_w = custom_w or 1280
@@ -2004,13 +2035,60 @@ class TaskDecompositionEngine:
             },
         )
 
-        # If user explicitly requested export as well, add export task
         tasks = [phase_root, task_create]
+
+        # If user explicitly requested choosing/applying a template, add template task
+        if "template" in lower_goal:
+            tmpl_name = "default" if "default" in lower_goal else (topic or "Presentation")
+            task_template = Task(
+                parent_task_id=phase_root.task_id,
+                workflow_id=workflow_id,
+                task_name=f"Apply {tmpl_name.capitalize()} Template",
+                description=f"Select and apply {tmpl_name} template in Canva editor",
+                assigned_agent="WorkerAgent",
+                required_tool="canva_tool",
+                category=TaskCategory.BROWSER,
+                priority=TaskPriority.HIGH,
+                dependencies=[task_create.task_id],
+                expected_output=f"Applied {tmpl_name} template to Canva canvas",
+                success_criteria=["Template loaded onto canvas"],
+                failure_criteria=["Failed to apply template"],
+                status=TaskStatus.CREATED,
+                inputs={"action": "apply_template", "template_name": tmpl_name},
+            )
+            tasks.append(task_template)
+
+        # If user requested making or pasting contents, add text/content insertion task
+        if any(
+            k in lower_goal
+            for k in ["content", "contents", "paste", "pasting", "making", "text", "heading"]
+        ):
+            prev_dep = tasks[-1].task_id if len(tasks) > 1 else task_create.task_id
+            task_content = Task(
+                parent_task_id=phase_root.task_id,
+                workflow_id=workflow_id,
+                task_name="Add & Paste Presentation Content",
+                description=f"Paste and format presentation content '{text_content}' on Canva canvas",
+                assigned_agent="WorkerAgent",
+                required_tool="canva_tool",
+                category=TaskCategory.BROWSER,
+                priority=TaskPriority.HIGH,
+                dependencies=[prev_dep],
+                expected_output="Formatted content added to Canva canvas",
+                success_criteria=["Content added successfully to canvas"],
+                failure_criteria=["Failed to add content"],
+                status=TaskStatus.CREATED,
+                inputs={"action": "add_text", "text": text_content, "text_type": "heading"},
+            )
+            tasks.append(task_content)
+
+        # If user explicitly requested export as well, add export task
         if any(
             w in lower_goal
             for w in ["export", "download", "save as pdf", "save as png"]
         ):
             export_fmt = "pdf" if "pdf" in lower_goal else "png"
+            prev_dep = tasks[-1].task_id
             task_export = Task(
                 parent_task_id=phase_root.task_id,
                 workflow_id=workflow_id,
@@ -2020,7 +2098,7 @@ class TaskDecompositionEngine:
                 required_tool="canva_tool",
                 category=TaskCategory.BROWSER,
                 priority=TaskPriority.MEDIUM,
-                dependencies=[task_create.task_id],
+                dependencies=[prev_dep],
                 expected_output=f"Downloadable {export_fmt.upper()} artifact",
                 success_criteria=["Artifact generated and registered in storage"],
                 failure_criteria=["Export failed"],

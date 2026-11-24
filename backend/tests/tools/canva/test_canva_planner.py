@@ -207,6 +207,34 @@ def test_clarification_triggered_for_vague_canva_request(clarifier):
 # =========================================================================
 
 
+def test_scenario_ppt_template_and_paste_content(decomposer):
+    """Test the exact multi-action PPT design, template and content pasting workflow."""
+    prompts = [
+        "open a particular design such as for ppt an choose a template default and start making or pasting contents",
+        "open a particular design such as for ppt and choose a template default and start making or pasting contents",
+    ]
+    for prompt in prompts:
+        workflow_id = uuid4()
+        plan = decomposer.decompose_goal(prompt, workflow_id)
+        leaf_tasks = [t for t in plan.tasks if t.task_type.value == "LEAF" and t.required_tool == "canva_tool"]
+        
+        # Verify 3 sequential tasks: create design -> apply template -> add/paste content
+        assert len(leaf_tasks) == 3
+        
+        t1, t2, t3 = leaf_tasks[0], leaf_tasks[1], leaf_tasks[2]
+        assert t1.inputs["action"] == "create_design"
+        assert t1.inputs["design_type"] == "presentation"
+        assert t1.inputs["width"] == 1920
+        assert t1.inputs["height"] == 1080
+
+        assert t2.inputs["action"] == "apply_template"
+        assert t2.inputs["template_name"] == "default"
+        assert t1.task_id in t2.dependencies
+
+        assert t3.inputs["action"] == "add_text"
+        assert t2.task_id in t3.dependencies
+
+
 def test_llm_planner_catalog_canva():
     registry = get_default_tool_registry()
     assert registry.get("canva_tool") is not None

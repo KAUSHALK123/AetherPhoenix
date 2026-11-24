@@ -366,8 +366,8 @@ class CanvaToolAdapter(BaseToolAdapter):
                 workflow_id=task.workflow_id,
                 success=False,
                 error=TaskError(
-                    error_type="PermissionDeniedException",
-                    message=str(pe),
+                    error_code="PERMISSION_DENIED",
+                    error_message=str(pe),
                 ),
                 logs=logs_captured,
                 metrics=ExecutionMetrics(execution_time_ms=duration_ms, exit_code=1),
@@ -382,8 +382,8 @@ class CanvaToolAdapter(BaseToolAdapter):
                 workflow_id=task.workflow_id,
                 success=False,
                 error=TaskError(
-                    error_type=type(e).__name__,
-                    message=str(e),
+                    error_code="CANVA_EXECUTION_ERROR",
+                    error_message=str(e),
                 ),
                 logs=logs_captured,
                 metrics=ExecutionMetrics(execution_time_ms=duration_ms, exit_code=1),

@@ -48,7 +48,21 @@ CANVA_DIMENSION_PRESETS: Dict[str, Dict[str, Any]] = {
         "width": 1920,
         "height": 1080,
         "unit": "px",
-        "url": "https://www.canva.com/create/presentations/",
+        "url": "https://www.canva.com/design?create&type=TACQ-gtv2Yk",
+        "title": "Presentation",
+    },
+    "ppt": {
+        "width": 1920,
+        "height": 1080,
+        "unit": "px",
+        "url": "https://www.canva.com/design?create&type=TACQ-gtv2Yk",
+        "title": "Presentation",
+    },
+    "slides": {
+        "width": 1920,
+        "height": 1080,
+        "unit": "px",
+        "url": "https://www.canva.com/design?create&type=TACQ-gtv2Yk",
         "title": "Presentation",
     },
     "youtube_thumbnail": {
@@ -89,6 +103,11 @@ class CanvaBrowserController:
     @property
     def active_design_info(self) -> Dict[str, Any]:
         return self._active_design_info
+
+    async def close(self) -> None:
+        """Closes the underlying browser session."""
+        if self._browser:
+            await self._browser.close_session()
 
     async def _check_permission(
         self,
@@ -541,22 +560,38 @@ class CanvaBrowserController:
 
         if page:
             try:
-                # Click Design / Templates tab
+                # Dismiss modal or dialogs if blocking
+                for close_sel in ["[aria-label='Close']", "button:has-text('Got it')", "button:has-text('Maybe later')"]:
+                    close_btn = page.locator(close_sel).first
+                    if await close_btn.is_visible(timeout=1000):
+                        await close_btn.click(timeout=1000)
+                        await asyncio.sleep(0.5)
+
+                # Click Design / Templates tab if not already open
                 design_tab = page.locator(
-                    "[aria-label*='Design'], [aria-label*='Template'], button:has-text('Design')"
+                    "[aria-label*='Design'], [aria-label*='Template'], button:has-text('Templates'), button:has-text('Design')"
                 ).first
                 if await design_tab.is_visible(timeout=2000):
                     await design_tab.click(timeout=1500)
+                    await asyncio.sleep(0.5)
+
+                # Search template if specific name given and not default
+                clean_name = str(template_name or "").strip().lower()
+                if clean_name and clean_name not in ("default", "first", "template", "presentation", "none"):
                     search_box = page.locator("input[placeholder*='Search']").first
                     if await search_box.is_visible(timeout=2000):
                         await search_box.fill(template_name)
                         await search_box.press("Enter")
                         await asyncio.sleep(1.0)
-                        first_template = page.locator(
-                            "[data-testid*='template'], img[alt*='template']"
-                        ).first
-                        if await first_template.is_visible(timeout=2000):
-                            await first_template.click(timeout=1500)
+
+                # Click first template card
+                first_template = page.locator(
+                    "[data-testid*='template'], [role='listitem'] button, [aria-label*='template'], img[alt*='template']"
+                ).first
+                if await first_template.is_visible(timeout=3000):
+                    await first_template.click(timeout=2000)
+                    logger.info("Clicked first template card in Canva editor")
+                    await asyncio.sleep(1.5)
             except Exception as e:
                 logger.debug(f"Template selection interaction note: {e}")
 
