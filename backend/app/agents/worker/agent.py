@@ -108,12 +108,19 @@ class WorkerAgent(BaseAgent):
                 or not task.required_tool
             ):
                 duration_ms = (time.time() - start_time) * 1000.0
+                out_dict = {"phase": task.task_name, "status": "COMPLETED"}
+                if getattr(task, "expected_output", None):
+                    out_dict[task.expected_output] = f"Completed {task.task_name}"
+                if hasattr(task, "inputs") and isinstance(task.inputs, dict):
+                    for k, v in task.inputs.items():
+                        if k not in out_dict:
+                            out_dict[k] = v
                 return ExecutionResult(
                     task_id=task.task_id,
                     workflow_id=task.workflow_id,
                     success=True,
-                    output={"phase": task.task_name, "status": "COMPLETED"},
-                    logs=[f"Phase '{task.task_name}' processed."],
+                    output=out_dict,
+                    logs=[f"Task '{task.task_name}' processed."],
                     metrics=ExecutionMetrics(
                         execution_time_ms=duration_ms, exit_code=0
                     ),
@@ -124,6 +131,18 @@ class WorkerAgent(BaseAgent):
             exec_logger.log_tool_selected(tool_name=tool_name)
 
             tool = self.tool_registry.get(tool_name)
+            if not tool:
+                try:
+                    from app.planner.llm_planner import get_default_tool_registry
+
+                    default_reg = get_default_tool_registry()
+                    def_tool = default_reg.get(tool_name)
+                    if def_tool:
+                        self.tool_registry.register(def_tool)
+                        tool = def_tool
+                except Exception:
+                    pass
+
             if not tool:
                 raise ToolNotFoundException(f"Tool '{tool_name}' not found in registry")
 

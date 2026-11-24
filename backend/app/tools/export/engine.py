@@ -584,9 +584,97 @@ class ExportEngine:
     def _convert_pptx_to_pdf(
         self, source_path: Path, output_path: Path, request: ExportRequest
     ) -> Path:
-        """Converts a PowerPoint presentation (.pptx) file into a PDF document."""
+        """
+        Converts a PowerPoint presentation (.pptx) file into a high-fidelity
+        16:9 widescreen landscape PDF document, preserving slide dimensions,
+        typography, cards, and embedded visuals.
+        """
+        try:
+            import tempfile
+
+            import pptx
+
+            from app.schemas.ppt import PresentationSchema, SlideContent, SlideType
+            from app.tools.ppt.pdf_renderer import PresentationPDFRenderer
+
+            prs = pptx.Presentation(str(source_path))
+            slides_list: list[SlideContent] = []
+            doc_title = (
+                request.title if request else None
+            ) or source_path.stem.replace("_", " ").title()
+
+            temp_images_dir = Path(tempfile.gettempdir()) / "aether_pptx_images"
+            temp_images_dir.mkdir(parents=True, exist_ok=True)
+
+            for idx, slide in enumerate(prs.slides, 1):
+                title_text = f"Slide {idx}"
+                subtitle_text = None
+                slide_bullets = []
+                image_path = None
+                notes_text = None
+
+                # Extract shapes
+                for shape in slide.shapes:
+                    if shape == getattr(slide.shapes, "title", None) and shape.has_text_frame:
+                        t = shape.text_frame.text.strip()
+                        if t:
+                            title_text = t
+                    elif shape.has_text_frame:
+                        text = shape.text_frame.text.strip()
+                        if text:
+                            for line in text.splitlines():
+                                clean_line = line.strip()
+                                if clean_line:
+                                    clean_line = clean_line.lstrip("•-* \t")
+                                    slide_bullets.append(clean_line)
+                    elif hasattr(shape, "image"):
+                        try:
+                            img = shape.image
+                            img_filename = f"slide_{idx}_img.{img.ext}"
+                            img_dest = temp_images_dir / img_filename
+                            img_dest.write_bytes(img.blob)
+                            image_path = str(img_dest)
+                        except Exception:
+                            pass
+
+                # Extract speaker notes
+                if slide.has_notes_slide and slide.notes_slide.notes_text_frame:
+                    nt = slide.notes_slide.notes_text_frame.text.strip()
+                    if nt:
+                        notes_text = nt
+
+                stype = SlideType.TITLE if idx == 1 else (SlideType.IMAGE if image_path else SlideType.CONTENT)
+                slides_list.append(
+                    SlideContent(
+                        slide_type=stype,
+                        title=title_text,
+                        subtitle=subtitle_text,
+                        bullets=slide_bullets,
+                        image_path=image_path,
+                        speaker_notes=notes_text,
+                    )
+                )
+
+            presentation_schema = PresentationSchema(
+                title=doc_title,
+                slide_count=len(slides_list),
+                slides=slides_list,
+            )
+
+            renderer = PresentationPDFRenderer()
+            rendered_pdf = renderer.render(presentation_schema, output_path)
+            return Path(rendered_pdf)
+
+        except Exception as e:
+            logger.warning(
+                f"High-fidelity presentation PDF rendering failed ({e}); falling back to document layout."
+            )
+
+        # Fallback to standard PDF generator
         pdf_elements: list[PDFElement] = []
-        doc_title = request.title or source_path.stem.replace("_", " ").title()
+        doc_title = (
+            request.title if request else None
+        ) or source_path.stem.replace("_", " ").title()
 
         try:
             import pptx
@@ -600,7 +688,7 @@ class ExportEngine:
                     if shape.has_text_frame:
                         text = shape.text_frame.text.strip()
                         if text:
-                            if shape == slide.shapes.title and text:
+                            if shape == getattr(slide.shapes, "title", None) and text:
                                 title_text = text
                             else:
                                 lines = [

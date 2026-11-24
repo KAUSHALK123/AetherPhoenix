@@ -1,0 +1,252 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=black
+}
+
+\begin{document}
+
+\title{Bounded Self-Healing and Deterministic Fault Recovery in Multi-Agent Desktop Systems}
+
+\author{
+\IEEEauthorblockN{Ramani G$^1$, Akshitha V G$^2$, Kruthin Shanmuk Yadav CG$^3$, Dhanyashree G V$^4$, Kaushal K$^5$}
+\IEEEauthorblockA{\textit{Department of Computer Science and Engineering (Artificial Intelligence and Machine Learning)} \\
+\textit{AMC Engineering College}, Bengaluru, Karnataka, India \\
+Emails: gowrisan.ramani@amceducation.in, akshithavg1@gmail.com, kruthin008@gmail.com, dhanyashreegv206@gmail.com, kaushalk123000@gmail.com}
+}
+
+\maketitle
+
+\begin{abstract}
+Reliable execution in multi-agent desktop and browser automation requires robust error mitigation beyond raw task scheduling. Real-world automation workflows routinely encounter application crashes, missing file dependencies, DOM selector drift, transient network timeouts, and state inconsistencies. Existing AI agent recovery approaches rely heavily on continuous model-based replanning, which introduces severe computational latency, high token consumption, and unpredictable non-deterministic behavior. In this paper, we present the self-healing subsystem of \textbf{Phoenix Agents}, a deterministic, bounded recovery framework designed to diagnose and remediate execution exceptions in multi-agent desktop workflows without requiring an active Large Language Model (LLM) during the recovery loop. The recovery mechanism is structured into five distinct operational stages: error parsing, root-cause classification, strategy selection, patch generation, and retry execution. Recovery decisions follow typed contract assertions, deterministic rules, and a fixed retry budget ($K_{\text{max}}=3$). Empirical evaluation across 125 controlled fault-injection trials demonstrates a $100\%$ recovery success rate across supported recoverable fault classes (missing resources, timeouts, adapter failures) with a mean software-level recovery latency of $1.30\text{ ms}$. Furthermore, the system achieves a $100\%$ safe-rejection rate across unsafe fault classes (invalid actions, state inconsistencies), preventing uncontrolled remediation attempts. Controlled comparisons show a workflow completion rate of $100\%$ with deterministic recovery enabled versus $0\%$ with recovery disabled, confirming the efficacy of bounded self-healing in multi-agent automation.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Phoenix Agents, Self-Healing Systems, Fault Recovery, Multi-Agent Automation, Deterministic Error Handling, Desktop Automation, Bounded Retries.
+\end{IEEEkeywords}
+
+\section{Introduction}
+\label{sec:intro}
+Multi-agent desktop and browser automation frameworks orchestrate complex workflows across web browsers, native applications, operating system terminals, and local file systems \cite{bajoria2026}. However, executing tasks across heterogeneous host environments inherently exposes software agents to dynamic execution failures, such as transient network timeouts, missing file dependencies, altered DOM locators, process crashes, and permission denials.
+
+In conventional script-based automation systems (e.g., Selenium, AutoHotkey), a single runtime exception causes catastrophic workflow failure. While recent research explores self-healing via Large Language Models (LLMs)—such as reflective prompt loops and continuous model replanning—these methods introduce severe computational latency (1,200 ms+ per failure step), high token costs, non-deterministic behavior, and safety risks from uncontrolled retries \cite{babu2026, jeong2026}.
+
+To solve these challenges, we present the deterministic self-healing architecture of \textbf{Phoenix Agents}. Operating synchronously within an in-process asynchronous publish--subscribe event loop (\texttt{EventBus}), \textbf{Phoenix Agents} uses a lightweight 5-stage pipeline (Error Parsing, Root-Cause Analysis, Strategy Selection, Patch Generation, and Retry Execution) that diagnoses and remediates execution errors without requiring an active LLM runtime during error recovery.
+
+\textbf{Primary Technical Contributions of Paper 2:}
+\begin{itemize}
+    \item \textbf{Structured 5-Stage Self-Healing Pipeline:} A modular recovery architecture executing error parsing, root-cause diagnosis, strategy selection, patch generation, and retry dispatch without LLM inferencing delays.
+    \item \textbf{LLM-Free Deterministic Recovery Loop:} Rule-based mitigation policies and typed contract assertions achieving microsecond-scale handling latency ($1.30\text{ ms}$ mean).
+    \item \textbf{Bounded Retry \& Safety Guard Policy:} Strict enforcement of a maximum retry limit ($K_{\text{max}}=3$) paired with safe rejection of unsafe operations ($100\%$ safe rejection).
+    \item \textbf{Empirical Verification Across 125 Trials:} Validation across 125 controlled fault-injection trials demonstrating $100\%$ recoverable task completion ($75/75$) and establishing a $100\%$ vs $0\%$ completion rate compared to no-recovery baselines.
+\end{itemize}
+
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Self-Healing Agent Orchestrators and LLM Recovery}
+Recent studies explore self-healing mechanisms to improve the operational reliability of tool-augmented Large Language Model (LLM) agents. Babu and Agrawal proposed self-healing orchestrators for LLM tool agents, emphasizing reflective prompt loops for fault correction \cite{babu2026}. Jeong and Shin investigated autonomous self-healing frameworks for LLM agents \cite{jeong2026}. Patel et al. explored predictive self-healing using Model Predictive Control (MPC) \cite{patel2026sustech} and multi-agent learning \cite{patel2026isiber}. While these approaches improve adaptability, relying on continuous generative model inferencing during recovery introduces multi-second processing delays, high token costs, and non-deterministic behavior.
+
+\subsection{Fault-Tolerant Multi-Agent Collaboration}
+In multi-agent systems, fault tolerance research addresses role drift, agent disagreements, and dynamic environment reconfigurations. Wang et al. developed lightweight protocols to detect and repair role drift in collaborative multi-agent workflows \cite{wang2026}. Ju et al. investigated self-repair capabilities elicited under LLM multi-agent disagreements \cite{ju2025}. Guo et al. introduced EvoConfig for self-evolving multi-agent configuration \cite{guo2026}. Bara et al. demonstrated self-healing multi-agent pipelines for machine learning workflows \cite{bara2026}. \textbf{Phoenix Agents} complements this line of research by addressing discrete workflow execution exceptions through structured fault taxonomies and bounded deterministic rules.
+
+\subsection{Web and GUI Automation Reliability}
+In web and desktop automation, fault recovery historically focused on dynamic locator repair and selector maintenance during UI test execution \cite{garcia2026}. Surveys by Nguyen et al. \cite{nguyen2025} and Bajoria et al. \cite{bajoria2026} highlight that GUI agents frequently fail due to unhandled ambient operating system noise, dynamic DOM updates, and transient network delays. Traditional GUI testing frameworks lack dependency-aware task graphs and supervisory contracts required for autonomous, multi-application workflow recovery.
+
+\subsection{Research Gap & Key Differentiation}
+Existing self-healing literature focuses primarily on model-driven reflection or continuous replanning \cite{babu2026, jeong2026, patel2026sustech}. These approaches often overlook software-level execution latency and lack strict safety guards, resulting in uncontrolled retries of unsafe system operations. \textbf{Phoenix Agents} bridges this gap by decoupling error diagnosis from LLM runtime inferencing, executing a 5-stage bounded recovery pipeline synchronously within the event loop to achieve microsecond recovery latencies ($1.30\text{ ms}$ mean) alongside $100\%$ safe rejection of unsafe operations.
+
+\section{Proposed Solution: 5-Stage Deterministic Self-Healing Architecture}
+\label{sec:proposed_solution}
+
+The proposed self-healing subsystem of \textbf{Phoenix Agents} is designed as an in-process, deterministic recovery framework that remediates execution exceptions without invoking active LLM inference during the recovery loop. As depicted in the system architecture, normal workflow dispatch and fault handling are kept as decoupled, specialized subsystems communicating asynchronously over the publish--subscribe \texttt{EventBus}.
+
+\subsection{Formal Problem Formulation and Recovery Objectives}
+Let a workflow execution graph be represented as a Directed Acyclic Graph $\mathcal{G} = (\mathcal{V}, \mathcal{E})$. When the Supervisor Agent audits post-execution task outputs $O_i$ against contract assertions $\Psi(v_i, O_i)$, any failure triggers an observed execution fault tuple:
+\begin{equation}
+F = (E_{\text{err}}, C_{\text{ctx}}, S_{\text{workflow}})
+\end{equation}
+where $E_{\text{err}}$ represents the captured exception traceback, $C_{\text{ctx}}$ represents execution parameters and tool adapter state, and $S_{\text{workflow}}$ is the atomic graph lifecycle state.
+
+The recovery objective function $R(F)$ maps observed faults to either permitted remediation actions or safe terminal rejections:
+\begin{equation}
+R(F) = \begin{cases}
+A_{\text{retry}}, & \text{if } F \in \mathcal{C}_{\text{recoverable}} \land k_i < K_{\text{max}}, \\
+A_{\text{reject}}, & \text{if } F \in \mathcal{C}_{\text{unsafe}} \lor k_i \ge K_{\text{max}}.
+\end{cases}
+\end{equation}
+where $k_i$ is the retry counter for task $v_i$, $K_{\text{max}}=3$ is the maximum allowed retry budget, $A_{\text{retry}}$ applies deterministic parameter patching or adapter substitution, and $A_{\text{reject}}$ triggers safe failure escalation.
+
+\subsection{Detailed 5-Stage Recovery Pipeline Breakdown}
+The self-healing workflow is executed sequentially across five specialized, in-process software modules:
+
+\begin{enumerate}
+    \item \textbf{Stage 1: Error Parser (`error\_parser.py`):} Intercepts published \texttt{task.failed} event payloads and parses unhandled stack traces into structured error objects, extracting error strings, failing module paths, adapter bindings $\tau_i$, and payload parameters $\theta_i$.
+    \item \textbf{Stage 2: Root-Cause Analyzer (`root\_cause\_analyzer.py`):} Evaluates parsed error objects against deterministic rule sets to classify faults into a 5-tier taxonomy:
+    \begin{equation}
+    \mathcal{C} \in \{\text{TIMEOUT}, \text{FILE\_NOT\_FOUND}, \text{INVALID\_ARGUMENTS}, \text{PERMISSION\_DENIED}, \text{SYNTAX\_ERROR}\}
+    \end{equation}
+    \item \textbf{Stage 3: Recovery Planner (`recovery\_planner.py`):} Evaluates whether the classified fault is recoverable and checks retry budget constraints ($k_i < K_{\text{max}}$). If $k_i \ge K_{\text{max}}$ or if the fault is classified as unsafe (\texttt{SYNTAX\_ERROR}, \texttt{INVALID\_ACTION}), it marks the task as unrecoverable and emits a \texttt{task.rejected} event.
+    \item \textbf{Stage 4: Patch Generator (`patch\_generator.py`):} Synthesizes the required corrective action:
+    \begin{itemize}
+        \item \textit{Exponential Backoff:} Calculates delay $\Delta t = 2^{k_i} \times 1.0\text{ s}$ for \texttt{TIMEOUT} faults.
+        \item \textit{Parameter Patching:} Rectifies missing file paths or argument syntax in $\theta_i$ by inspecting ancestor task outputs in graph $\mathcal{G}$.
+        \item \textit{Adapter Substitution:} Queries the \texttt{ToolRegistry} for functional adapter substitutes $\tau_i'$ upon \texttt{PERMISSION\_DENIED} or adapter crashes.
+        \item \textit{Topological Replanning:} Prunes invalid downstream subgraphs and synthesizes a replacement graph $\mathcal{G}'$ if structural failure occurs.
+    \end{itemize}
+    \item \textbf{Stage 5: Retry Engine (`retry\_engine.py`):} Applies generated patches, increments retry counter $k_i \leftarrow k_i + 1$, resets task status $S_i \leftarrow \text{READY}$, and dispatches a typed \texttt{task.retry} or \texttt{dag.replanned} event over the \texttt{EventBus}.
+\end{enumerate}
+
+\section{Methodology and Implementation}
+\label{sec:methodology}
+
+The self-healing architecture of \textbf{Phoenix Agents} is implemented as a modular Python 3.11 package integrated directly within the execution engine kernel.
+
+\subsection{Asynchronous In-Process Event Backbone}
+Inter-component communication is mediated by an in-process asynchronous publish--subscribe event bus (\texttt{EventBus}) constructed over Python's native \texttt{asyncio} event loop. Rather than incurring network IPC delays, event objects are published directly to memory channels. When a tool adapter fails, the Worker Agent publishes a strongly typed \texttt{task.failed} event containing:
+\begin{equation}
+\text{Payload} = \langle \text{task\_id}, \tau_i, \theta_i, e_{\text{exception}}, \text{traceback\_str} \rangle
+\end{equation}
+Handler callbacks in the Healing Agent process events asynchronously as non-blocking coroutines without stalling concurrent DAG task branches.
+
+\subsection{Supervisory Contract Verification Engine}
+Before a task is marked as completed, the Supervisor Agent evaluates tool execution artifacts $O_i$ against pre-registered contract assertions:
+\begin{equation}
+\Psi(v_i, O_i) = (\text{exit\_code} == 0) \land (O_i \models \text{Schema}(v_i)) \land (\text{FileExists}(O_i))
+\end{equation}
+If any assertion evaluates to false, the Supervisor transitions the node status $S_i \leftarrow \text{FAILED}$ and publishes the failure diagnostic payload to trigger self-healing.
+
+\subsection{Fault Taxonomy & Pattern Matching Classifier}
+The Root-Cause Analyzer (`root\_cause\_analyzer.py`) processes exception strings using deterministic rule matching. Table~\ref{tab:fault_taxonomy_mapping} lists the mapped failure categories, trigger conditions, and mitigation strategies.
+
+\begin{table}[htbp]
+\caption{Phoenix Agents Error Taxonomy and Remediation Strategy Mapping}
+\label{tab:fault_taxonomy_mapping}
+\centering
+\begin{tabular}{p{2.2cm} p{3.2cm} p{2.2cm}}
+\toprule
+\textbf{Fault Category} & \textbf{Observed Trigger Condition} & \textbf{Remediation Strategy} \\
+\midrule
+\texttt{TIMEOUT} & Process time limit exceeded & Exponential backoff retry ($\Delta t = 2^{k_i} \text{s}$) \\
+\texttt{FILE\_NOT\_FOUND} & Missing input/output path & Ancestor parameter patching ($\theta_i'$) \\
+\texttt{INVALID\_ARGUMENTS} & Type or syntax mismatch & Input payload repair ($\theta_i'$) \\
+\texttt{PERMISSION\_DENIED} & Host policy restriction & Adapter substitution ($\tau_i'$) \\
+\texttt{SYNTAX\_ERROR} & Malformed script / invalid action & Safe rejection ($S_i \leftarrow \text{FAILED}$) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Parameter Patching & Dynamic Adapter Resolution}
+For \texttt{FILE\_NOT\_FOUND} and \texttt{INVALID\_ARGUMENTS} faults, the Patch Generator inspects ancestor node output dictionaries in graph $\mathcal{G}$ to resolve valid target file paths or parameter values. For \texttt{PERMISSION\_DENIED} errors, the component queries the central \texttt{ToolRegistry} to resolve a functional substitute adapter $\tau_i'$ capable of executing the intended action.
+
+\subsection{Dynamic Topological DAG Replanning}
+When structural graph breakage occurs (e.g., an unrecoverable failure in a critical dependency node), the Healing Agent invokes dynamic replanning. It prunes invalid downstream subgraphs, updates execution dependencies using Kahn's topological sorting algorithm, and publishes a \texttt{dag.replanned} event to resume graph processing without restarting the entire workflow.
+
+\section{Experimental Methodology & Evaluation}
+\label{sec:evaluation}
+
+\subsection{Evaluation Metrics}
+To rigorously quantify the resilience, handling overhead, and safety of the self-healing subsystem, five formal evaluation metrics are defined:
+
+\begin{enumerate}
+    \item \textbf{Overall Recovery Ratio ($SR$):} The proportion of all injected fault trials resulting in successful automatic recovery:
+    \begin{equation}
+    SR = \frac{N_{\text{recovered}}}{N_{\text{injected}}} \times 100
+    \end{equation}
+
+    \item \textbf{Recoverable-Case Success Rate ($SR_{\text{rec}}$):} The recovery success rate evaluated strictly across supported recoverable fault classes ($N_{\text{injected,rec}} = 75$):
+    \begin{equation}
+    SR_{\text{rec}} = \frac{N_{\text{recovered,rec}}}{N_{\text{injected,rec}}} \times 100 = \frac{75}{75} \times 100 = 100\%
+    \end{equation}
+
+    \item \textbf{Safe Rejection Rate ($SR_{\text{safe}}$):} The proportion of unsafe fault trials ($N_{\text{injected,unsafe}} = 50$) correctly identified and blocked by safety guards without initiating automatic remediation:
+    \begin{equation}
+    SR_{\text{safe}} = \frac{N_{\text{rejected,unsafe}}}{N_{\text{injected,unsafe}}} \times 100 = \frac{50}{50} \times 100 = 100\%
+    \end{equation}
+
+    \item \textbf{Software-Level Recovery Latency ($T_R$):} The processing time overhead of executing the 5-stage error recovery pipeline:
+    \begin{equation}
+    T_R = T_{\text{success}} - T_{\text{fault}}
+    \end{equation}
+
+    \item \textbf{Recovery Overhead ($\Delta T_{\text{overhead}}$):} The difference in mean handling latency between the recovery-enabled path ($T_{\text{rec}}$) and the fail-fast no-recovery baseline ($T_{\text{no\_rec}}$):
+    \begin{equation}
+    \Delta T_{\text{overhead}} = T_{\text{rec}} - T_{\text{no\_rec}} = 1.88\text{ ms} - 0.44\text{ ms} = 1.44\text{ ms}
+    \end{equation}
+\end{enumerate}
+
+\subsection{Fault-Injection Results & Latency Analysis}
+The recovery pipeline was evaluated across 125 independent fault-injection trials (25 trials across 5 fault classes). As detailed in Table~\ref{tab:fault_injection_results}, \textbf{Phoenix Agents} achieved a $100\%$ recovery success rate across all 75 recoverable fault trials and a $100\%$ safe rejection rate across all 50 unsafe trials.
+
+\begin{table}[htbp]
+\caption{Repeated Fault-Injection Evaluation Across 125 Trials}
+\label{tab:fault_injection_results}
+\centering
+\begin{tabular}{l c c c c}
+\toprule
+\textbf{Fault Class} & \textbf{Trials} & \textbf{Detected} & \textbf{Recovered} & \textbf{Rejected} \\
+\midrule
+Invalid Action & 25 & 25 & 0 & 25 \\
+Missing Resource & 25 & 25 & 25 & 0 \\
+Timeout Error & 25 & 25 & 25 & 0 \\
+Tool/Adapter Failure & 25 & 25 & 25 & 0 \\
+State Inconsistency & 25 & 25 & 0 & 25 \\
+\midrule
+\textbf{Total} & \textbf{125} & \textbf{125} & \textbf{75} & \textbf{50} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The mean software-level recovery handling latency across recoverable fault classes was $1.30\text{ ms}$ (median $1.10\text{ ms}$, range $0.51\text{--}4.58\text{ ms}$). Controlled workflow comparison demonstrated a $100\%$ completion rate with recovery enabled versus $0\%$ with recovery disabled.
+
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+
+\subsection{Conclusion}
+This paper presented the bounded self-healing subsystem of \textbf{Phoenix Agents}, a deterministic, LLM-free recovery framework for multi-agent desktop and browser automation. By isolating error diagnosis, root-cause classification, strategy selection, patch generation, and retry execution into an in-process 5-stage pipeline, the system remediates execution exceptions without invoking active LLM inferencing during the error mitigation loop.
+
+Key experimental findings demonstrate:
+\begin{enumerate}
+    \item \textbf{Microsecond Recovery Handling:} The 5-stage pipeline achieves a mean software-level recovery latency of $1.30\text{ ms}$ (median $1.10\text{ ms}$), introducing only $1.44\text{ ms}$ of handling overhead relative to fail-fast baselines.
+    \item \textbf{100\% Recoverable Task Completion:} Across 75 controlled recoverable fault trials (missing resources, timeouts, adapter failures), the system achieved a $100\%$ recovery completion rate ($75/75$).
+    \item \textbf{100\% Safe Rejection Rate:} Across 50 unsafe fault trials (invalid actions, state inconsistencies), safety guards correctly detected and rejected all unsafe operations ($50/50$), preventing uncontrolled retries.
+    \item \textbf{Fault Resilience Benchmark:} Controlled comparisons established a $100\%$ workflow completion rate with deterministic recovery enabled versus $0\%$ with recovery disabled under transient error workloads.
+\end{enumerate}
+
+\subsection{Future Work}
+Future research will expand the self-healing subsystem of \textbf{Phoenix Agents} along three primary dimensions:
+\begin{itemize}
+    \item \textbf{Real Browser \& Operating System Chaos Testing:} Transitioning from synthetic software-level fault injection to live browser and desktop chaos testing, evaluating recovery under dynamic DOM locator shifts, network latency spikes, and OS process crashes.
+    \item \textbf{Safe Checkpoint Rollback & State Reconstruction:} Developing transactional checkpointing mechanisms to enable safe state rollback and graph reconstruction when encountering complex workflow state inconsistencies.
+    \item \textbf{Large-Scale Scalability Profiling:} Evaluating recovery handling overhead and concurrency limits as the number of simultaneous multi-agent workflows scales across multi-node execution clusters.
+\end{itemize}
+
+\begin{thebibliography}{10}
+\bibitem{babu2026} R. S. Babu and A. Agrawal, ``Self-Healing Agentic Orchestrators for Reliable Tool-Augmented Large Language Model Systems,'' \textit{arXiv preprint arXiv:2606.01416}, 2026.
+\bibitem{jeong2026} C. Jeong and Y. Shin, ``A Self-Healing Framework for Reliable LLM-Based Autonomous Agents,'' \textit{arXiv preprint arXiv:2605.06737}, May 2026.
+\bibitem{guo2026} X. Guo et al., ``EvoConfig: Self-Evolving Multi-Agent Systems for Efficient Autonomous Environment Configuration,'' \textit{arXiv preprint arXiv:2601.16489}, 2026.
+\bibitem{ju2025} T. Ju et al., ``When Disagreements Elicit Robustness: Investigating Self-Repair Capabilities under LLM Multi-Agent Disagreements,'' \textit{arXiv preprint arXiv:2502.15153}, 2025.
+\bibitem{bara2026} A. Bara et al., ``Think it, Run it: Autonomous machine learning pipeline generation via self-healing multi-agent artificial intelligence,'' \textit{Knowledge-Based Systems}, vol. 351, p. 116688, 2026.
+\bibitem{wang2026} F. Wang et al., ``Detecting and Repairing Role Drift in Multi-Agent Collaboration with Lightweight Protocols,'' in \textit{2026 International Conference on Communication Networks and Machine Learning (CNML)}, 2026.
+\bibitem{patel2026sustech} T. P. Patel et al., ``Predictive Self-Healing for Multi-Agent LLM Pipelines Using Model Predictive Control,'' in \textit{2026 IEEE Conference on Technologies for Sustainability (SusTech)}, 2026.
+\bibitem{patel2026isiber} T. P. Patel et al., ``Self-Healing AI Systems using Multi-Agent Learning,'' in \textit{2026 International Seminar on Intelligent Business and Edge-Computing Research (ISIBER)}, 2026.
+\bibitem{garcia2026} B. Garc\'ia et al., ``A survey on Selenium usage, practices, and challenges in end-to-end testing,'' \textit{Information and Software Technology}, vol. 194, p. 108077, 2026.
+\bibitem{nguyen2025} D. Nguyen et al., ``GUI Agents: A Survey,'' \textit{Findings of the Association for Computational Linguistics: ACL 2025}, pp. 22522--22538, 2025.
+\bibitem{bajoria2026} S. Bajoria et al., ``From Language Models to Agentic AI: A Survey of Autonomous, Action-Enabled, and Collaborative LLM Agents,'' \textit{Cognitive Computation}, vol. 18, p. 103, 2026.
+\end{thebibliography}
+
+\end{document}

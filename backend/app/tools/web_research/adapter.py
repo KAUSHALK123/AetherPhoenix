@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 class WebResearchToolAdapter(BaseToolAdapter):
     """
     Tool Adapter bridging the Worker Agent and WebResearchTool.
+    Executes multi-query web research, extracts facts from credible sources,
+    cross-checks claims, and returns verified findings.
     """
 
     def __init__(self, tool: Optional[WebResearchTool] = None, **kwargs: Any) -> None:
@@ -29,35 +31,57 @@ class WebResearchToolAdapter(BaseToolAdapter):
         query = (
             inputs.get("query")
             or inputs.get("search_query")
+            or inputs.get("topic")
             or task.task_name
             or "research"
         )
+        max_results = inputs.get("max_results", 5)
 
         try:
             req = WebResearchRequest(
                 query=query,
-                max_results=inputs.get("max_results", 5),
+                sub_queries=inputs.get("sub_queries", []),
+                max_results=max_results,
                 extract_content=inputs.get("extract_content", True),
                 timeout_seconds=inputs.get("timeout_seconds", 10.0),
             )
             result = await self.tool.research(req)
             execution_time_ms = (time.time() - start_time) * 1000.0
 
+            serialized_sources = [s.model_dump() for s in result.sources]
+
+            output_payload = {
+                "query": result.query,
+                "summary": result.summary,
+                "research_summary": result.summary,
+                "topic": query,
+                "notes": result.summary,
+                "raw topic notes": result.summary,
+                "total_sources_found": result.total_sources_found,
+                "successful_sources_count": result.successful_sources_count,
+                "sources": serialized_sources,
+                "key_findings": result.key_findings,
+                "cross_checked_claims": result.cross_checked_claims,
+                "sub_queries_used": result.sub_queries_used,
+            }
+            if getattr(task, "expected_output", None):
+                output_payload[task.expected_output] = result.summary
+
+            logs_captured.append(
+                f"Web research completed for '{query}': found {result.total_sources_found} sources "
+                f"({result.successful_sources_count} successful)."
+            )
+
             return ExecutionResult(
                 task_id=task.task_id,
                 workflow_id=task.workflow_id,
                 success=True,
-                output={
-                    "query": result.query,
-                    "summary": result.summary,
-                    "total_sources_found": result.total_sources_found,
-                    "sources": [s.model_dump() for s in result.sources],
-                },
-                logs=logs_captured + [f"Web research completed for '{query}'."],
-                metrics=ExecutionMetrics(execution_time_ms=execution_time_ms),
+                output=output_payload,
+                logs=logs_captured,
+                metrics=ExecutionMetrics(execution_time_ms=execution_time_ms, exit_code=0),
             )
         except Exception as exc:
-            logger.error(f"Web research failed for task {task.task_id}: {exc}")
+            logger.error(f"Web research failed for task {task.task_id}: {exc}", exc_info=True)
             return ExecutionResult(
                 task_id=task.task_id,
                 workflow_id=task.workflow_id,
@@ -65,9 +89,11 @@ class WebResearchToolAdapter(BaseToolAdapter):
                 error=TaskError(
                     error_code="WEB_RESEARCH_FAILED",
                     error_message=str(exc),
+                    is_recoverable=True,
                 ),
                 logs=logs_captured,
                 metrics=ExecutionMetrics(
-                    execution_time_ms=(time.time() - start_time) * 1000.0
+                    execution_time_ms=(time.time() - start_time) * 1000.0,
+                    exit_code=1,
                 ),
             )

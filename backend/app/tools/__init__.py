@@ -58,7 +58,7 @@ except ImportError:
     TerminalToolAdapter = None
     register_terminal_tool = None
 
-from app.tools.ppt import PPTGenerator, ppt_tool_metadata
+from app.tools.ppt import PPTGenerator, ppt_tool_metadata, register_ppt_tool
 from app.tools.registry import ToolRegistry
 
 try:

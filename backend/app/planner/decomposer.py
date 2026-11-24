@@ -510,11 +510,43 @@ class TaskDecompositionEngine:
 
     def _decompose_presentation_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
         """Decomposes a presentation/PPT generation goal into a task hierarchy."""
+        # Extract target slide count if specified (e.g., "10-slide", "10 slides", "5 slides")
+        slide_count = 5
+        count_match = re.search(r"\b(\d+)\s*[- ]\s*slides?\b", goal, re.IGNORECASE)
+        if count_match:
+            try:
+                slide_count = int(count_match.group(1))
+            except ValueError:
+                slide_count = 5
+        elif "10" in goal.lower() and ("presentation" in goal.lower() or "ppt" in goal.lower()):
+            slide_count = 10
+
+        # Extract topic from goal
+        topic = goal
+        clean_re = re.compile(
+            r"\b(generate|create|make|build|export|a|an|\d+[- ]slide|\d+[- ]slides|presentation|powerpoint|ppt|deck|slides?)\b",
+            re.IGNORECASE,
+        )
+        extracted_topic = clean_re.sub(" ", goal).strip()
+        extracted_topic = re.sub(r"\s+", " ", extracted_topic).strip()
+        if len(extracted_topic) >= 3:
+            topic = extracted_topic
+
+        # Extract audience
+        audience = "general"
+        lower_goal = goal.lower()
+        if "executive" in lower_goal or "leadership" in lower_goal or "c-level" in lower_goal:
+            audience = "executive"
+        elif "engineer" in lower_goal or "developer" in lower_goal or "technical" in lower_goal:
+            audience = "technical"
+        elif "student" in lower_goal or "academic" in lower_goal or "researcher" in lower_goal:
+            audience = "academic"
+
         # Phase 1: Research & Outline (Root task 1)
         phase1 = Task(
             workflow_id=workflow_id,
             task_name="Phase 1: Research & Outline",
-            description="Gather topics and create outline for presentation",
+            description=f"Gather topics and create outline for presentation on '{topic}'",
             task_type=TaskType.PHASE,
             assigned_agent="System",
             success_criteria=["All child leaf tasks completed successfully"],
@@ -533,9 +565,9 @@ class TaskDecompositionEngine:
             parent_task_id=phase1.task_id,
             workflow_id=workflow_id,
             task_name="Collect Topic Information",
-            description=f"Gather detailed facts and data for '{goal}'",
+            description=f"Gather detailed facts and data for '{topic}'",
             assigned_agent="WorkerAgent",
-            required_tool="",
+            required_tool="web_research_tool",
             category=TaskCategory.WEB_RESEARCH,
             priority=TaskPriority.HIGH,
             dependencies=[],
@@ -545,13 +577,19 @@ class TaskDecompositionEngine:
             failure_criteria=["Unable to find information online"],
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
+            inputs={
+                "query": topic,
+                "topic": topic,
+                "slide_count": slide_count,
+                "extract_content": True,
+            },
         )
 
         subtask_outline = Task(
             parent_task_id=phase1.task_id,
             workflow_id=workflow_id,
             task_name="Draft Slide Outline",
-            description="Structure content into slide titles and bullet points",
+            description=f"Structure content into {slide_count} slide titles and bullet points",
             assigned_agent="WorkerAgent",
             required_tool="",
             category=TaskCategory.PPT_GENERATION,
@@ -563,6 +601,11 @@ class TaskDecompositionEngine:
             failure_criteria=["Missing outline structure"],
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
+            inputs={
+                "topic": topic,
+                "slide_count": slide_count,
+                "audience": audience,
+            },
         )
 
         # Phase 2: Generation & Export (Root task 2)
@@ -588,25 +631,30 @@ class TaskDecompositionEngine:
             parent_task_id=phase2.task_id,
             workflow_id=workflow_id,
             task_name="Build PPTX Deck",
-            description="Create presentation slides with formatting and visuals",
+            description=f"Create {slide_count}-slide presentation deck with verified facts and formatting",
             assigned_agent="WorkerAgent",
             required_tool="ppt_tool",
             category=TaskCategory.PPT_GENERATION,
             priority=TaskPriority.HIGH,
-            dependencies=[subtask_outline.task_id],
+            dependencies=[subtask_outline.task_id, subtask_research.task_id],
             expected_output="Presentation deck (.pptx)",
             artifact_location=None,
             success_criteria=["PPTX file is created and readable"],
             failure_criteria=["Failed to generate valid PPTX"],
             estimated_duration_seconds=120,
             status=TaskStatus.CREATED,
+            inputs={
+                "topic": topic,
+                "slide_count": slide_count,
+                "audience": audience,
+            },
         )
 
         subtask_export_pdf = Task(
             parent_task_id=phase2.task_id,
             workflow_id=workflow_id,
             task_name="Export PDF Handout",
-            description="Convert PowerPoint deck to PDF format",
+            description="Convert PowerPoint deck to 16:9 PDF format",
             assigned_agent="WorkerAgent",
             required_tool="export",
             category=TaskCategory.PDF_GENERATION,
@@ -618,7 +666,11 @@ class TaskDecompositionEngine:
             failure_criteria=["PDF generation failed"],
             estimated_duration_seconds=60,
             status=TaskStatus.CREATED,
-            inputs={"target_format": "pdf"},
+            inputs={
+                "target_format": "pdf",
+                "topic": topic,
+                "slide_count": slide_count,
+            },
         )
 
         subtask_generate_ppt.artifact_location = (

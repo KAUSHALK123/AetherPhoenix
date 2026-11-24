@@ -130,6 +130,29 @@ class PipelineOrchestrator:
                     # Asynchronous execution & supervision task
                     async def execute_task_with_supervision(t=task):
                         try:
+                            # Forward outputs and artifacts from prerequisite dependencies into task inputs
+                            if t.dependencies:
+                                if not hasattr(t, "inputs") or t.inputs is None:
+                                    t.inputs = {}
+                                for dep_id in t.dependencies:
+                                    dep_output = state.task_outputs.get(str(dep_id))
+                                    if not dep_output:
+                                        dep_task = state.tasks.get(dep_id)
+                                        if dep_task:
+                                            dep_output = state.task_outputs.get(dep_task.task_name)
+                                    if dep_output and isinstance(dep_output, dict):
+                                        for k, v in dep_output.items():
+                                            if k not in t.inputs:
+                                                t.inputs[k] = v
+                                        if "output_path" in dep_output and "source_filepath" not in t.inputs:
+                                            t.inputs["source_filepath"] = dep_output["output_path"]
+                                        if "artifact_id" in dep_output and "source_artifact_id" not in t.inputs:
+                                            t.inputs["source_artifact_id"] = dep_output["artifact_id"]
+                                        if "sources" in dep_output and "sources" not in t.inputs:
+                                            t.inputs["sources"] = dep_output["sources"]
+                                        if "summary" in dep_output and "research_summary" not in t.inputs:
+                                            t.inputs["research_summary"] = dep_output["summary"]
+
                             # 1. Execute task in Worker
                             res = await self.worker.execute(t)
                         except Exception as e:

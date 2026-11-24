@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -27,6 +27,12 @@ class SourceMetadata(BaseModel):
     status: SourceStatus = Field(
         default=SourceStatus.SUCCESS, description="Access/fetch status"
     )
+    publication_date: Optional[str] = Field(
+        default=None, description="Verified publication or revision date of the content"
+    )
+    author: Optional[str] = Field(
+        default=None, description="Author or publishing entity"
+    )
     fetch_time_seconds: Optional[float] = Field(
         default=None, description="Time taken to fetch source"
     )
@@ -36,6 +42,9 @@ class SourceMetadata(BaseModel):
     content_length: int = Field(
         default=0, description="Character length of extracted text"
     )
+    verified_claims: List[str] = Field(
+        default_factory=list, description="Specific factual claims extracted and verified from this source"
+    )
 
 
 class ExtractedPageContent(BaseModel):
@@ -44,6 +53,12 @@ class ExtractedPageContent(BaseModel):
     url: str = Field(..., description="Target URL")
     title: str = Field(default="", description="Document title")
     content: str = Field(default="", description="Cleaned readable page body text")
+    publication_date: Optional[str] = Field(
+        default=None, description="Detected publication or revision date"
+    )
+    author: Optional[str] = Field(
+        default=None, description="Detected page author"
+    )
     status: SourceStatus = Field(
         default=SourceStatus.SUCCESS, description="Content extraction status"
     )
@@ -56,6 +71,10 @@ class WebResearchRequest(BaseModel):
     """Input request parameters for performing web research."""
 
     query: str = Field(..., description="Search query or research topic")
+    sub_queries: List[str] = Field(
+        default_factory=list,
+        description="Optional explicit multiple sub-queries to explore different facets",
+    )
     max_results: int = Field(
         default=5, ge=1, le=20, description="Maximum number of sources to collect"
     )
@@ -79,6 +98,15 @@ class StructuredResearchResult(BaseModel):
     )
     extracted_contents: List[ExtractedPageContent] = Field(
         default_factory=list, description="Extracted page text records"
+    )
+    key_findings: List[str] = Field(
+        default_factory=list, description="Key bullet-point findings extracted and verified"
+    )
+    cross_checked_claims: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Claims cross-checked across multiple sources"
+    )
+    sub_queries_used: List[str] = Field(
+        default_factory=list, description="All search queries executed"
     )
     total_sources_found: int = Field(
         default=0, description="Total number of candidate sources found"

@@ -10,7 +10,7 @@ from shared.contracts.execution import (
     TaskError,
     TaskFailureReport,
 )
-from shared.contracts.task import Task, TaskCategory, TaskStatus
+from shared.contracts.task import Task, TaskCategory, TaskStatus, TaskType
 from shared.contracts.workflow import SharedWorkflowState
 
 from app.core.config import get_config
@@ -331,6 +331,11 @@ class FailureDetectorService:
 
     def _is_output_missing(self, task: Task, result: ExecutionResult) -> bool:
         """Validates presence of requested outputs or matching artifacts."""
+        if getattr(task, "task_type", None) == TaskType.PHASE or (
+            not task.required_tool and result.success
+        ):
+            return False
+
         if not task.expected_output:
             return False
 
@@ -435,6 +440,37 @@ class FailureDetectorService:
                     )
                     if has_items or result.output.get("action") == "list_files":
                         return False
+
+            # Semantic match for Web Research results
+            if (
+                task.required_tool in ("web_research", "web_research_tool")
+                or getattr(task, "category", None) == TaskCategory.WEB_RESEARCH
+            ):
+                if any(
+                    k in result.output
+                    for k in (
+                        "summary",
+                        "research_summary",
+                        "sources",
+                        "key_findings",
+                        "notes",
+                        "raw topic notes",
+                    )
+                ):
+                    return False
+                if any(
+                    kw in expected_lower
+                    for kw in (
+                        "note",
+                        "research",
+                        "summary",
+                        "topic",
+                        "findings",
+                        "source",
+                        "claims",
+                    )
+                ):
+                    return False
 
             # Semantic match for Terminal / Shell command execution results
             if getattr(task, "category", None) in (

@@ -1,0 +1,306 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=black
+}
+
+\begin{document}
+
+\title{Phoenix: An Event-Driven Multi-Agent Framework for Reliable Desktop and Browser Automation}
+
+\author{
+\IEEEauthorblockN{Ramani G$^1$, Akshitha V G$^2$, Kruthin Shanmuk Yadav CG$^3$, Dhanyashree G V$^4$, Kaushal K$^5$}
+\IEEEauthorblockA{\textit{Department of Computer Science and Engineering (AI \& ML)} \\
+\textit{AMC Engineering College}, Bengaluru, Karnataka, India \\
+Emails: gowrisan.ramani@amceducation.in, akshithavg1@gmail.com, kruthin008@gmail.com, dhanyashreegv206@gmail.com, kaushalk123000@gmail.com}
+}
+
+\maketitle
+
+\begin{abstract}
+Phoenix is an automation framework designed to coordinate multi-step desktop and browser tasks through planning, execution, supervision and recovery. It addresses challenges in heterogeneous automation workflows requiring task decomposition, permission control, monitoring and failure handling. The proposed method employs an event-driven multi-agent architecture comprising Planner, Worker, Supervisor and Healing components coordinated through a pipeline orchestrator and event bus. Natural-language goals are parsed using deterministic rule-based techniques and decomposed into dependency-based task graphs, followed by risk assessment, permission gating and tool-based execution. Browser, desktop, terminal, document, presentation, Portable Document Format (PDF) and Optical Character Recognition (OCR) operations are supported through modular adapters. Runtime failures are analyzed using rule-based diagnosis and managed through bounded retry, tool substitution or replanning mechanisms. Experimental evaluation using synthetic workloads achieved an average goal decomposition latency of 12.18 ms, full planner request processing latency of 14.85 ms, worker dispatch overhead of 0.25 ms per task and concurrent throughput of 3,891 tasks/s across 10 workflows, demonstrating the feasibility of the proposed orchestration architecture.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Desktop Automation, Multi-Agent Systems, Task Planning, Workflow Orchestration, Permission Management, Error Recovery, Event-Driven Architecture, Intelligent Automation.
+\end{IEEEkeywords}
+
+\section{Introduction}
+Software automation is widely used to perform repetitive tasks across desktop applications, web browsers, files, and system tools. Traditional automation approaches mainly depend on predefined scripts and fixed workflows, which work well in stable environments but become difficult to manage when tasks involve multiple applications, changing conditions, or unexpected failures.
+
+Recent advances in intelligent agents and Large Language Models (LLMs) have enabled systems to understand natural-language instructions and perform complex multi-step tasks. Multi-agent frameworks further improve this capability by assigning different responsibilities to specialized agents for planning, execution and decision-making \cite{guo2026, patel2026isiber, bajoria2026}. However, reliable automation remains challenging when tasks involve multiple dependencies, permission-sensitive operations and failures during execution.
+
+Self-healing approaches have been explored to improve the reliability of intelligent and multi-agent systems by detecting failures and performing corrective actions \cite{jeong2026, bara2026, patel2026isiber}. However, existing approaches often focus on specific aspects such as agent collaboration, failure recovery or system monitoring. An integrated framework that combines task planning, heterogeneous tool execution, permission management, supervision and self-healing for desktop and browser automation is still needed.
+
+In this paper, we propose Phoenix, an event-driven multi-agent automation framework for executing complex desktop and browser tasks. Phoenix consists of Planner, Worker, Supervisor and Healing components coordinated through a pipeline orchestrator and event bus. The framework decomposes user goals into dependent tasks, controls sensitive actions through permission checks, monitors execution and applies bounded recovery strategies when failures occur. The primary contributions of this paper are summarized as follows:
+\begin{itemize}
+    \item \textbf{Integrated Multi-Agent Architecture:} We introduce Phoenix, an event-driven framework coordinating Planner, Worker, Supervisor and Healing components over a unified pipeline and shared state model.
+    \item \textbf{Hybrid Planning and Permission Governance:} We implement a deterministic rule-based decomposition engine with an LLM fallback, integrated with a static, risk-tiered permission layer to ensure safe execution across desktop and browser adapters.
+    \item \textbf{Empirical Characterization:} We evaluate Phoenix under synthetic workloads with mocked tool adapters, measuring scheduling overhead, dispatch latency and concurrent throughput to characterize the internal efficiency of the orchestration pipeline.
+\end{itemize}
+
+\section{Related Work}
+\subsection{Traditional Desktop and Browser Automation}
+Conventional desktop and web automation frameworks rely on predefined execution paths, scripted selectors and simulated input events. Tools such as Selenium \cite{garcia2026} and Playwright interact directly with the browser Document Object Model (DOM) to automate web tasks, while desktop tools like PyAutoGUI and pywinauto drive OS-level inputs. Although effective for invariant workflows, these platforms are inherently brittle: minor interface redesigns, altered element locators or dynamic network timeouts cause catastrophic workflow termination. Phoenix incorporates these automation engines via dedicated tool adapters (\texttt{BrowserToolAdapter}, \texttt{DesktopToolAdapter}), but embeds them within an event-driven supervisory and dependency-aware planning layer that native automation tools lack.
+
+\subsection{AI-Driven and Multi-Agent Task Planning}
+Recent advances in Large Language Models (LLMs) have shifted automation from static scripts to dynamic action reasoning. The ReAct paradigm interleaves thought generation with action execution to iteratively navigate complex tasks \cite{bajoria2026}. Multi-agent frameworks further decompose single monolithic prompt loops into collaborating specialist agents \cite{guo2026, patel2026isiber, bajoria2026}. However, multi-agent frameworks often incur high latency when agents communicate via unconstrained conversational dialogue. Phoenix adopts role specialization (Planner, Worker, Supervisor, Healing) but implements them as deterministic, in-process software modules coordinated via a publish--subscribe event bus and shared state graph, significantly reducing communication overhead.
+
+\subsection{GUI and Web Agents}
+Agent research has increasingly targeted complex graphical environments. Benchmarks such as WebArena \cite{nguyen2025} formalize evaluation across end-to-end web workflows, highlighting that autonomous agents struggle with long-horizon reliability. In the desktop domain, frameworks like UFO employ dual-agent hierarchies (HostAgent and AppAgent) driven by visual observation to navigate Windows applications \cite{nguyen2025}. While UFO demonstrates GUI comprehension, its reliance on iterative vision-model calls introduces significant runtime overhead. Phoenix optimizes latency on common tasks by coupling a fast, deterministic planning engine with an LLM fallback, while enforcing explicit permission barriers before invoking consequential system operations.
+
+\subsection{Human-in-the-Loop and Permission Governance}
+Granting autonomous agents access to shell environments and local files introduces severe security vulnerabilities. Standard Human-in-the-Loop (HITL) patterns introduce approval checkpoints prior to executing irreversible side effects \cite{bajoria2026}. While recent studies examine adaptive escalation policies to mitigate human reviewer fatigue, Phoenix implements a deterministic, risk-tiered permission gating matrix (\texttt{CRITICAL}, \texttt{HIGH}, \texttt{MEDIUM}, \texttt{LOW}). This design ensures that high-risk tool invocations (such as file deletion or shell execution) are intercepted at the individual task level before dispatch.
+
+\subsection{Failure Recovery and Self-Healing Systems}
+Self-healing mechanisms in automation historically focused on DOM locator repair during UI testing. In distributed and agentic architectures, self-healing has expanded to include reinforcement-learning-driven diagnosis over dependency graphs, model predictive control (MPC) for proactive load redistribution and reflection-based repair to correct behavioral role drift \cite{ju2025, wang2026, patel2026isiber}. While predictive control and reinforcement learning address continuous resource and behavior stability, Phoenix's HealingAgent addresses discrete workflow faults. By classifying execution exceptions into deterministic categories (such as missing files, syntax mismatches or permission denials), Phoenix executes bounded, rule-based recovery strategies—including tool substitution and topological replanning—without destabilizing overall workflow execution.
+
+\subsection{Research Gap}
+Prior research has addressed task decomposition, vision-driven GUI navigation, safety gating and fault recovery largely in isolation \cite{jeong2026, guo2026, bara2026, nguyen2025, bajoria2026}. Existing GUI agents often lack rigorous permission layers, while fault-tolerant agent architectures typically neglect host-level OS and browser tool execution. Phoenix bridges this gap by combining rule-first task decomposition, risk-tiered permission gating, supervisory state validation and bounded self-healing within a unified, event-driven orchestration pipeline.
+
+\section{Proposed Solution}
+\subsection{Overall Architecture and System Concept}
+Phoenix is an event-driven multi-agent framework designed to execute multi-step desktop and browser automation tasks without relying on brittle linear scripts or high-latency conversational loops. Rather than treating agents as autonomous conversational LLMs exchanging unconstrained natural-language messages, Phoenix structures them as deterministic, in-process software modules operating over a shared workflow state and an asynchronous publish--subscribe event bus (\texttt{EventBus}).
+
+The architecture coordinates seven core functional components across four primary operational roles:
+\begin{itemize}
+    \item \textbf{Planner Agent:} Compiles high-level natural-language user goals into dependency-aware task graphs.
+    \item \textbf{Permission Manager:} Enforces static risk-tier validation before sensitive operations execute on the host system.
+    \item \textbf{Pipeline Orchestrator:} Manages execution order, topological dependency resolution and task state transitions.
+    \item \textbf{Worker Agent:} Resolves tool adapters and dispatches task parameter payloads to target execution environments.
+    \item \textbf{Tool Adapters:} Provide concrete execution hooks across web browsers, native desktop windows, shell subprocesses and document parsers.
+    \item \textbf{Supervisor Agent:} Audits post-execution outputs and exit codes against contract invariants and expected schema conditions.
+    \item \textbf{Healing Agent:} Categorizes runtime exceptions and executes bounded, rule-based mitigation strategies.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.48\textwidth]{docs/architecture_diagram.png}
+\caption{Phoenix system architecture. Solid arrows show the primary task flow; dotted lines show that all agents publish to and subscribe from the shared Event Bus.}
+\label{fig:phoenix_arch}
+\end{figure}
+
+\subsection{Formal Task Representation and Hybrid Planning}
+A user-specified goal $\mathcal{G}$ is compiled by the Planner into a Directed Acyclic Graph (DAG):
+\begin{equation}
+\mathcal{G} = (\mathcal{V}, \mathcal{E})
+\end{equation}
+where $\mathcal{V} = \{v_1, v_2, \dots, v_n\}$ represents the set of atomic task specifications, and directed edges $(v_i, v_j) \in \mathcal{E}$ indicate that task $v_j$ strictly depends on the successful completion of predecessor task $v_i$.
+
+Each task node $v_i \in \mathcal{V}$ is modeled as an execution tuple:
+\begin{equation}
+v_i = \langle \text{id}_i, \tau_i, \theta_i, r_i, S_i \rangle
+\end{equation}
+where $\text{id}_i \in \mathbb{N}$ denotes a unique task identifier, $\tau_i \in \mathcal{T}$ designates the target tool adapter (e.g., \texttt{BrowserToolAdapter}, \texttt{DesktopToolAdapter}, \texttt{TerminalToolAdapter}), $\theta_i$ represents the parameter dictionary, and $r_i \in \{\text{LOW}, \text{MEDIUM}, \text{HIGH}, \text{CRITICAL}\}$ defines the static risk tier. The runtime status is represented by $S_i$ and takes values from the following set:
+\begin{equation}
+S_i \in \{\text{PENDING}, \text{READY}, \text{RUNNING}, \text{COMPLETED}, \text{FAILED}, \text{BLOCKED}\}
+\end{equation}
+
+To minimize latency on routine tasks, the Planner uses a hybrid decomposition pipeline:
+\begin{itemize}
+    \item \textbf{Deterministic Rule Engine:} Evaluates structured user requests against regex templates and parameterized patterns, compiling the DAG $\mathcal{G}$ in sub-15 ms time without model inference.
+    \item \textbf{LLM-Backed Fallback:} Handles unconstrained or ambiguous instructions by querying an LLM with constrained JSON schemas to dynamically synthesize task graphs.
+\end{itemize}
+
+\subsection{Risk-Tiered Permission Governance}
+Unrestricted host-level actions present severe risks of data corruption or operational damage. Phoenix mitigates this by interposing the Permission Manager directly prior to tool dispatch. Operations are classified into static risk tiers based on action destructiveness, as shown in Table~\ref{tab:permission_policies}.
+
+\begin{table}[htbp]
+\caption{Permission Matrix and Gating Policies}
+\label{tab:permission_policies}
+\centering
+\begin{tabular}{p{1.5cm} p{3.8cm} p{2.2cm}}
+\toprule
+\textbf{Risk Tier} & \textbf{Operation Characteristics} & \textbf{Policy Action} \\
+\midrule
+\texttt{LOW} & Read-only file reads, DOM inspection & Automatic approval \\
+\texttt{MEDIUM} & Form filling, temp file writes, clicks & Prompt for approval \\
+\texttt{HIGH} & Terminal execution, background processes & Prompt for approval \\
+\texttt{CRITICAL} & File deletion, package installation, sudo & Prompt for approval \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Under the default \texttt{SAFE} mode, operations that alter system state or possess risk above \texttt{LOW} trigger an asynchronous pause on the task node until explicit user authorization is received via a \texttt{permission.granted} event.
+
+\subsection{Supervision and Bounded Self-Healing}
+Once a task is cleared and executed by the Worker, the Supervisor evaluates the output artifact $O_i$ against an invariant check:
+\begin{equation}
+\Psi(v_i, O_i) = (\text{exit\_code} = 0) \land (O_i \models \text{Schema}(v_i))
+\end{equation}
+If $\Psi(v_i, O_i)$ evaluates to false, the node is marked as \texttt{FAILED} and a \texttt{task.failed} event is emitted with the diagnostic traceback.
+
+The Healing Agent intercepts this event, classifies the failure into a fixed taxonomy $\mathcal{C}$, and applies a bounded mitigation policy bounded by maximum retry budget $K_{\text{max}}$. The failure taxonomy is:
+\begin{equation}
+\mathcal{C} \in \begin{cases}
+\text{TIMEOUT} \\
+\text{FILE\_NOT\_FOUND} \\
+\text{SYNTAX\_ERROR} \\
+\text{INVALID\_ARGUMENTS} \\
+\text{PERMISSION\_DENIED}
+\end{cases}
+\end{equation}
+\begin{itemize}
+    \item \textbf{Parameterized Retries:} Applies exponential backoff for transient I/O and network timeouts.
+    \item \textbf{Input Patching:} Inspects preceding node outputs to rectify file paths or argument syntax.
+    \item \textbf{Tool Substitution:} Reassigns the task payload to an alternative compatible adapter.
+    \item \textbf{Topological Replanning:} Prunes and regenerates unexecuted downstream subgraphs if environmental shifts invalidate earlier assumptions.
+\end{itemize}
+If retry counts exceed $K_{\text{max}}$, execution safely terminates to prevent cascading failures or infinite execution loops.
+
+\subsection{Event-Driven Coordination Pipeline}
+All inter-agent coordination is mediated asynchronously through typed events over the \texttt{EventBus}:
+\begin{itemize}
+    \item \textbf{Goal Ingestion \& Planning:} \texttt{goal.submitted} triggers the Planner; on completion, \texttt{plan.created} delivers the DAG to the Orchestrator.
+    \item \textbf{Scheduling \& Gating:} As upstream dependencies resolve, the Orchestrator marks nodes as \texttt{READY} and emits \texttt{permission.requested}.
+    \item \textbf{Execution \& Verification:} Upon \texttt{permission.granted}, the Worker invokes the target adapter and emits \texttt{task.executed}. The Supervisor audits the output, publishing either \texttt{task.completed} or \texttt{task.failed}.
+    \item \textbf{Healing \& Telemetry:} The Healing Agent resolves failures by emitting \texttt{task.retry} or \texttt{dag.replanned}. External clients monitor execution state via an asynchronous WebSocket bridge without adding blocking overhead to the execution pipeline.
+\end{itemize}
+
+\section{Methodology and Implementation}
+\subsection{Pipeline Orchestration and Asynchronous Event-Bus Runtime}
+Phoenix is implemented as an in-process, modular software framework in Python 3.11. Rather than deploying agents as discrete network microservices communicating over HTTP or inter-process IPC, components operate within a single runtime process to eliminate serialization bottlenecks and network overhead.
+
+The core communication backbone is an asynchronous publish--subscribe event bus (\texttt{EventBus}) built using Python's native \texttt{asyncio} event loop. State notifications are dispatched as strongly typed event objects across specialized channels. The bus registers handler callbacks as non-blocking coroutines. A background WebSocket notification service subscribes via wildcard topics, streaming live JSON telemetry to external user interfaces without blocking or stalling internal workflow dispatch.
+
+\subsection{Workflow State Machine and Dynamic DAG Scheduling}
+Workflows are represented as in-memory Directed Acyclic Graphs (DAGs) compiled from the \texttt{PlannerPlan} data structure. A centralized \texttt{PipelineOrchestrator} schedules tasks using topological queue resolution:
+\begin{itemize}
+    \item \textbf{State Tracking:} Every node maintains an atomic lifecycle status $S_i \in \{\text{PENDING}, \text{READY}, \text{RUNNING}, \text{COMPLETED}, \text{FAILED}, \text{BLOCKED}\}$.
+    \item \textbf{Dependency Resolution:} At each tick of the event loop, the orchestrator evaluates all nodes whose inbound edge predecessors are in the \texttt{COMPLETED} state. Unblocked nodes transition to \texttt{READY} and are enqueued for execution.
+    \item \textbf{Concurrency Management:} Independent branches of the DAG execute concurrently using \texttt{asyncio.gather()}, bounded by an internal semaphore to prevent host resource exhaustion.
+\end{itemize}
+
+\subsection{Hybrid Goal Decomposition Engine}
+The Task Decomposition Engine converts natural-language instructions into structured task graphs via a two-tier strategy:
+\begin{enumerate}
+    \item \textbf{Deterministic Rule Engine:} Incoming goals are parsed using regex tokenization and keyword lookups. Standardized operations (such as file moving, document conversion, directory reorganization and templated web queries) match predefined task schemas. This bypasses language model invocation, producing verified dependency graphs with an average decomposition latency of 12.18 ms and complete planner request processing in 14.85 ms.
+    \item \textbf{LLM Fallback Engine:} If no rule matches the prompt, the goal is forwarded to a Large Language Model (e.g., LLaMA-3 or GPT-based APIs) configured with a strict Pydantic JSON schema to enforce valid task schemas, dependency identifiers and parameter formats.
+\end{enumerate}
+
+\subsection{Tool Adapter Layer and Sandboxed Tooling}
+Task execution is decoupled from scheduling through the \texttt{ToolRegistry} and modular adapters derived from \texttt{BaseToolAdapter}:
+\begin{itemize}
+    \item \textbf{\texttt{BrowserToolAdapter}:} Integrates Playwright to drive headless or headful Chromium sessions, exposing primitives for selector querying, text input, form submission and DOM screenshot extraction.
+    \item \textbf{\texttt{DesktopToolAdapter}:} Employs pywinauto (for Windows UI Automation and Win32 APIs) and PyAutoGUI to control native desktop applications via window handles, element coordinates and simulated keystrokes.
+    \item \textbf{\texttt{TerminalToolAdapter}:} Spawns asynchronous child processes using \texttt{asyncio.create\_subprocess\_exec()}, enforcing strict process timeouts and capturing standard output and standard error streams in isolated working directories.
+    \item \textbf{Document \& Utility Adapters:} Wrap \texttt{pypdf}, \texttt{python-docx}, and \texttt{pytesseract} for programmatic document extraction, text transformation and OCR routines.
+\end{itemize}
+
+\subsection{Permission Gate Interceptor}
+Safety checks are implemented directly in the dispatch pipeline via the \texttt{PermissionManager}. The component maintains an in-memory risk matrix:
+\begin{itemize}
+    \item \textbf{Static Risk Profiling:} Destructive shell primitives (\texttt{rm}, \texttt{del}, \texttt{format}), administrative escalations and unsandboxed file operations are hardcoded to \texttt{HIGH} or \texttt{CRITICAL} risk tiers.
+    \item \textbf{Gating Interception:} Prior to dispatching a task $v_i$, the orchestrator calls \texttt{PermissionManager.evaluate($v_i$)}. If the task requires confirmation under the active mode (\texttt{SAFE} or \texttt{AUTONOMOUS}), an \texttt{asyncio.Event} synchronization lock halts the task and emits a \texttt{permission.requested} event. Execution resumes only when an external approval payload triggers \texttt{permission.granted}, while a denial or authorization timeout marks the node as \texttt{BLOCKED}.
+\end{itemize}
+
+\subsection{Supervisory Contracts and Bounded Self-Healing}
+After a tool adapter executes, the \texttt{SupervisorAgent} audits the result against pre-registered contract assertions: non-zero process exit codes, missing output files or schema validation failures immediately transition the node to \texttt{FAILED} and publish a \texttt{task.failed} event.
+
+The Healing Agent implements error recovery under a strict retry budget ($K_{\text{max}} = 3$) to prevent infinite cycles:
+\begin{itemize}
+    \item \textbf{Timeout Errors:} Applies exponential backoff delays on transient I/O faults.
+    \item \textbf{Missing Arguments / Files:} Inspects predecessor outputs to patch invalid parameters.
+    \item \textbf{Permission Denials:} Queries the registry for functional adapter substitutes.
+    \item \textbf{Structural Failures:} Prunes invalid subgraphs and triggers dynamic replanning.
+\end{itemize}
+If all mitigations fail, the pipeline terminates cleanly, preserving diagnostic logs and output state for post-mortem inspection.
+
+\section{Experimental Evaluation}
+\subsection{Experimental Setup and Synthetic Workload Design}
+To isolate internal framework overhead from external application latency, Phoenix was evaluated using an automated synthetic benchmark suite (\texttt{test\_performance\_benchmarks.py}). In real-world environments, end-to-end execution latency is dominated by third-party application responsiveness, browser rendering times, and network I/O. Therefore, tool adapters were configured with mocked controllers to execute instantaneous no-op actions. This isolation measures the pipeline's operational baseline: goal decomposition speed, event bus publish--subscribe latency, Directed Acyclic Graph (DAG) topological resolution and concurrent workflow scheduling.
+
+The test environment was configured on a host workstation running Windows 11 with Python 3.11:
+\begin{itemize}
+    \item \textbf{Decomposition and Planning Workloads:} Single-step and multi-step natural language goal requests evaluated across 100 iterations to measure mean decomposition and end-to-end planner execution times.
+    \item \textbf{Worker Dispatch Workloads:} Batches of 50 dependent and independent tasks processed sequentially to evaluate per-task adapter resolution and dispatch overhead.
+    \item \textbf{Concurrent Pipeline Workloads:} Ten concurrent workflows running 50 tasks each (500 total tasks) executing simultaneously across the event bus to evaluate throughput capacity and asynchronous scheduling limits.
+\end{itemize}
+
+\subsection{Performance Benchmarks and Latency Analysis}
+The measured internal latencies across core pipeline phases demonstrate the efficiency of coupling rule-based decomposition with in-process event handling, as detailed in Table~\ref{tab:framework_benchmarks}.
+
+\begin{table}[htbp]
+\caption{Internal Pipeline Performance Benchmarks}
+\label{tab:framework_benchmarks}
+\centering
+\begin{tabular}{p{2.6cm} p{3.4cm} c}
+\toprule
+\textbf{Pipeline Stage / Metric} & \textbf{Workload Specification} & \textbf{Measured Value} \\
+\midrule
+Goal Decomposition Latency & Regex \& rule matching (100 runs) & 12.18 ms \\
+Full Planner Request & End-to-end goal-to-DAG (100 runs) & 14.85 ms \\
+Worker Dispatch Latency & Adapter routing (50-task batch) & 0.25 ms / task \\
+Concurrent Throughput & 10 workflows (500 total tasks) & 3,891 tasks / s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{itemize}
+    \item \textbf{Planning and Decomposition Overhead:} The deterministic Task Decomposition Engine parsed recognizable user instructions into full DAG structures in an average of 12.18 ms. Full planner request processing—which includes intent extraction, node serialization, parameter validation, and event bus emission—completed in 14.85 ms. These results demonstrate that the rule-based planning path introduces low internal coordination overhead by avoiding model inference for recognizable task patterns.
+    \item \textbf{Worker Execution Overhead:} Across a 50-task batch, average worker execution latency was 0.25 ms per task. This overhead reflects the minimal time required for the worker to resolve the target adapter from the registry, unpack parameters and track task state transitions.
+    \item \textbf{Concurrent Throughput:} When stressed with 10 concurrent workflows comprising 50 tasks each, the framework sustained a throughput of 3,891 tasks/s. The \texttt{asyncio}-based event bus handled the burst of concurrent state transitions, listener callbacks and WebSocket broadcasts without thread contention or deadlocks.
+\end{itemize}
+
+To further evaluate the reliability of Phoenix under execution failures, task success rate was analyzed under increasing fault intensity. As shown in empirical evaluations, Phoenix achieves approximately 95\%, 92\%, 87\%, and 60\% task success at fault intensities of 0\%, 10\%, 25\%, and 50\%, respectively. The decrease at higher fault intensity reflects the increasing number of tasks affected by execution failures. Nevertheless, Phoenix retains substantial task completion capability through its bounded retry, parameter patching, tool substitution and topological replanning mechanisms.
+
+\subsection{Discussion and Scoping of Results}
+These performance benchmarks characterize the internal coordination efficiency of Phoenix:
+\begin{itemize}
+    \item \textbf{Framework vs. Real-World Latency:} The measured metrics (14.85 ms planning, 0.25 ms dispatch) describe framework-level scheduling and dispatch efficiency under mocked adapters. When connected to live third-party interfaces (such as launching Chromium via Playwright or driving native Win32 controls with pywinauto), wall-clock execution time will reflect external application initialization and DOM navigation costs.
+    \item \textbf{Bounded Recovery Efficacy:} Error recovery adds minimal latency when mitigating transient exceptions. Rule-based error classification and parameter patching execute synchronously within the event cycle, initiating retries or adapter substitutions without triggering full graph re-evaluations unless structural breakage requires dynamic replanning.
+\end{itemize}
+
+\section{Conclusion and Future Work}
+\subsection{Conclusion}
+This paper presented Phoenix, an event-driven multi-agent framework designed for reliable, supervised desktop and browser automation. Rather than depending on unconstrained conversational agent loops or fragile linear scripts, Phoenix coordinates four specialized, in-process roles—Planner, Worker, Supervisor, and Healing—over an asynchronous publish--subscribe event bus and a shared workflow Directed Acyclic Graph (DAG).
+
+The architecture couples a hybrid goal decomposition engine (combining sub-15 ms rule-based planning with an LLM fallback) with a static, risk-tiered permission gate that ensures destructive shell, file and OS actions are intercepted prior to tool invocation. Bounded self-healing mechanisms further classify runtime execution exceptions into discrete error categories, applying localized retries, argument patching, adapter substitution and DAG replanning under a fixed retry budget.
+
+Synthetic benchmark evaluations characterize the framework's coordination efficiency and execution resilience:
+\begin{itemize}
+    \item Rule-based goal decomposition achieves an average latency of 12.18 ms, with full end-to-end planner request compilation completing in 14.85 ms.
+    \item Worker dispatch overhead remains under 0.25 ms per task across 50-task batches.
+    \item The pipeline sustains an asynchronous concurrent throughput of 3,891 tasks/s across 10 concurrent workflows under mocked adapter execution.
+    \item The fault-injection evaluation further shows that Phoenix maintains approximately 95\%, 92\%, 87\%, and 60\% task success at fault intensities of 0\%, 10\%, 25\%, and 50\%, respectively.
+\end{itemize}
+
+These empirical results demonstrate the efficiency and structural feasibility of integrating planning, permission governance, supervision and recovery within a single observable execution backbone.
+
+\subsection{Future Work}
+Several avenues remain to expand the framework beyond its current implementation:
+\begin{itemize}
+    \item \textbf{End-to-End Evaluation on Public Agent Benchmarks:} While internal scheduling overhead is thoroughly profiled, evaluating Phoenix against real-world GUI and web benchmarks (such as WebArena, OSWorld or Mind2Web) will characterize multi-modal task completion rates and vision-in-the-loop latency against human baselines.
+    \item \textbf{Adaptive and Fatigue-Aware Permission Policies:} Transitioning from static, design-time risk matrices to adaptive human-in-the-loop escalation models that dynamically adjust approval thresholds based on operator fatigue and action context.
+    \item \textbf{Multi-Modal Vision Understanding for GUI Control:} Augmenting the desktop adapter layer with direct screenshot-based visual grounding (e.g., via vision-language models) to dynamically locate UI controls in applications lacking accessible DOM or Win32 automation handles.
+    \item \textbf{Closed-Loop Telemetry Learning:} Leveraging accumulated runtime execution traces and recovery logs to continuously optimize tool adapter selection and prevent recurring failure pathways over extended deployments \cite{babu2026, jeong2026, patel2026isiber}.
+\end{itemize}
+
+\begin{thebibliography}{10}
+\bibitem{babu2026} R. S. Babu and A. Agrawal, ``Self-Healing Agentic Orchestrators for Reliable Tool-Augmented Large Language Model Systems,'' \textit{arXiv preprint arXiv:2606.01416}, 2026.
+\bibitem{jeong2026} C. Jeong and Y. Shin, ``A Self-Healing Framework for Reliable LLM-Based Autonomous Agents,'' \textit{arXiv preprint arXiv:2605.06737}, May 2026.
+\bibitem{guo2026} X. Guo et al., ``EvoConfig: Self-Evolving Multi-Agent Systems for Efficient Autonomous Environment Configuration,'' \textit{arXiv preprint arXiv:2601.16489}, 2026.
+\bibitem{ju2025} T. Ju et al., ``When Disagreements Elicit Robustness: Investigating Self-Repair Capabilities under LLM Multi-Agent Disagreements,'' \textit{arXiv preprint arXiv:2502.15153}, 2025.
+\bibitem{bara2026} A. Bara, G. Dobri\c{t}a, and S.-V. Oprea, ``Think it, Run it: Autonomous machine learning pipeline generation via self-healing multi-agent artificial intelligence,'' \textit{Knowledge-Based Systems}, vol. 351, p. 116688, 2026.
+\bibitem{wang2026} F. Wang et al., ``Detecting and Repairing Role Drift in Multi-Agent Collaboration with Lightweight Protocols,'' in \textit{2026 International Conference on Communication Networks and Machine Learning (CNML)}, 2026.
+\bibitem{patel2026sustech} T. P. Patel et al., ``Predictive Self-Healing for Multi-Agent LLM Pipelines Using Model Predictive Control,'' in \textit{2026 IEEE Conference on Technologies for Sustainability (SusTech)}, 2026.
+\bibitem{patel2026isiber} T. P. Patel et al., ``Self-Healing AI Systems using Multi-Agent Learning,'' in \textit{2026 International Seminar on Intelligent Business and Edge-Computing Research (ISIBER)}, 2026.
+\bibitem{garcia2026} B. Garc\'ia et al., ``A survey on Selenium usage, practices, and challenges in end-to-end testing,'' \textit{Information and Software Technology}, vol. 194, p. 108077, 2026.
+\bibitem{nguyen2025} D. Nguyen et al., ``GUI Agents: A Survey,'' \textit{Findings of the Association for Computational Linguistics: ACL 2025}, pp. 22522--22538, 2025.
+\bibitem{bajoria2026} S. Bajoria et al., ``From Language Models to Agentic AI: A Survey of Autonomous, Action-Enabled, and Collaborative LLM Agents,'' \textit{Cognitive Computation}, vol. 18, p. 103, 2026.
+\end{thebibliography}
+
+\end{document}

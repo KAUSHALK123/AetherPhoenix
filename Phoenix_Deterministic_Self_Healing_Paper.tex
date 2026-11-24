@@ -1,0 +1,422 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=black
+}
+
+\begin{document}
+
+\title{Deterministic Self-Healing for Reliable Multi-Agent Desktop and Browser Automation}
+
+\author{
+\IEEEauthorblockN{Ramani G$^1$, Akshitha V G$^2$, Kruthin Shanmuk Yadav CG$^3$, Dhanyashree G V$^4$, Kaushal K$^5$}
+\IEEEauthorblockA{\textit{Department of Computer Science and Engineering (Artificial Intelligence and Machine Learning)} \\
+\textit{AMC Engineering College}, Bengaluru, Karnataka, India \\
+Emails: gowrisan.ramani@amceducation.in, akshithavg1@gmail.com, kruthin008@gmail.com, dhanyashreegv206@gmail.com, kaushalk123000@gmail.com}
+}
+
+\maketitle
+
+\begin{abstract}
+Reliable automation of desktop and browser workflows requires more than task execution. Real-world workflows encounter application failures, invalid actions, missing resources, transient errors and state inconsistencies. Existing self-healing approaches often add extra reasoning, replanning or prediction steps to handle failures. While these mechanisms can improve flexibility, they may also add computational overhead and make the recovery process less predictable. This paper presents Phoenix, a deterministic multi-agent automation framework that incorporates structured fault diagnosis and bounded self-healing into desktop and browser workflow execution. In Phoenix, recovery is handled through five separate steps: parsing the error, identifying its cause, selecting a recovery strategy, generating the corrective action and retrying the failed task. The recovery decisions are made using predefined rules, typed contracts and bounded retry policies so an active large language model is not required during the recovery process. The implementation integrates planning, execution, supervision, permissions, memory and tool adapters for browser, desktop, terminal, document, presentation, portable document format (PDF), Optical Character Recognition (OCR) and related operations. Current implementation measurements report 12.18 ms for goal decomposition, 14.85 ms for planner request processing, 0.85 ms for execution dispatch, 0.25 ms per worker task and a concurrent throughput of 3,891 tasks/s across ten workflows. The current test suite contains 846 passing unit, integration and performance tests. An expanded evaluation performed 125 independent trials across five fault classes and successfully recovered all 75 injected faults belonging to the three predefined recoverable fault classes, corresponding to 75 successful recoveries out of 75 recoverable trials. The two predefined unsafe fault classes were detected and safely rejected in all 50 trials. A controlled deterministic recovery versus no recovery comparison achieved workflow completion rates of 100\% and 0\%, respectively, for the tested transient fault workload. Mean software-level recovery latency across recoverable fault classes was 1.30 ms. These results describe the behavior of the current Phoenix implementation under controlled conditions. Further testing with real browser, desktop, network and operating-system failures is still needed.
+\end{abstract}
+
+\begin{IEEEkeywords}
+self-healing automation, multi-agent systems, desktop automation, browser automation, fault recovery, deterministic planning, workflow orchestration, tool-augmented agents.
+\end{IEEEkeywords}
+
+\section{Introduction}
+Desktop and browser automation is now used for workflows that involve several applications, interfaces and external tools. During execution, these workflows can encounter problems such as invalid actions, missing resources, timeouts, adapter failures and inconsistent states. A conventional automation system generally terminates when one of these failures occurs, requiring manual intervention or complete workflow restart.
+
+A multi-agent architecture can divide a complex workflow into separate responsibilities such as planning, execution, monitoring and recovery. However, reliability remains challenging when an agent encounters unexpected execution conditions. Here, self-healing means that the system detects a failure, identifies what caused it and applies an allowed corrective action without asking the user to intervene. Many recent approaches are based on additional model-based reasoning, dynamic replanning or predictive mechanisms. While such techniques can improve flexibility, they can also introduce computational overhead and non-deterministic behavior.
+
+This paper presents Phoenix, a deterministic multi-agent framework for desktop and browser automation with an explicit self-healing pipeline. Instead of relying on an active large language model runtime for recovery decisions, Phoenix uses structured fault representations, deterministic rules, typed contracts, bounded retries and safety guards.
+
+The major contributions of this work are:
+\begin{itemize}
+    \item A deterministic multi-agent architecture for desktop and browser automation.
+    \item A structured five-stage self-healing pipeline consisting of error parsing, root-cause analysis, recovery planning, patch generation and retry execution.
+    \item A bounded recovery mechanism that separates recoverable execution faults from unsafe actions and inconsistent workflow states.
+    \item An implementation integrating planning, execution, supervision, permissions, memory and multiple tool adapters.
+    \item Verified execution and performance measurements from the current implementation.
+    \item A repeated fault-injection evaluation using 125 controlled trials across five fault classes.
+    \item A deterministic-recovery versus no-recovery comparison for evaluating the contribution of the recovery mechanism.
+\end{itemize}
+
+The expanded experimental evaluation provides a distinction between recoverable fault healing and safety oriented fault rejection. This distinction is important because a self-healing system should not attempt to automatically execute unsafe or invalid corrective actions simply to increase a recovery percentage.
+
+\section{Related Work}
+Several recent studies have explored self-healing as a way to improve the reliability of autonomous and multi-agent systems. These studies use different recovery strategies, including additional reasoning, dynamic replanning, predictive control and cooperation between agents.
+
+Babu and Agrawal proposed self-healing agent orchestrators for reliable tool-augmented large language model systems, emphasizing autonomous recovery mechanisms \cite{babu2026}. Jeong and Shin investigated self-healing frameworks for reliable LLM-based autonomous agents \cite{jeong2026}. EvoConfig explored self-evolving multi-agent systems for autonomous environment configuration \cite{guo2026}. Ju et al. studied robustness under disagreements between multiple LLM agents and investigated self-repair capabilities \cite{ju2025}.
+
+Bara et al. investigated autonomous machine learning pipeline generation using self-healing multi-agent artificial intelligence \cite{bara2026}. Wang et al. studied lightweight protocols for detecting and repairing role drift in multi-agent collaboration \cite{wang2026}. Patel et al. investigated predictive self-healing for multi-agent LLM pipelines using model predictive control \cite{patel2026sustech}. Related work has also investigated self-healing AI systems using multi-agent learning \cite{patel2026isiber}.
+
+For browser automation, Garc\'ia et al. surveyed Selenium usage, practices and challenges in end-to-end testing \cite{garcia2026}. Nguyen et al. provided a survey of GUI agents \cite{nguyen2025}. Bajoria et al. surveyed AI systems involving autonomous, action-enabled and collaborative LLM agents \cite{bajoria2026}. Phoenix differs in how it handles recovery: the recovery path is explicitly defined and follows deterministic rules. The current implementation does not require an active LLM runtime dependency for fault diagnosis or recovery decisions. Faults are first placed into predefined categories, after which the system applies the corresponding policy, retry limit and safety checks.
+
+\section{Problem Definition}
+Let a workflow be represented as a sequence of tasks
+\begin{equation}
+W = \{T_1, T_2, \dots, T_n\}.
+\end{equation}
+Each task is executed through an appropriate tool or adapter. During execution, a task may produce an exception, invalid result, timeout, missing resource condition, adapter failure or inconsistent state.
+
+Let the observed execution condition be represented by
+\begin{equation}
+F = (E, C, S),
+\end{equation}
+where $E$ denotes the observed error, $C$ denotes contextual information and $S$ denotes the current workflow state.
+
+After a fault is detected, Phoenix first checks whether the condition can be safely recovered. For recoverable faults, it selects a permitted strategy and executes it within the defined retry limit. If the fault is considered unsafe or invalid, Phoenix stops the recovery attempt instead of executing an uncontrolled corrective action.
+
+The recovery objective can therefore be represented as
+\begin{equation}
+R(F) = \begin{cases}
+A_r, & \text{if } F \text{ is recoverable,} \\
+A_s, & \text{if } F \text{ requires safe rejection.}
+\end{cases}
+\end{equation}
+
+This formulation distinguishes recovery from rejection. A system that correctly rejects an unsafe action should not be considered unsuccessful merely because it did not retry the action.
+
+\section{Phoenix Architecture}
+The Phoenix implementation uses separate components for planning, execution, supervision, permission handling, memory and recovery. Normal task execution and fault handling are kept as separate parts of the architecture.
+
+The primary recovery pipeline contains five stages:
+\begin{enumerate}
+    \item Error Parser
+    \item Root-Cause Analyzer
+    \item Recovery Planner
+    \item Patch Generator
+    \item Retry Engine
+\end{enumerate}
+
+The Error Parser converts execution failures into structured representations. The Root Cause Analyzer maps observed failures to deterministic fault categories. The Recovery Planner selects an appropriate recovery strategy. The Patch Generator produces the required corrective operation, while the Retry Engine executes the recovery under bounded retry and safety policies.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.48\textwidth]{docs/architecture_diagram.png}
+\caption{Phoenix system architecture.}
+\label{fig:architecture_healing}
+\end{figure}
+
+The architecture also includes permission controls and state validation. These components prevent the recovery subsystem from executing actions that violate defined workflow constraints.
+
+\section{Recovery Algorithm}
+The recovery algorithm operates after a fault is detected during task execution. The detected condition is converted into a structured fault representation containing the fault type, context, workflow state and recovery metadata.
+
+The recovery process can be summarized as follows:
+\begin{enumerate}
+    \item Detect the execution failure.
+    \item Parse the failure into a structured error representation.
+    \item Determine the root cause.
+    \item Check whether the condition is recoverable.
+    \item Select a bounded recovery strategy.
+    \item Generate the corrective operation.
+    \item Execute the recovery action.
+    \item Retry the failed task if permitted.
+    \item Validate the resulting workflow state.
+\end{enumerate}
+
+The retry mechanism uses bounded retry policies to prevent indefinite execution. Safety guards reject invalid actions and inconsistent workflow states when automatic recovery is not considered safe. Accordingly, the evaluation distinguishes two outcomes: successful recovery for supported recoverable faults and safe rejection for conditions classified as unsuitable for automatic remediation.
+
+\subsection{Recovery Decision Example}
+For a missing output directory, the system identifies the missing resource and selects a directory creation recovery strategy. The recovery action creates the required directory and retries the failed operation.
+
+For an execution timeout, the system identifies the timeout condition and selects a bounded retry strategy with an adjusted timeout policy.
+
+For an adapter failure, the system can retry the operation or select an alternative available adapter according to the defined recovery policy.
+
+Invalid actions and unsafe workflow states are rejected by the safety layer rather than being blindly retried.
+
+\begin{table}[htbp]
+\caption{Recovery State Representation}
+\label{tab:recovery_state}
+\centering
+\begin{tabular}{p{2.5cm} p{5.5cm}}
+\toprule
+\textbf{Field} & \textbf{Description} \\
+\midrule
+Fault Type & Structured category assigned to the detected condition \\
+Root Cause & Deterministic explanation of the observed failure \\
+Recovery Strategy & Selected corrective strategy \\
+Retry Count & Number of recovery attempts performed \\
+Workflow State & Current state used for safety validation \\
+Recovery Result & Successful recovery or safe rejection \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Implementation and Verified Measurements}
+The current Phoenix implementation integrates deterministic recovery with the broader multi-agent execution framework. The implementation contains components for task planning, execution, supervision, permissions, memory and tool adapters.
+
+The current backend does not require an active large language model runtime dependency for the recovery mechanism. Recovery decisions are generated through structured logic and deterministic policies.
+
+Current implementation measurements include 12.18 ms for goal decomposition, 14.85 ms for planner request processing, 0.85 ms for execution dispatch, and 0.25 ms per worker task. Concurrent execution achieved a measured throughput of 3,891 tasks/s across ten workflows.
+
+The implementation also supports document, presentation, PDF, OCR, browser, desktop and terminal related operations.
+
+The current test suite contains 846 passing unit, integration and performance tests.
+
+\begin{table}[htbp]
+\caption{Verified Phoenix Execution Measurements}
+\label{tab:execution_measurements}
+\centering
+\begin{tabular}{p{4.5cm} c}
+\toprule
+\textbf{Measurement} & \textbf{Observed Value} \\
+\midrule
+Goal decomposition & 12.18 ms \\
+Planner request processing & 14.85 ms \\
+Execution dispatch & 0.85 ms \\
+Worker task execution & 0.25 ms \\
+Concurrent throughput & 3,891 tasks/s \\
+Concurrent workflows & 10 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Experimental Methodology}
+We tested the existing Phoenix backend by injecting controlled faults at the software level. The tests used in memory components and synthetic tool adapters. The project source code was not modified to introduce the faults.
+
+Five fault classes were evaluated:
+\begin{enumerate}
+    \item Invalid action
+    \item Missing resource
+    \item Timeout
+    \item Tool or adapter failure
+    \item State inconsistency
+\end{enumerate}
+
+Each fault class was tested 25 times, giving a total of 125 independent fault-injection trials.
+
+The timing measurements used Python's high-resolution monotonic timer, \texttt{time.perf\_counter()}, to measure software level recovery dispatch latency.
+
+For the overall recovery ratio, the following metric is defined:
+\begin{equation}
+SR = \frac{N_{\text{recovered}}}{N_{\text{injected}}} \times 100.
+\end{equation}
+
+Recovery latency is defined as
+\begin{equation}
+T_R = T_{\text{success}} - T_{\text{fault}}.
+\end{equation}
+
+Because two fault classes are intentionally rejected by safety guards, an additional recoverable case metric is used:
+\begin{equation}
+SR_{\text{rec}} = \frac{N_{\text{recovered,rec}}}{N_{\text{injected,rec}}} \times 100.
+\end{equation}
+
+Here, $N_{\text{injected,rec}}$ represents only the supported recoverable fault cases. This metric is reported separately from the all class recovery ratio so that safe rejection is not incorrectly interpreted as failed recovery.
+
+The expanded evaluation also compared identical transient fault workloads with deterministic recovery enabled and automatic recovery disabled. Deterministic recovery execution used bounded retries, while the no recovery configuration used a maximum retry count of zero.
+
+The experiments were performed in a local software test environment. Each fault class was evaluated using 25 independent trials and identical workload conditions were used for the deterministic recovery and no recovery comparison. The fault conditions were injected at the agent or adapter level and therefore do not represent real operating system crashes, network outages or external browser service failures.
+
+\section{Results and Analysis}
+The functional evaluation detected all five tested fault conditions. Missing resource, timeout and tool/adapter failures were automatically recovered, while invalid actions and state inconsistencies were rejected by the safety layer.
+
+\begin{table}[htbp]
+\caption{Functional Verification of the Phoenix Pipeline}
+\label{tab:functional_verification}
+\centering
+\begin{tabular}{p{3.5cm} c c}
+\toprule
+\textbf{Component} & \textbf{Tested} & \textbf{Result} \\
+\midrule
+Error detection & Yes & Pass \\
+Root-cause analysis & Yes & Pass \\
+Recovery planning & Yes & Pass \\
+Patch generation & Yes & Pass \\
+Retry execution & Yes & Pass \\
+Safety validation & Yes & Pass \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Repeated Fault-Injection Evaluation}
+We ran 25 trials for each of the five fault classes, giving 125 trials overall.
+
+Phoenix detected all 125 injected faults, giving a 100\% detection rate for this experiment. The three supported recoverable fault classes missing resource, timeout and tool/adapter failure achieved successful recovery in all 75 corresponding trials.
+
+Thus, the observed recovery success rate for the predefined recoverable fault classes was
+\begin{equation}
+SR_{\text{rec}} = \frac{75}{75} \times 100 = 100\%.
+\end{equation}
+
+The two remaining fault classes were intentionally handled by safety rejection. Invalid actions and state inconsistencies were correctly blocked in all 50 corresponding trials.
+
+The all class recovery ratio remains
+\begin{equation}
+SR = \frac{75}{125} \times 100 = 60\%.
+\end{equation}
+
+The 60\% value does not represent the overall failure rate of Phoenix. It reflects the chosen denominator, which includes both recoverable faults and conditions for which the deterministic safety policy intentionally refuses automatic remediation.
+
+\begin{table}[htbp]
+\caption{Repeated Fault-Injection Results Across 125 Trials}
+\label{tab:fault_injection_125}
+\centering
+\begin{tabular}{l c c c c}
+\toprule
+\textbf{Fault Class} & \textbf{Trials} & \textbf{Detected} & \textbf{Recovered} & \textbf{Rejected} \\
+\midrule
+Invalid action & 25 & 25 & 0 & 25 \\
+Missing resource & 25 & 25 & 25 & 0 \\
+Timeout & 25 & 25 & 25 & 0 \\
+Tool/adapter failure & 25 & 25 & 25 & 0 \\
+State inconsistency & 25 & 25 & 0 & 25 \\
+\midrule
+\textbf{Total} & \textbf{125} & \textbf{125} & \textbf{75} & \textbf{50} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\caption{Deterministic-Recovery Versus No-Recovery Evaluation}
+\label{tab:recovery_vs_norecovery}
+\centering
+\begin{tabular}{p{3.8cm} c c}
+\toprule
+\textbf{Metric} & \textbf{Deterministic Recovery} & \textbf{No Recovery} \\
+\midrule
+Total trials & 25 & 25 \\
+Successful completions & 25 & 0 \\
+Unrecovered failures & 0 & 25 \\
+Recoveries executed & 25 & 0 \\
+Workflow completion rate & 100\% & 0\% \\
+Total retries attempted & 50 & 0 \\
+Mean software-level handling latency & 1.88 ms & 0.44 ms \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Safety Guard Evaluation}
+The invalid action and state inconsistency classes were treated as unsafe or unsuitable for automatic recovery. Across 50 trials, both classes were detected and safely rejected.
+
+The observed safe rejection rate was therefore
+\begin{equation}
+SR_{\text{safe}} = \frac{50}{50} \times 100 = 100\%.
+\end{equation}
+
+This result demonstrates that the recovery mechanism correctly rejected the tested unsafe conditions without initiating automatic remediation.
+
+\subsection{Deterministic Recovery Versus No Recovery Evaluation}
+We then ran a second experiment with the same transient fault workload under two configurations: deterministic recovery enabled and recovery disabled. Twenty-five identical transient fault workload trials were performed for each configuration.
+
+With recovery enabled, all 25 workloads completed successfully. With recovery disabled, none of the 25 workloads completed. The observed completion rates were therefore 100\% and 0\%, respectively.
+
+The measured mean software-level handling latency was 1.88 ms with deterministic recovery enabled and 0.44 ms for the fail-fast no-recovery path. The resulting 1.44 ms difference represents the measured software level overhead of the tested recovery path relative to the fail fast condition.
+
+These results should be interpreted within the controlled test environment. They demonstrate the effect of the implemented recovery mechanism on the selected injected workloads but do not establish the same completion rates for arbitrary real world desktop or browser failures.
+
+\subsection{Recovery Latency Analysis}
+Repeated measurements were collected for the three supported recoverable fault classes.
+
+\begin{table}[htbp]
+\caption{Recovery Latency Statistics Across 25 Trials}
+\label{tab:latency_stats}
+\centering
+\begin{tabular}{p{2.8cm} c c c c c}
+\toprule
+\textbf{Fault Class} & \textbf{Mean} & \textbf{Median} & \textbf{Min} & \textbf{Max} & \textbf{Std. Dev.} \\
+\midrule
+Missing resource & 0.83 & 0.64 & 0.51 & 3.18 & 0.57 \\
+Timeout & 1.15 & 1.10 & 0.72 & 2.45 & 0.48 \\
+Tool/adapter failure & 1.93 & 1.57 & 1.33 & 4.58 & 0.87 \\
+\midrule
+\textbf{Combined} & \textbf{1.30} & \textbf{1.10} & \textbf{0.51} & \textbf{4.58} & \textbf{0.78} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The combined mean recovery latency was 1.30 ms, with a median of 1.10 ms and an observed range of 0.51--4.58 ms. Tool or adapter failures had the highest mean latency of the three recoverable classes. In these cases, the recovery process also had to perform an adapter re-dispatch.
+
+These measurements represent software-level recovery processing within the in-memory test environment. They should not be interpreted as end-to-end browser, desktop, network or operating-system recovery latency.
+
+\subsection{Interpretation of the Recovery Metrics}
+The experimental results support a two-tier interpretation of Phoenix recovery behavior. First, the system achieved a 100\% recovery success rate across the 75 trials belonging to the three predefined recoverable fault classes. Second, the system achieved a 100\% safe-rejection rate across the 50 trials belonging to the predefined unsafe fault classes.
+
+Reporting only the 60\% all-class recovery ratio would obscure this distinction because the denominator includes conditions that are deliberately rejected by the safety policy. Conversely, reporting only the 100\% recoverable-case recovery success rate without describing the 50 rejected cases would omit an important part of the system's behavior.
+
+Therefore, both metrics are reported. The recoverable-case rate describes the effectiveness of supported automatic recovery, while the all-class ratio describes the proportion of all injected cases that resulted in successful task recovery.
+
+\section{Discussion}
+In our tests, the deterministic recovery rules produced the same recovery behavior for repeated faults in the selected categories. Since each fault is mapped to a defined category and recovery policy, the resulting decisions can be traced and repeated.
+
+The repeated evaluation also demonstrates that the supported recoverable cases completed successfully across all 75 observed trials. Missing resources, timeouts and adapter failures were handled through predefined recovery strategies rather than additional model-based reasoning.
+
+The comparison with the no-recovery configuration also shows what happens when the recovery layer is removed from the workflow. Under the selected transient-fault workload, deterministic recovery enabled all 25 tested workflows to complete, while the no-recovery configuration resulted in 25 terminal failures.
+
+The observed 1.30 ms mean recovery latency quantifies the software-level processing overhead of the deterministic recovery path in the controlled test environment. However, this measurement does not include external browser, desktop, network or operating-system execution delays.
+
+The results also demonstrate the importance of separating recovery from safety rejection. Invalid actions and inconsistent states were not automatically retried because the system's deterministic safety policies identified them as unsuitable for uncontrolled remediation. This behavior prevents a recovery metric from rewarding unsafe actions merely because they produce another execution attempt.
+
+\section{Limitations}
+Several limitations apply to the current evaluation.
+
+First, the fault-injection experiments were conducted at the software and agent-handler level using controlled in-memory conditions. They do not reproduce all failure modes encountered in real browser, desktop, operating-system or network environments.
+
+Second, adapter failures were represented using controlled test adapters. Actual external services can introduce network delay, service unavailability, authentication failures, browser rendering delays and other sources of variability.
+
+Third, the measured recovery latency represents software-level recovery dispatch and processing. It excludes the complete wall-clock time required for an external browser or desktop operation to execute.
+
+Fourth, the repeated evaluation contains 25 trials per fault class. The 25 trials per fault class provide repeated measurements, but broader workloads and additional environments are required to assess behavior under more diverse conditions.
+
+Fifth, the deterministic-recovery versus no-recovery comparison used a controlled transient-fault workload. The 100\% versus 0\% completion result should therefore be interpreted as an experimental result for that workload rather than as a universal reliability guarantee.
+
+Sixth, the current recovery implementation does not automatically remediate every possible invalid action or inconsistent workflow state. These conditions are intentionally protected by safety guards. Future work can investigate safe checkpoint rollback and state reconstruction mechanisms.
+
+Finally, the evaluation does not currently include large-scale real-browser chaos testing, real desktop interaction failures, network disruption or operating-system-level fault injection.
+
+\section{Conclusion and Future Work}
+\subsection{Conclusion}
+In this work, we developed Phoenix, a deterministic multi-agent framework for desktop and browser automation with a structured recovery mechanism. The framework separates fault detection, cause analysis, recovery planning, corrective-action generation, retry execution and safety checking.
+
+The current implementation provides deterministic recovery without requiring an active large language model runtime dependency. Verified implementation measurements include goal decomposition, planner processing, execution dispatch, worker execution and concurrent throughput measurements.
+
+The expanded evaluation increased the experimental scope to 125 independent fault-injection trials across five fault classes. Phoenix detected all 125 injected faults. Across the three supported recoverable classes, 75 of 75 trials were successfully recovered, corresponding to an observed recovery success rate of 100\% under the evaluated controlled conditions. The two unsafe fault classes were correctly rejected in all 50 trials, resulting in a safe-rejection rate of 100\% across the evaluated unsafe fault classes.
+
+When all five fault classes are considered together, 75 of 125 trials resulted in automatic recovery, corresponding to an all-class recovery ratio of 60\%. Reporting both values provides a clearer representation of the system because invalid actions and state inconsistencies are intentionally rejected rather than automatically remediated.
+
+The controlled deterministic-recovery versus no-recovery experiment produced workflow completion rates of 100\% and 0\%, respectively, for the tested transient-fault workload. The combined mean software-level recovery latency across the recoverable fault classes was 1.30 ms.
+
+Overall, the experiments show how the current Phoenix implementation behaves under the software-level conditions used in our tests. They do not establish universal recovery performance for arbitrary real-world browser or desktop failures.
+
+\subsection{Future Work}
+Future work will extend the evaluation beyond in-memory software faults to real browser and desktop environments. Planned experiments include browser automation using realistic DOM failures, network delays, missing interface elements, file-lock contention and external service interruptions.
+
+Another direction is large-scale scalability testing. Recovery latency and workflow completion can be evaluated as the number of concurrent agent workflows increases.
+
+Future versions can also investigate safe checkpoint rollback for selected state inconsistencies and structured action repair for invalid actions. Such mechanisms must preserve the deterministic safety properties of Phoenix rather than simply increasing the numerical recovery rate.
+
+Further experiments will compare different recovery policies, measure end-to-end execution latency and evaluate behavior across larger and more diverse workloads. These evaluations can provide additional evidence regarding the generalization of deterministic self-healing for desktop and browser automation.
+
+\begin{thebibliography}{10}
+\bibitem{babu2026} R. S. Babu and A. Agrawal, ``Self-Healing Agentic Orchestrators for Reliable Tool-Augmented Large Language Model Systems,'' \textit{arXiv preprint arXiv:2606.01416}, 2026.
+\bibitem{jeong2026} C. Jeong and Y. Shin, ``A Self-Healing Framework for Reliable LLM-Based Autonomous Agents,'' \textit{arXiv preprint arXiv:2605.06737}, May 2026.
+\bibitem{guo2026} X. Guo et al., ``EvoConfig: Self-Evolving Multi-Agent Systems for Efficient Autonomous Environment Configuration,'' \textit{arXiv preprint arXiv:2601.16489}, 2026.
+\bibitem{ju2025} T. Ju et al., ``When Disagreements Elicit Robustness: Investigating Self-Repair Capabilities under LLM Multi-Agent Disagreements,'' \textit{arXiv preprint arXiv:2502.15153}, 2025.
+\bibitem{bara2026} A. Bara, G. Dobri\c{t}a, and S.-V. Oprea, ``Think it, Run it: Autonomous machine learning pipeline generation via self-healing multi-agent artificial intelligence,'' \textit{Knowledge-Based Systems}, vol. 351, p. 116688, 2026.
+\bibitem{wang2026} F. Wang et al., ``Detecting and Repairing Role Drift in Multi-Agent Collaboration with Lightweight Protocols,'' in \textit{2026 International Conference on Communication Networks and Machine Learning (CNML)}, 2026.
+\bibitem{patel2026sustech} T. P. Patel et al., ``Predictive Self-Healing for Multi-Agent LLM Pipelines Using Model Predictive Control,'' in \textit{2026 IEEE Conference on Technologies for Sustainability (SusTech)}, 2026.
+\bibitem{patel2026isiber} T. P. Patel et al., ``Self-Healing AI Systems using Multi-Agent Learning,'' in \textit{2026 International Seminar on Intelligent Business and Edge-Computing Research (ISIBER)}, 2026.
+\bibitem{garcia2026} B. Garc\'ia et al., ``A survey on Selenium usage, practices, and challenges in end-to-end testing,'' \textit{Information and Software Technology}, vol. 194, p. 108077, 2026.
+\bibitem{nguyen2025} D. Nguyen et al., ``GUI Agents: A Survey,'' \textit{Findings of the Association for Computational Linguistics: ACL 2025}, pp. 22522--22538, 2025.
+\bibitem{bajoria2026} S. Bajoria et al., ``From Language Models to Agentic AI: A Survey of Autonomous, Action-Enabled, and Collaborative LLM Agents,'' \textit{Cognitive Computation}, vol. 18, p. 103, 2026.
+\end{thebibliography}
+
+\end{document}
