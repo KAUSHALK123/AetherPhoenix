@@ -10,6 +10,8 @@ class BrowserState(str, Enum):
     IDLE = "idle"
     LOADING = "loading"
     READY = "ready"
+    ACTING = "acting"
+    VERIFYING = "verifying"
     ERROR = "error"
     CLOSED = "closed"
 
@@ -21,10 +23,18 @@ class BrowserSession(BaseModel):
     current_url: str | None = Field(
         None, description="The URL currently loaded in the browser"
     )
+    page_title: str | None = Field(
+        None, description="The title of the active webpage"
+    )
     state: BrowserState = Field(
         default=BrowserState.IDLE, description="Current state of the browser"
     )
     start_time: float = Field(..., description="Timestamp when the session was created")
+    tab_count: int = Field(default=1, description="Number of open tabs")
+    active_tab_index: int = Field(default=0, description="Index of currently active tab")
+    tabs: list[dict[str, Any]] = Field(
+        default_factory=list, description="Metadata for open tabs"
+    )
 
 
 class BrowserResult(BaseModel):

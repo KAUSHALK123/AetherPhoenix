@@ -10,6 +10,7 @@ import { TerminalPopcard } from '../components/chat/TerminalPopcard';
 import { FileExplorerPopcard } from '../components/chat/FileExplorerPopcard';
 import { DesktopAppPopcard } from '../components/chat/DesktopAppPopcard';
 import { BrowserPopcard } from '../components/chat/BrowserPopcard';
+import { LiveBrowserPanel } from '../components/browser/LiveBrowserPanel';
 
 export const ChatPage: React.FC = () => {
   const messages = useChatStore((state) => state.messages);
@@ -22,9 +23,19 @@ export const ChatPage: React.FC = () => {
 
   const [inputVal, setInputVal] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [showBrowserPanel, setShowBrowserPanel] = useState(false);
+  const [isBrowserExpanded, setIsBrowserExpanded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-reveal live browser panel if any message has browserData
+  const hasBrowserData = messages.some((m) => !!m.browserData);
+  useEffect(() => {
+    if (hasBrowserData) {
+      setShowBrowserPanel(true);
+    }
+  }, [hasBrowserData]);
 
   // Active terminal or tool output payload for right side inspector panel
   const latestTerminalData = [...messages].reverse().find((m) => m.terminalOutputData)?.terminalOutputData;
@@ -231,8 +242,14 @@ export const ChatPage: React.FC = () => {
           )}
         </div>
 
-        {/* Right Column: Live External Tool & Terminal Execution Inspector Workspace (Right Red Box) */}
-        {latestTerminalData && (
+        {/* Right Column: Live Browser Panel or Live Terminal Execution Inspector */}
+        {showBrowserPanel ? (
+          <LiveBrowserPanel
+            onClose={() => setShowBrowserPanel(false)}
+            isExpanded={isBrowserExpanded}
+            onToggleExpand={() => setIsBrowserExpanded((prev) => !prev)}
+          />
+        ) : latestTerminalData ? (
           <div className="hidden lg:flex flex-col w-96 mr-6 mb-6 bg-slate-950/90 backdrop-blur-2xl border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4 shrink-0 h-[calc(100vh-10rem)]">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
@@ -265,21 +282,39 @@ export const ChatPage: React.FC = () => {
               ✓ Direct live output capture complete
             </div>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Floating Composer Bottom Bar */}
       <footer className="p-4 sm:p-6 z-20 shrink-0">
         <div className="max-w-4xl mx-auto space-y-2">
-          {selectedFile && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/80 backdrop-blur-md border border-indigo-500/30 rounded-xl text-xs text-indigo-300 w-fit">
-              <span className="material-symbols-outlined text-sm">attachment</span>
-              <span>{selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)</span>
-              <button onClick={() => setSelectedFile(null)} className="hover:text-white cursor-pointer ml-1">
-                <span className="material-symbols-outlined text-xs">close</span>
-              </button>
+          {/* Controls Bar */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {selectedFile && (
+                <div className="flex items-center gap-2 px-3 py-1 bg-slate-900/80 backdrop-blur-md border border-indigo-500/30 rounded-xl text-xs text-indigo-300 w-fit">
+                  <span className="material-symbols-outlined text-sm">attachment</span>
+                  <span>{selectedFile.name} ({(selectedFile.size / 1024).toFixed(1)} KB)</span>
+                  <button onClick={() => setSelectedFile(null)} className="hover:text-white cursor-pointer ml-1">
+                    <span className="material-symbols-outlined text-xs">close</span>
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+
+            <button
+              onClick={() => setShowBrowserPanel((prev) => !prev)}
+              className={`px-3 py-1 rounded-xl border text-[11px] font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
+                showBrowserPanel
+                  ? 'bg-indigo-600/30 text-indigo-300 border-indigo-500/50 shadow-sm'
+                  : 'bg-slate-900/60 text-slate-400 hover:text-white border-slate-800 hover:border-slate-700'
+              }`}
+              title="Toggle Live Browser Panel"
+            >
+              <span className="material-symbols-outlined text-sm">open_in_browser</span>
+              <span>{showBrowserPanel ? 'Hide Browser' : 'Live Browser'}</span>
+            </button>
+          </div>
 
           <div className="bg-slate-900/80 backdrop-blur-2xl border border-slate-700/60 focus-within:border-indigo-500/80 rounded-2xl p-2.5 flex items-center gap-2.5 shadow-2xl transition-all">
             {/* Hidden native file input */}

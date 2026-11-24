@@ -172,6 +172,75 @@ class BrowserAdapter(BaseToolAdapter):
                 )
                 output = res.data
 
+            elif action in ("observe_act_verify", "step"):
+                step_action = inputs.get("step_action") or inputs.get("interaction_action") or "click"
+                target = inputs.get("target") or inputs.get("selector") or ""
+                value = inputs.get("value")
+                expected = inputs.get("expected_outcome")
+                timeout = inputs.get("timeout_ms", 10000.0)
+                logs.append(f"Executing Observe-Act-Verify: {step_action} on '{target}'...")
+                res = await self.controller.execute_observe_act_verify(
+                    action=step_action,
+                    target=target,
+                    value=value,
+                    expected_outcome=expected,
+                    timeout_ms=timeout,
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                )
+                output = res.data
+
+            elif action == "get_interactive_elements":
+                limit = inputs.get("limit", 50)
+                logs.append(f"Discovering interactive elements (limit={limit})...")
+                elements = await self.controller.get_interactive_elements(limit=limit)
+                output = {"elements": [el.model_dump() for el in elements], "count": len(elements)}
+
+            elif action == "scroll":
+                direction = inputs.get("direction", "down")
+                amount = inputs.get("amount", 500)
+                logs.append(f"Scrolling page {direction} by {amount}px...")
+                res = await self.controller.scroll(
+                    direction=direction,
+                    amount=amount,
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                )
+                output = res.data
+
+            elif action == "new_tab":
+                url = inputs.get("url", "about:blank")
+                logs.append(f"Opening new tab with URL: {url}...")
+                res = await self.controller.new_tab(
+                    url=url,
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                )
+                output = res.data
+
+            elif action == "switch_tab":
+                tab_index = inputs.get("tab_index", 0)
+                logs.append(f"Switching to tab #{tab_index}...")
+                res = await self.controller.switch_tab(
+                    tab_index=tab_index,
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                )
+                output = res.data
+
+            elif action == "close_tab":
+                tab_index = inputs.get("tab_index")
+                logs.append(f"Closing tab {tab_index}...")
+                res = await self.controller.close_tab(
+                    tab_index=tab_index,
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                )
+                output = res.data
+
+            elif action == "live_state":
+                output = await self.controller.get_live_state()
+
             else:
                 raise ValueError(f"Unknown browser action: {action}")
 

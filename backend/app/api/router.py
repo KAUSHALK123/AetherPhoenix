@@ -3,9 +3,11 @@ from fastapi import APIRouter
 from app.api.endpoints import (
     artifacts,
     browser_extension,
+    browser_live,
     dashboard,
     execution,
     export,
+    mcp_browser,
     mcp_command,
     notifications,
     permissions,
@@ -23,10 +25,16 @@ api_router.include_router(
     notifications.router, prefix="/notifications", tags=["notifications"]
 )
 api_router.include_router(
+    browser_live.router, prefix="/browser", tags=["browser"]
+)
+api_router.include_router(
     browser_extension.router, prefix="/browser-extension", tags=["browser-extension"]
 )
 api_router.include_router(
     mcp_command.router, prefix="/mcp/commands", tags=["mcp-commands"]
+)
+api_router.include_router(
+    mcp_browser.router, prefix="/mcp/browser", tags=["mcp-browser"]
 )
 api_router.include_router(export.router, prefix="/export", tags=["export"])
 api_router.include_router(artifacts.router, prefix="/artifacts", tags=["artifacts"])

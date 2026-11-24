@@ -97,6 +97,33 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
       }
 
+      // Check if plan contains browser automation tasks
+      let browserInfo = undefined;
+      const browserTask = (parsedPlan?.tasks || []).find(
+        (t: any) =>
+          t.required_tool === 'browser_automation' ||
+          t.required_tool === 'browser_extension' ||
+          t.category === 'BROWSER'
+      );
+      if (browserTask) {
+        const inputs = browserTask.inputs || browserTask.input_parameters || {};
+        const url =
+          inputs.url ||
+          browserTask.description?.match(/https?:\/\/[^\s]+/)?.[0] ||
+          'https://www.google.com';
+        browserInfo = {
+          url,
+          siteName: url.includes('canva')
+            ? 'Canva'
+            : url.includes('github')
+            ? 'GitHub'
+            : 'Browser Automation',
+          action: 'opened_url' as const,
+          status: 'COMPLETED' as const,
+          query: inputs.query || '',
+        };
+      }
+
       const plannerMessage: Message = {
         id: crypto.randomUUID(),
         role: 'planner',
@@ -105,6 +132,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         timestamp: new Date().toISOString(),
         planData: parsedPlan || undefined,
         options: structuredOptions,
+        browserData: browserInfo,
       };
 
       set((state) => ({
