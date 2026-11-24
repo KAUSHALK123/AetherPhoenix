@@ -95,10 +95,23 @@ class ScreenshotToolAdapter(BaseToolAdapter):
             params: Dict[str, Any] = {}
             if payload:
                 params.update(payload)
+            if hasattr(task, "inputs") and isinstance(task.inputs, dict):
+                params.update(task.inputs)
             if hasattr(task, "metadata") and isinstance(task.metadata, dict):
                 params.update(task.metadata)
             if kwargs:
                 params.update(kwargs)
+
+            if params.get("dry_run") or params.get("mock"):
+                elapsed_ms = (time.time() - start_time) * 1000.0
+                return ExecutionResult(
+                    task_id=task.task_id,
+                    workflow_id=task.workflow_id,
+                    success=True,
+                    output={"status": "dry_run", "width": 1920, "height": 1080},
+                    logs=logs + ["Screenshot dry run succeeded."],
+                    metrics=ExecutionMetrics(execution_time_ms=elapsed_ms),
+                )
 
             # Map input parameters to request fields
             source_val = params.get("source", CaptureSource.DESKTOP)

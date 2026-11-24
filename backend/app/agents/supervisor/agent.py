@@ -8,7 +8,7 @@ from shared.contracts.execution import (
     SupervisorValidation,
     TaskError,
 )
-from shared.contracts.task import Task, TaskStatus
+from shared.contracts.task import Task, TaskStatus, TaskType
 from shared.contracts.workflow import SharedWorkflowState
 
 from app.agents.healing.retry_engine import RetryEngine
@@ -174,6 +174,16 @@ class SupervisorAgent(BaseAgent):
         logger.info(
             f"SupervisorAgent evaluating task: {task.task_id} ({task.task_name})"
         )
+
+        if getattr(task, "task_type", None) == TaskType.PHASE:
+            return SupervisorValidation(
+                task_id=task.task_id,
+                workflow_id=task.workflow_id,
+                is_valid=True,
+                decision=SupervisorDecision.PASSED,
+                checks={"phase_container": True},
+                issues=[],
+            )
 
         await self._emit_event(
             EventType.SUPERVISION_STARTED,

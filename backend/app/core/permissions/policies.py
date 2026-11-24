@@ -76,6 +76,27 @@ class SafeExecutionPolicy:
         "browser_capture_screenshot": RiskLevel.LOW,
         "extract_content": RiskLevel.LOW,
         "capture_screenshot": RiskLevel.LOW,
+        # Canva design automation actions (browser runtime)
+        "canva_open": RiskLevel.LOW,
+        "open_canva": RiskLevel.LOW,
+        "canva_create_design": RiskLevel.LOW,
+        "create_design": RiskLevel.LOW,
+        "canva_edit_design": RiskLevel.LOW,
+        "edit_design": RiskLevel.LOW,
+        "canva_edit_existing_design": RiskLevel.LOW,
+        "edit_existing_design": RiskLevel.LOW,
+        "canva_add_text": RiskLevel.LOW,
+        "add_text": RiskLevel.LOW,
+        "canva_add_element": RiskLevel.LOW,
+        "add_element": RiskLevel.LOW,
+        "canva_change_colors": RiskLevel.LOW,
+        "change_colors": RiskLevel.LOW,
+        "canva_apply_template": RiskLevel.LOW,
+        "apply_template": RiskLevel.LOW,
+        "canva_export_design": RiskLevel.LOW,
+        "export_design": RiskLevel.LOW,
+        "canva_tool": RiskLevel.LOW,
+        "canva": RiskLevel.LOW,
         # Browser medium / high risk
         "browser_navigate": RiskLevel.MEDIUM,
         "navigate": RiskLevel.MEDIUM,
@@ -134,7 +155,13 @@ class SafeExecutionPolicy:
     ) -> RiskLevel:
         """Classifies the risk level of an automation action."""
         ctx = context or {}
-        norm_action = action.lower().replace("desktopaction: ", "").replace(" ", "_")
+        norm_action = (
+            action.lower()
+            .replace("desktopaction: ", "")
+            .replace("canvaaction: ", "")
+            .replace("browseraction: ", "")
+            .replace(" ", "_")
+        )
 
         # Check for restricted hotkeys
         if "hotkey" in norm_action or "keys" in ctx:
@@ -165,6 +192,11 @@ class SafeExecutionPolicy:
             for token in DESTRUCTIVE_COMMAND_TOKENS:
                 if token in cmd:
                     return RiskLevel.CRITICAL
+
+        # Check for trusted Canva actions and domain navigation
+        if "url" in ctx and "canva.com" in str(ctx.get("url", "")).lower():
+            if norm_action in ("navigate", "browser_navigate", "browser_start_session"):
+                return RiskLevel.LOW
 
         # Lookup in standard map
         if norm_action in cls.ACTION_RISK_MAP:

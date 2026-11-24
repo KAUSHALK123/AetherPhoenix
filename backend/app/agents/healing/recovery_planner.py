@@ -598,6 +598,7 @@ class RecoveryPlanner:
                 required_tool=alt_tool,
                 category=task_obj.category,
                 expected_output=task_obj.expected_output,
+                retry_count=getattr(task_obj, "retry_count", 0) + 1,
             )
             plan.replacement_tasks = [alt_task]
 

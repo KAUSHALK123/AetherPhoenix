@@ -17,25 +17,149 @@ class ClarificationEngine:
     This strictly prevents incomplete data from proceeding to the planning phase.
     """
 
+    def _is_file_organization_intent(self, text: str) -> bool:
+        lower = text.lower()
+        has_action = any(
+            w in lower
+            for w in [
+                "organize",
+                "sort",
+                "clean up",
+                "cleanup",
+                "local file organizer",
+                "file organizer",
+                "categorize",
+                "group files",
+            ]
+        )
+        has_file_kw = any(
+            w in lower
+            for w in [
+                "file",
+                "files",
+                "folder",
+                "folders",
+                "directory",
+                "directories",
+                "downloads",
+                "desktop",
+                "docs",
+                "documents",
+                "organizer",
+            ]
+        )
+        return (has_action and has_file_kw) or ("organizer" in lower)
+
     def detect_missing_info(self, requirement: UserRequirement) -> List[str]:
         """
         Analyzes the requirement to find missing fields.
         """
         missing_fields = []
+        req_text = (
+            " ".join(requirement.requirements).lower()
+            if requirement.requirements
+            else ""
+        )
+
+        # Priority 1: Check for file organization intent
+        if self._is_file_organization_intent(req_text):
+            has_folder = any(
+                f in req_text
+                for f in [
+                    "download",
+                    "downloads",
+                    "desktop",
+                    "documents",
+                    "docs",
+                    "pictures",
+                    "videos",
+                    "music",
+                    ":\\",
+                    ":/",
+                    "/home",
+                    "/user",
+                    "target directory",
+                    "source directory",
+                ]
+            )
+            has_criteria = any(
+                c in req_text
+                for c in [
+                    "by file type",
+                    "by type",
+                    "by extension",
+                    "file type",
+                    "extension",
+                    "by date",
+                    "by size",
+                    "date",
+                    "size",
+                    "alphabetical",
+                    "by category",
+                    "categoriz",
+                    "pdf",
+                    "images",
+                    "videos",
+                    "docs",
+                    "sort by",
+                ]
+            )
+
+            if not has_folder:
+                missing_fields.append("source_folder")
+            if not has_criteria:
+                missing_fields.append("organization_criteria")
+
+            # If both folder and criteria are provided, no clarification needed!
+            return missing_fields
+
+        # Priority 2: Check for Canva intent
+        is_canva = "canva" in req_text or any(
+            k in req_text
+            for k in [
+                "instagram post",
+                "college fest poster",
+                "event poster",
+                "fest poster",
+                "youtube thumbnail",
+                "presentation",
+                "edit existing design",
+                "export as pdf",
+            ]
+        )
+        if is_canva:
+            has_action_or_type = any(
+                w in req_text
+                for w in [
+                    "open",
+                    "launch",
+                    "instagram",
+                    "poster",
+                    "presentation",
+                    "thumbnail",
+                    "fest",
+                    "event",
+                    "edit",
+                    "export",
+                    "pdf",
+                    "png",
+                    "post",
+                    "1080",
+                    "dimension",
+                    "theme",
+                    "color",
+                    "modify",
+                ]
+            )
+            if not has_action_or_type:
+                missing_fields.append("canva_design_type")
+            return missing_fields
+
         if requirement.intent == IntentCategory.UNKNOWN:
             missing_fields.append("intent")
 
         if not requirement.requirements:
             missing_fields.append("requirements")
-
-        # Detect vague file organization requests
-        req_text = " ".join(requirement.requirements).lower()
-        if (
-            "organize" in req_text
-            and "categoriz" not in req_text
-            and "sort" not in req_text
-        ):
-            missing_fields.append("categorization_strategy")
 
         return missing_fields
 
@@ -45,6 +169,28 @@ class ClarificationEngine:
         """
         if not missing_fields:
             return ""
+
+        # Canva design clarification
+        if "canva_design_type" in missing_fields:
+            return (
+                "What would you like to design in Canva?\n"
+                "- Instagram Post (1080x1080)\n"
+                "- College Fest Poster\n"
+                "- Presentation (16:9)\n"
+                "- YouTube Thumbnail"
+            )
+
+        # File organization clarification
+        if (
+            "source_folder" in missing_fields
+            or "organization_criteria" in missing_fields
+        ):
+            return (
+                "To organize your files, please clarify:\n"
+                "- Which folder would you like to organize? (Downloads, Desktop, custom path)\n"
+                "- How should files be organized? (By file type / extension, by date, by size)\n"
+                "- Should files be moved or copied?"
+            )
 
         if "intent" in missing_fields and "requirements" in missing_fields:
             return (
@@ -61,8 +207,6 @@ class ClarificationEngine:
                 "I understand the general goal, but could you specify "
                 "exactly what you need?"
             )
-        elif "categorization_strategy" in missing_fields:
-            return "How would you like the files categorized?"
 
         return "Could you provide more context for your request?"
 
@@ -76,12 +220,30 @@ class ClarificationEngine:
 
         if missing_fields:
             question = self.generate_question(missing_fields)
+            options = None
+            if (
+                "source_folder" in missing_fields
+                or "organization_criteria" in missing_fields
+            ):
+                options = [
+                    "Organize Downloads by file type",
+                    "Organize Desktop by category",
+                    "Sort files by date created",
+                ]
+            elif "canva_design_type" in missing_fields:
+                options = [
+                    "Instagram Post (1080x1080)",
+                    "College Fest Poster",
+                    "Presentation",
+                    "YouTube Thumbnail",
+                ]
             return ClarificationResult(
                 needs_clarification=True,
                 question=question,
                 missing_fields=missing_fields,
+                options=options,
             )
 
         return ClarificationResult(
-            needs_clarification=False, question=None, missing_fields=[]
+            needs_clarification=False, question=None, missing_fields=[], options=None
         )

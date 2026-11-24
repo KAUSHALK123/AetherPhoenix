@@ -9,7 +9,9 @@ Data sources:
 """
 
 from pathlib import Path
+
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -18,7 +20,12 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Set serif typography and IEEE formatting standards
 plt.rcParams["font.family"] = "serif"
-plt.rcParams["font.serif"] = ["Times New Roman", "DejaVu Serif", "Computer Modern Roman", "serif"]
+plt.rcParams["font.serif"] = [
+    "Times New Roman",
+    "DejaVu Serif",
+    "Computer Modern Roman",
+    "serif",
+]
 plt.rcParams["font.size"] = 9
 plt.rcParams["axes.labelsize"] = 9
 plt.rcParams["axes.titlesize"] = 9.5
@@ -44,7 +51,14 @@ bars = []
 for i in range(len(systems)):
     if i == 0:
         # Phoenix bar: solid black fill
-        bar = ax.bar(x[i], latencies[i], width=0.55, color="black", edgecolor="black", linewidth=1.0)
+        bar = ax.bar(
+            x[i],
+            latencies[i],
+            width=0.55,
+            color="black",
+            edgecolor="black",
+            linewidth=1.0,
+        )
     else:
         # Literature bars: gray fill with hatching
         bar = ax.bar(
@@ -79,10 +93,23 @@ for i, (val, txt) in enumerate(zip(latencies, labels)):
         color="black",
     )
 
-ax.grid(True, which="major", axis="y", linestyle="--", linewidth=0.5, alpha=0.6, color="#888888")
+ax.grid(
+    True,
+    which="major",
+    axis="y",
+    linestyle="--",
+    linewidth=0.5,
+    alpha=0.6,
+    color="#888888",
+)
 ax.set_axisbelow(True)
 
-plt.title("Goal Decomposition / Planning Latency Comparison", fontsize=9.5, fontweight="bold", pad=8)
+plt.title(
+    "Goal Decomposition / Planning Latency Comparison",
+    fontsize=9.5,
+    fontweight="bold",
+    pad=8,
+)
 
 # Footnote below chart
 footnote_text = (

@@ -32,4 +32,10 @@ export interface WorkflowState {
   failed_tasks: number;
   current_task_name?: string;
   tasks: WorkflowTaskNode[];
+  answer?: string;
+  raw_output?: Record<string, any>;
+  final_response?: {
+    answer?: string;
+    raw_output?: Record<string, any>;
+  };
 }
