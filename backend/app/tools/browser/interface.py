@@ -189,6 +189,27 @@ class BrowserAdapter(BaseToolAdapter):
                 )
                 output = res.data
 
+            elif action in ("agent_loop", "vision_loop", "run_goal") or inputs.get("goal"):
+                from app.tools.browser.agent_loop import BrowserAgentLoop
+
+                goal = inputs.get("goal") or task.description
+                max_steps = int(inputs.get("max_steps", 40))
+                vision_model = inputs.get("vision_model")
+                logs.append(f"Running vision-driven BrowserAgentLoop for goal: '{goal}'")
+                loop = BrowserAgentLoop(
+                    controller=self.controller,
+                    vision_model=vision_model,
+                    max_steps=max_steps,
+                )
+                report = await loop.run(
+                    goal=goal,
+                    workflow_id=workflow_id,
+                    task_id=task_id,
+                )
+                output = report.model_dump()
+                if not report.success:
+                    raise BrowserActionError(report.message)
+
             else:
                 raise ValueError(f"Unknown browser action: {action}")
 
