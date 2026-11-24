@@ -77,11 +77,10 @@ def test_browser_live_session_endpoints(client):
         assert res.json()["state"] == "idle"
 
     # 2. POST /session/start
-    with patch.object(
-        ctrl, "start_session", new_callable=AsyncMock
-    ) as mock_start, patch.object(
-        ctrl, "get_live_state", new_callable=AsyncMock
-    ) as mock_st:
+    with (
+        patch.object(ctrl, "start_session", new_callable=AsyncMock) as mock_start,
+        patch.object(ctrl, "get_live_state", new_callable=AsyncMock) as mock_st,
+    ):
         mock_start.return_value = MagicMock(
             success=True, data={"session_id": "test-uuid-123", "state": "ready"}
         )
@@ -100,11 +99,10 @@ def test_browser_live_session_endpoints(client):
         assert res.json()["success"] is True
 
     # 3. POST /navigate (Canva scenario)
-    with patch.object(
-        ctrl, "navigate", new_callable=AsyncMock
-    ) as mock_nav, patch.object(
-        ctrl, "get_live_state", new_callable=AsyncMock
-    ) as mock_st:
+    with (
+        patch.object(ctrl, "navigate", new_callable=AsyncMock) as mock_nav,
+        patch.object(ctrl, "get_live_state", new_callable=AsyncMock) as mock_st,
+    ):
         mock_nav.return_value = MagicMock(
             success=True, data={"url": "https://www.canva.com", "title": "Canva"}
         )
@@ -121,11 +119,12 @@ def test_browser_live_session_endpoints(client):
         assert res.json()["success"] is True
 
     # 4. POST /step (Observe-Act-Verify)
-    with patch.object(
-        ctrl, "execute_observe_act_verify", new_callable=AsyncMock
-    ) as mock_step, patch.object(
-        ctrl, "get_live_state", new_callable=AsyncMock
-    ) as mock_st:
+    with (
+        patch.object(
+            ctrl, "execute_observe_act_verify", new_callable=AsyncMock
+        ) as mock_step,
+        patch.object(ctrl, "get_live_state", new_callable=AsyncMock) as mock_st,
+    ):
         mock_step.return_value = MagicMock(
             success=True,
             data={

@@ -593,9 +593,11 @@ class BrowserController:
                 data={
                     "action": action,
                     "selector": selector,
-                    "value": "[MASKED_CREDENTIAL]"
-                    if value and "password" in selector.lower()
-                    else value,
+                    "value": (
+                        "[MASKED_CREDENTIAL]"
+                        if value and "password" in selector.lower()
+                        else value
+                    ),
                 },
             )
         except Exception as e:

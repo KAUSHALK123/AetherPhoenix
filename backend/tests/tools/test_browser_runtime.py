@@ -135,14 +135,13 @@ async def test_observe_act_verify_loop_success():
         ),
     ]
 
-    with patch.object(
-        DOMAutomation, "get_interactive_elements", return_value=mock_elements
-    ), patch.object(
-        DOMAutomation, "scroll_into_view", new_callable=AsyncMock
-    ), patch.object(
-        DOMAutomation, "click_element", new_callable=AsyncMock
-    ), patch.object(
-        DOMAutomation, "highlight_element", new_callable=AsyncMock
+    with (
+        patch.object(
+            DOMAutomation, "get_interactive_elements", return_value=mock_elements
+        ),
+        patch.object(DOMAutomation, "scroll_into_view", new_callable=AsyncMock),
+        patch.object(DOMAutomation, "click_element", new_callable=AsyncMock),
+        patch.object(DOMAutomation, "highlight_element", new_callable=AsyncMock),
     ):
         success, result = await engine.execute_loop(
             page=mock_page,
@@ -183,14 +182,13 @@ async def test_observe_act_verify_fill():
         )
     ]
 
-    with patch.object(
-        DOMAutomation, "get_interactive_elements", return_value=mock_elements
-    ), patch.object(
-        DOMAutomation, "scroll_into_view", new_callable=AsyncMock
-    ), patch.object(
-        DOMAutomation, "fill_element", new_callable=AsyncMock
-    ), patch.object(
-        DOMAutomation, "highlight_element", new_callable=AsyncMock
+    with (
+        patch.object(
+            DOMAutomation, "get_interactive_elements", return_value=mock_elements
+        ),
+        patch.object(DOMAutomation, "scroll_into_view", new_callable=AsyncMock),
+        patch.object(DOMAutomation, "fill_element", new_callable=AsyncMock),
+        patch.object(DOMAutomation, "highlight_element", new_callable=AsyncMock),
     ):
         success, result = await engine.execute_loop(
             page=mock_page,
@@ -265,9 +263,10 @@ async def test_credential_masking(browser_controller):
 
         await browser_controller.start_session()
 
-        with patch.object(
-            DOMAutomation, "fill_element", new_callable=AsyncMock
-        ), patch.object(DOMAutomation, "highlight_element", new_callable=AsyncMock):
+        with (
+            patch.object(DOMAutomation, "fill_element", new_callable=AsyncMock),
+            patch.object(DOMAutomation, "highlight_element", new_callable=AsyncMock),
+        ):
             res = await browser_controller.interact(
                 selector="input#password", action="fill", value="SuperSecret123!"
             )

@@ -237,14 +237,18 @@ class SelfHealingLoop(BaseAgent):
             workflow_id=workflow_id,
             task_id=task_id,
             attempt=attempt_number,
-            fault_class=parsed_error.category.value
-            if hasattr(parsed_error.category, "value")
-            else str(parsed_error.category),
+            fault_class=(
+                parsed_error.category.value
+                if hasattr(parsed_error.category, "value")
+                else str(parsed_error.category)
+            ),
             extra={
                 "error_text": parsed_error.raw_message or str(failure_input),
-                "parsed_category": parsed_error.category.value
-                if hasattr(parsed_error.category, "value")
-                else str(parsed_error.category),
+                "parsed_category": (
+                    parsed_error.category.value
+                    if hasattr(parsed_error.category, "value")
+                    else str(parsed_error.category)
+                ),
                 "normalized_code": parsed_error.normalized_code,
             },
         )
@@ -273,14 +277,18 @@ class SelfHealingLoop(BaseAgent):
             workflow_id=workflow_id,
             task_id=task_id,
             attempt=attempt_number,
-            fault_class=root_cause.category.value
-            if hasattr(root_cause.category, "value")
-            else str(root_cause.category),
+            fault_class=(
+                root_cause.category.value
+                if hasattr(root_cause.category, "value")
+                else str(root_cause.category)
+            ),
             extra={
                 "confidence": root_cause.confidence_score,
-                "root_cause_category": root_cause.category.value
-                if hasattr(root_cause.category, "value")
-                else str(root_cause.category),
+                "root_cause_category": (
+                    root_cause.category.value
+                    if hasattr(root_cause.category, "value")
+                    else str(root_cause.category)
+                ),
                 "root_cause_summary": root_cause.root_cause_summary,
             },
         )
@@ -561,20 +569,28 @@ class SelfHealingLoop(BaseAgent):
             workflow_id=workflow_id,
             task_id=task_id,
             attempt=attempt_number,
-            fault_class=root_cause.category.value
-            if hasattr(root_cause.category, "value")
-            else str(root_cause.category),
+            fault_class=(
+                root_cause.category.value
+                if hasattr(root_cause.category, "value")
+                else str(root_cause.category)
+            ),
             extra={
-                "supervisor_result": "PASSED: recovery executed successfully"
-                if result.success
-                else "FAILED: retry engine execution failed",
-                "final_status": HealingState.COMPLETED.value
-                if result.success
-                else HealingState.FAILED.value,
+                "supervisor_result": (
+                    "PASSED: recovery executed successfully"
+                    if result.success
+                    else "FAILED: retry engine execution failed"
+                ),
+                "final_status": (
+                    HealingState.COMPLETED.value
+                    if result.success
+                    else HealingState.FAILED.value
+                ),
                 "retry_count_k": task.retry_count,
-                "plan_chosen": plan.strategy.value
-                if hasattr(plan.strategy, "value")
-                else str(plan.strategy),
+                "plan_chosen": (
+                    plan.strategy.value
+                    if hasattr(plan.strategy, "value")
+                    else str(plan.strategy)
+                ),
                 "patch_applied": getattr(plan, "updated_task_params", {}) or {},
             },
         )
