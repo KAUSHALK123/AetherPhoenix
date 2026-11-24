@@ -2,6 +2,7 @@ import asyncio
 import base64
 import logging
 import os
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -230,8 +231,18 @@ class BrowserController:
         target_dir = Path(user_data_dir or self._user_data_dir).resolve()
         os.makedirs(target_dir, exist_ok=True)
 
+        is_container_headless = os.environ.get("HEADLESS", "").lower() in ("1", "true") or (
+            sys.platform.startswith("linux") and not os.environ.get("DISPLAY")
+        )
+        effective_headless = True if is_container_headless else headless
+        chrome_args = [
+            "--disable-blink-features=AutomationControlled",
+            "--no-sandbox",
+            "--disable-dev-shm-usage",
+        ]
+
         logger.info(
-            f"Starting browser session (headless={headless}, persistent={persistent}, dir={target_dir})..."
+            f"Starting browser session (headless={effective_headless}, persistent={persistent}, dir={target_dir})..."
         )
         try:
             self._playwright = await async_playwright().start()
@@ -242,9 +253,9 @@ class BrowserController:
                 try:
                     self._context = await self._playwright.chromium.launch_persistent_context(
                         user_data_dir=str(target_dir),
-                        headless=headless,
+                        headless=effective_headless,
                         viewport={"width": 1280, "height": 800},
-                        args=["--disable-blink-features=AutomationControlled"],
+                        args=chrome_args,
                     )
                     # Register visible cursor overlay script
                     await self._context.add_init_script(AGENT_CURSOR_SCRIPT)
@@ -253,12 +264,15 @@ class BrowserController:
                     else:
                         self._page = await self._context.new_page()
                     launched_persistent = True
-                except (TypeError, AttributeError):
-                    # Mock or fallback
+                except Exception as ex:
+                    logger.debug(f"Persistent context launch fallback note: {ex}")
                     launched_persistent = False
 
             if not launched_persistent:
-                self._browser = await self._playwright.chromium.launch(headless=headless)
+                self._browser = await self._playwright.chromium.launch(
+                    headless=effective_headless,
+                    args=chrome_args,
+                )
                 self._page = await self._browser.new_page()
                 try:
                     await self._page.add_init_script(AGENT_CURSOR_SCRIPT)
