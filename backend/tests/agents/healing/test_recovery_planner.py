@@ -435,11 +435,17 @@ async def test_missing_resource_outside_workspace_rejected_and_never_created(bas
     Any path outside workspace is rejected and never created on disk.
     """
     from pathlib import Path
+
+    from shared.contracts.task import Task, TaskCategory, TaskStatus
+    from shared.contracts.workflow import (
+        SharedWorkflowState,
+        WorkflowMetadata,
+        WorkflowStatus,
+    )
+
     from app.agents.healing.self_healing_loop import SelfHealingLoop
     from app.tools.filesystem.executor import FileSystemExecutor
     from app.tools.filesystem.models import CreateDirectoryRequest
-    from shared.contracts.task import Task, TaskStatus, TaskPriority, TaskCategory
-    from shared.contracts.workflow import SharedWorkflowState, WorkflowMetadata, WorkflowStatus
 
     outside_dir = Path("D:/forbidden_outside_workspace_phoenix_dir_xyz")
     assert not outside_dir.exists(), "Precondition failed: outside directory already exists"

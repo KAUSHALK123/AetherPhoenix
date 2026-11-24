@@ -1,5 +1,15 @@
-import pytest
 from uuid import uuid4
+
+import pytest
+from shared.contracts.execution import ExecutionResult, TaskError
+from shared.contracts.permission import RiskLevel
+from shared.contracts.task import Task, TaskCategory, TaskPriority, TaskStatus
+from shared.contracts.tool import Tool, ToolHealth, ToolState
+from shared.contracts.workflow import (
+    SharedWorkflowState,
+    WorkflowMetadata,
+    WorkflowStatus,
+)
 
 from app.agents.healing.error_parser import ErrorParser
 from app.agents.healing.models import ErrorCategory
@@ -7,11 +17,6 @@ from app.agents.healing.self_healing_loop import SelfHealingLoop
 from app.core.exceptions import ToolExecutionException, ToolNotFoundException
 from app.tools.browser_extension.controller import BrowserExtensionActionError
 from app.tools.registry import ToolRegistry
-from shared.contracts.execution import ExecutionResult, TaskError
-from shared.contracts.permission import RiskLevel
-from shared.contracts.task import Task, TaskCategory, TaskPriority, TaskStatus
-from shared.contracts.tool import Tool, ToolHealth, ToolState
-from shared.contracts.workflow import SharedWorkflowState, WorkflowMetadata, WorkflowStatus
 
 
 def test_error_parser_classifies_real_adapter_signatures():
