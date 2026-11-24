@@ -115,11 +115,17 @@ async def test_worker_pipeline_end_to_end_success(integration_environment):
     assert result.success is True
     assert result.output["data"] == "dummy output"
 
-    # 2. Permissions checked
+    # 2. Parameter-aware permissions checked
     env["permission_manager"].check_permission.assert_called_once_with(
-        action="Execute tool browser_automation",
+        action="browser_automation",
         permission_type=PermissionType.BROWSER_ACCESS,
-        context={"task_id": str(task.task_id), "workflow_id": str(task.workflow_id)},
+        context={
+            "action": "browser_automation",
+            "tool": "browser_automation",
+            "risk_level": "LOW",
+            "task_id": str(task.task_id),
+            "workflow_id": str(task.workflow_id),
+        },
     )
 
     # 3. Execution Logs captured in result

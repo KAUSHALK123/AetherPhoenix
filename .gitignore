@@ -109,3 +109,14 @@ tmp/
 temp/
 
 
+
+# Generated run artifacts
+backend/artifacts/
+artifacts/
+workspace/
+backend/workspace/
+scratch/
+tools/tectonic/
+experiments/results/raw/
+experiments/results/overhead_trace.jsonl
+

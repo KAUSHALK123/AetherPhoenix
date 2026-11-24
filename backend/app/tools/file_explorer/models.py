@@ -68,6 +68,17 @@ class FileMetadataResponse(BaseModel):
     )
 
 
+class MoveFileRequest(BaseModel):
+    """Request schema for moving or organizing files."""
+
+    source: str = Field(..., description="Source file or directory path.")
+    destination: str = Field(..., description="Destination directory or file path.")
+    file_filter: Optional[str] = Field(
+        default=None,
+        description="Optional extension/pattern filter e.g. '*.pdf' or '.pdf'.",
+    )
+
+
 class FileExplorerActionResult(BaseModel):
     """Structured output result for File Explorer operations."""
 

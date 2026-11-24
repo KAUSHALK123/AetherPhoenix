@@ -81,7 +81,7 @@ def test_retryable_tool_failure(base_ids):
         task_id=base_ids["task_id"],
         workflow_id=base_ids["workflow_id"],
         failure_type=FailureType.TOOL_ERROR,
-        message="Tool execution failed for browser_tool: network error",
+        message="Tool execution failed for browser_tool: tool unavailable",
         retryability=True,
         execution_context={"target_tool": "browser_tool"},
     )
@@ -321,3 +321,173 @@ def test_healing_integration_non_executing(base_ids):
     # Recovery plan contains full structured details
     assert recovery_plan.validation_status == "VALID"
     assert len(recovery_plan.actions) > 0
+
+
+def test_recovery_planner_low_confidence_boundary_030(base_ids):
+    """
+    Unit test for B1: Confidence <= 0.30 boundary produces NO_VIABLE_RECOVERY.
+    """
+    error_parser = ErrorParser()
+    planner = RecoveryPlanner()
+
+    failure_report = TaskFailureReport(
+        failure_id=base_ids["failure_id"],
+        task_id=base_ids["task_id"],
+        workflow_id=base_ids["workflow_id"],
+        failure_type=FailureType.TOOL_UNAVAILABLE,
+        message="Unrecognized error with low diagnostic confidence",
+        retryability=True,
+    )
+    parsed_error = error_parser.parse(failure_report)
+
+    # Test confidence exactly 0.30
+    rc_030 = RootCauseAnalysis(
+        analysis_id=uuid4(),
+        failure_id=base_ids["failure_id"],
+        task_id=base_ids["task_id"],
+        workflow_id=base_ids["workflow_id"],
+        category="TOOL",
+        root_cause_summary="Generic uncertain tool fault",
+        diagnostic_explanation="Explanation with low confidence",
+        confidence_score=0.30,
+        is_recoverable=True,
+    )
+
+    plan = planner.plan(parsed_error, rc_030)
+    assert plan.strategy_name == "NO_VIABLE_RECOVERY"
+    assert plan.is_viable is False
+    assert len(plan.actions) == 0
+
+    # Also verify confidence 0.25 <= 0.30 produces NO_VIABLE_RECOVERY
+    rc_025 = RootCauseAnalysis(
+        analysis_id=uuid4(),
+        failure_id=base_ids["failure_id"],
+        task_id=base_ids["task_id"],
+        workflow_id=base_ids["workflow_id"],
+        category="TOOL",
+        root_cause_summary="Generic uncertain tool fault",
+        diagnostic_explanation="Explanation with low confidence",
+        confidence_score=0.25,
+        is_recoverable=True,
+    )
+    plan_025 = planner.plan(parsed_error, rc_025)
+    assert plan_025.strategy_name == "NO_VIABLE_RECOVERY"
+    assert plan_025.is_viable is False
+
+
+def test_missing_resource_protected_path_rejected_by_plan_validation(base_ids):
+    """
+    B2 Safety test: Missing Resource recovery for protected locations
+    (e.g., C:\\Windows\\System32\\... or /etc/...) must be rejected by plan validation.
+    """
+    from pathlib import Path
+    error_parser = ErrorParser()
+    planner = RecoveryPlanner()
+
+    protected_paths = [
+        "C:\\Windows\\System32\\forbidden_phoenix_test",
+        "C:\\Windows\\SysWOW64\\forbidden_phoenix_test",
+        "/etc/passwd_missing_dir",
+        "/.ssh/authorized_keys_dir",
+    ]
+
+    for p in protected_paths:
+        path_obj = Path(p)
+        assert not path_obj.exists(), f"Precondition failed: {p} must not exist"
+
+        failure_report = TaskFailureReport(
+            failure_id=base_ids["failure_id"],
+            task_id=base_ids["task_id"],
+            workflow_id=base_ids["workflow_id"],
+            failure_type=FailureType.OUTPUT_MISSING,
+            message=f"Output directory missing: {p}",
+            retryability=True,
+            execution_context={"missing_path": p, "target_tool": "document_generator"},
+        )
+        parsed_error = error_parser.parse(failure_report)
+
+        rc_infra = RootCauseAnalysis(
+            analysis_id=uuid4(),
+            failure_id=base_ids["failure_id"],
+            task_id=base_ids["task_id"],
+            workflow_id=base_ids["workflow_id"],
+            category="MISSING_DIRECTORY",
+            root_cause_summary="Directory missing on filesystem",
+            diagnostic_explanation="Target directory does not exist",
+            confidence_score=0.90,
+            is_recoverable=True,
+        )
+
+        plan = planner.plan(parsed_error, rc_infra)
+        assert plan.is_viable is False, f"Expected {p} to be rejected as non-viable"
+        assert plan.validation_status == "INVALID"
+        assert len(plan.validation_errors) > 0
+        assert any("SafeExecutionPolicy" in err or "Restricted system path" in err for err in plan.validation_errors)
+
+        # Confirm path was NEVER created on disk
+        assert not path_obj.exists(), f"Violation: Protected path {p} was created on disk!"
+
+
+@pytest.mark.asyncio
+async def test_missing_resource_outside_workspace_rejected_and_never_created(base_ids):
+    """
+    B2 Safety test: FileSystemExecutor and SelfHealingLoop enforce workspace boundary.
+    Any path outside workspace is rejected and never created on disk.
+    """
+    from pathlib import Path
+    from app.agents.healing.self_healing_loop import SelfHealingLoop
+    from app.tools.filesystem.executor import FileSystemExecutor
+    from app.tools.filesystem.models import CreateDirectoryRequest
+    from shared.contracts.task import Task, TaskStatus, TaskPriority, TaskCategory
+    from shared.contracts.workflow import SharedWorkflowState, WorkflowMetadata, WorkflowStatus
+
+    outside_dir = Path("D:/forbidden_outside_workspace_phoenix_dir_xyz")
+    assert not outside_dir.exists(), "Precondition failed: outside directory already exists"
+
+    # 1. Direct tool executor level enforcement
+    fs_executor = FileSystemExecutor()
+    with pytest.raises(ValueError, match="outside the permitted workspace directory"):
+        await fs_executor.create_directory(CreateDirectoryRequest(path=str(outside_dir), create_parents=True))
+    assert not outside_dir.exists(), "Violation: directory outside workspace was created on disk!"
+
+    # 2. SelfHealingLoop end-to-end enforcement with protected path
+    sys32_dir = Path("C:/Windows/System32/phoenix_never_create_sys32_test")
+    assert not sys32_dir.exists(), "Precondition failed: sys32 directory already exists"
+
+    loop = SelfHealingLoop()
+    task = Task(
+        task_id=base_ids["task_id"],
+        workflow_id=base_ids["workflow_id"],
+        task_name="protected_path_task",
+        description="Task attempting to heal protected system32 path",
+        category=TaskCategory.FILE_SYSTEM,
+        required_tool="document_generator",
+        inputs={"path": str(sys32_dir)},
+        expected_output="output.pdf",
+        status=TaskStatus.RUNNING,
+    )
+    sws = SharedWorkflowState(
+        metadata=WorkflowMetadata(
+            workflow_id=base_ids["workflow_id"],
+            user_id="audit_user",
+            session_id="audit_session",
+            name="audit_workflow",
+            goal="Test protected directory rejection",
+        ),
+        status=WorkflowStatus.RUNNING,
+    )
+    fr = TaskFailureReport(
+        failure_id=base_ids["failure_id"],
+        task_id=base_ids["task_id"],
+        workflow_id=base_ids["workflow_id"],
+        failure_type=FailureType.OUTPUT_MISSING,
+        message=f"Output directory missing: {sys32_dir}",
+        retryability=True,
+        execution_context={"missing_path": str(sys32_dir), "target_tool": "document_generator"},
+    )
+
+    result = await loop.process_failure(task, fr, sws)
+    assert result.success is False, "Expected self healing to fail on protected path"
+    assert not sys32_dir.exists(), "Violation: Protected path was created on disk!"
+
+

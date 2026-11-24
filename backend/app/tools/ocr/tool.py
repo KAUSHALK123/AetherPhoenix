@@ -20,19 +20,32 @@ def register_ocr_tool(registry: ToolRegistry) -> Tool:
     """
     ocr_tool = Tool(
         name="ocr",
-        description=(
-            "Extracts readable text from images, screenshots, scanned documents, "
-            "and visual inputs."
-        ),
         version="1.0.0",
         status=ToolState.READY,
         health=ToolHealth.HEALTHY,
-        adapter="OCRToolAdapter",
+        adapter="app.tools.ocr.adapter.OCRToolAdapter",
         dependencies=[],
         required_permissions=[
             PermissionType.FILE_SYSTEM.value,
         ],
     )
     registry.register(ocr_tool)
+
+    for alias in ("pdf_search", "ocr_tool"):
+        try:
+            registry.register(
+                Tool(
+                    name=alias,
+                    version="1.0.0",
+                    status=ToolState.READY,
+                    health=ToolHealth.HEALTHY,
+                    adapter="app.tools.ocr.adapter.OCRToolAdapter",
+                    dependencies=[],
+                    required_permissions=[PermissionType.FILE_SYSTEM.value],
+                )
+            )
+        except ValueError:
+            pass
+
     logger.info("Successfully registered 'ocr' tool in ToolRegistry.")
     return ocr_tool

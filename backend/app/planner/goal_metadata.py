@@ -4,18 +4,30 @@ from typing import Any, Dict, List
 
 from shared.contracts.planner import Goal, IntentCategory
 
+from app.planner.normalizer import is_diagnostic_terminal_command, normalize_text
+
 logger = logging.getLogger(__name__)
 
 
 class GoalMetadataGenerator:
-    """
-    Enriches extracted goals with metadata including confidence scores,
+    """Enriches extracted goals with metadata including confidence scores,
+
     timestamps, tags, priority estimates, and risk evaluations.
     """
 
     DOMAIN_KEYWORDS = {
         "browser": ["web", "browse", "url", "site", "html", "http", "download"],
-        "desktop": ["window", "app", "application", "desktop", "click", "screen"],
+        "desktop": [
+            "window",
+            "app",
+            "application",
+            "desktop",
+            "click",
+            "screen",
+            "vscode",
+            "vs code",
+            "editor",
+        ],
         "content": [
             "ppt",
             "presentation",
@@ -26,15 +38,48 @@ class GoalMetadataGenerator:
             "write",
             "draft",
         ],
-        "coding": ["code", "python", "git", "repo", "commit", "bug", "refactor"],
-        "system": ["file", "folder", "directory", "process", "powershell", "setting"],
-        "research": ["research", "search", "find", "analyze", "summarize", "info"],
+        "coding": [
+            "code",
+            "python",
+            "git",
+            "repo",
+            "repository",
+            "commit",
+            "bug",
+            "refactor",
+            "diff",
+            "branch",
+        ],
+        "system": [
+            "file",
+            "folder",
+            "directory",
+            "process",
+            "powershell",
+            "terminal",
+            "setting",
+            "ipconfig",
+        ],
+        "research": [
+            "research",
+            "search",
+            "find",
+            "analyze",
+            "summarize",
+            "info",
+            "frameworks",
+        ],
     }
 
     def compute_confidence_score(self, goal: Goal) -> float:
-        """
-        Computes a confidence score between 0.0 and 1.0 for an extracted goal.
-        """
+        """Computes a confidence score between 0.0 and 1.0 for an extracted goal."""
+        full_text = f"{goal.title} {goal.description}".strip()
+        norm_text = normalize_text(full_text)
+
+        # Direct diagnostic / terminal commands are unambiguous and high confidence
+        if is_diagnostic_terminal_command(norm_text):
+            return 0.90
+
         score = 0.5  # Base score
 
         # Intent clarity bonus
@@ -52,7 +97,7 @@ class GoalMetadataGenerator:
             score -= 0.1
 
         # Description length bonus
-        words = goal.description.split()
+        words = norm_text.split()
         if len(words) >= 5:
             score += 0.05
 
@@ -66,11 +111,9 @@ class GoalMetadataGenerator:
         return min(1.0, max(0.0, round(score, 2)))
 
     def detect_domain_tags(self, text: str) -> List[str]:
-        """
-        Extracts domain tags based on keyword matching.
-        """
+        """Extracts domain tags based on keyword matching."""
         tags = []
-        lower_text = text.lower()
+        lower_text = normalize_text(text).lower()
 
         for domain, keywords in self.DOMAIN_KEYWORDS.items():
             if any(kw in lower_text for kw in keywords):
@@ -82,10 +125,8 @@ class GoalMetadataGenerator:
         return tags
 
     def estimate_risk_level(self, goal: Goal) -> str:
-        """
-        Estimates the risk level for a goal.
-        """
-        lower_text = (goal.title + " " + goal.description).lower()
+        """Estimates the risk level for a goal."""
+        lower_text = normalize_text(goal.title + " " + goal.description).lower()
 
         if any(
             word in lower_text
@@ -106,9 +147,7 @@ class GoalMetadataGenerator:
         return "safe"
 
     def generate_goal_metadata(self, goal: Goal) -> Dict[str, Any]:
-        """
-        Generates a comprehensive metadata dictionary for a Goal node.
-        """
+        """Generates a comprehensive metadata dictionary for a Goal node."""
         text = goal.title + " " + goal.description
         confidence = self.compute_confidence_score(goal)
         tags = self.detect_domain_tags(text)
@@ -124,9 +163,7 @@ class GoalMetadataGenerator:
         }
 
     def enrich_goal(self, goal: Goal) -> Goal:
-        """
-        Recursively enriches a goal node and all child sub-goals with metadata.
-        """
+        """Recursively enriches a goal node and all child sub-goals with metadata."""
         goal.metadata.update(self.generate_goal_metadata(goal))
 
         for child in goal.sub_goals:

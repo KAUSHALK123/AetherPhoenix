@@ -1,0 +1,639 @@
+\documentclass[conference]{IEEEtran}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{placeins} % Keeps figures near the sections where they are discussed
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+
+\title{Phoenix Agents: Governed Multi-Agent Desktop Automation with Interactive Planning and Multi-Format Deliverable Generation}
+
+\author{
+\IEEEauthorblockN{
+Ramani G\textsuperscript{1},
+Akshitha V G\textsuperscript{2},
+Kruthin Shanmuk Yadav CG\textsuperscript{3},
+Dhanyashree G V\textsuperscript{4},
+Kaushal K\textsuperscript{5}
+}
+\IEEEauthorblockA{
+Department of Computer Science and Engineering (Artificial Intelligence and Machine Learning)\\
+AMC Engineering College, Bengaluru, India\\
+\begin{tabular}{@{}c@{}}
+Emails: gowrisan.ramani@amceducation.in, akshithavg1@gmail.com, \\
+kruthin008@gmail.com, dhanyashreegv206@gmail.com, kaushalk123000@gmail.com
+\end{tabular}
+}
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Autonomous desktop automation based on Large Language Models (LLMs) faces challenges such as unclear user instructions, security risks, execution failures, and unstructured outputs. To address these issues, this paper presents Phoenix Agents, a multi-agent platform for secure and reliable desktop automation. The system uses an interactive Clarification Engine to resolve incomplete user instructions before execution and a hybrid planning approach to convert tasks into Directed Acyclic Graphs (DAGs). A four-level Permission Manager controls sensitive operations by requiring user approval when necessary. The platform also integrates FAISS-based Retrieval-Augmented Generation (RAG) for conversation memory and automated generation of PDF reports and PowerPoint presentations. Its self-healing mechanism identifies execution failures and applies recovery strategies within a limited number of retries. Experimental results demonstrate planning latency below 15 ms, a throughput of 3,891 tasks per second across 10 concurrent workflows, and 846 passing automated tests. These results highlight the potential of Phoenix Agents to provide efficient, secure, and reliable desktop automation.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Phoenix Agents, Interactive Agent Planning, Governance and Security, Multi-Agent Systems, RAG Conversation Memory, Document Generation, Desktop and Web Automation.
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+Large Language Models (LLMs) enable agents to interpret user prompts and execute tasks across browsers, documents, and terminals. Unlike traditional script-based tools such as Selenium and AutoHotkey, AI agents also support a wider range of tasks, including document processing and report generation [9], [11].
+
+However, desktop automation still faces several challenges:
+
+\begin{enumerate}
+    \item \textbf{Instruction Ambiguity:} Incomplete instructions can cause incorrect assumptions and task failures.
+    \item \textbf{Security Risks:} Agents with system-level access may perform sensitive operations without proper authorization [11].
+    \item \textbf{Memory and Context Management:} Losing prior task information can disrupt workflow continuity and coordination [6].
+    \item \textbf{Unstructured Outputs:} Many systems provide text responses or logs instead of practical deliverables, such as PDF reports and PowerPoint presentations.
+\end{enumerate}
+
+This paper introduces \textbf{Phoenix Agents}, an event-driven multi-agent platform integrating planning, permission management, supervision, memory retrieval, and document generation.
+
+The main contributions are:
+
+\begin{itemize}
+    \item \textbf{Interactive Clarification:} Identifies missing details in user instructions and requests clarification before task execution.
+    \item \textbf{Permission-Based Execution:} Uses four risk levels (\texttt{LOW}, \texttt{MEDIUM}, \texttt{HIGH}, and \texttt{CRITICAL}) to manage sensitive operations and request user approval when required.
+    \item \textbf{Persistent Memory:} Combines FAISS-based vector retrieval with relational storage to retain conversation context and task information.
+    \item \textbf{Tool Integration:} Supports browser automation through Playwright, desktop interaction through pywinauto and PyAutoGUI, and terminal operations through PowerShell. It also generates PDF reports using ReportLab (in under 50 ms) and PowerPoint presentations using \texttt{python-pptx} (in under 125 ms).
+    \item \textbf{Supervision and Self-Healing:} Validates task outputs and uses a bounded recovery mechanism (\(K_{\text{max}}=3\)) to handle recoverable failures.
+\end{itemize}
+
+\section{Related Work}
+
+\subsection{Traditional Desktop and Web Automation Frameworks}
+
+Traditional desktop and web automation uses predefined scripts, DOM locators, or fixed coordinates [9]. Selenium and Playwright automate browsers; PyAutoGUI and pywinauto support desktop interaction. These tools can fail when layouts change or errors occur. Phoenix Agents integrates them through adapters, event-driven planning, and supervision.
+
+\subsection{AI-Driven GUI Agents and Vision-Language Navigation}
+
+Large Language Models (LLMs) and Vision-Language Models (VLMs) support visual application interaction. WebArena, OSWorld, and Mind2Web [10], [14], [16] evaluate these capabilities, while UFO explores multi-agent Windows navigation. Continuous visual processing increases execution time and computational cost. Phoenix Agents limits this overhead through rule-based planning with an LLM fallback.
+
+\subsection{Multi-Agent Task Planning and Communication Overhead}
+
+ReAct combines reasoning and action [13], while AutoGen [12], CrewAI, and LangGraph coordinate agents. Repeated natural-language exchanges increase latency and token usage. Phoenix Agents connects its Planner, Worker, Supervisor, and Healing components through an asynchronous EventBus and shared state graph.
+
+\subsection{Human-in-the-Loop Security Governance}
+
+Agents with system-level access may perform sensitive operations without authorization [11]. Human-in-the-Loop (HITL) methods mitigate this risk by requesting approval before critical actions [11], [12], although frequent prompts can interrupt execution. Phoenix Agents uses four risk levels (\texttt{LOW}, \texttt{MEDIUM}, \texttt{HIGH}, and \texttt{CRITICAL}): read-only and other low-risk operations proceed automatically, while sensitive actions require permission checks.
+
+\subsection{Self-Healing Architectures and Research Gap}
+
+Existing recovery approaches include dynamic locator repair, model predictive control, reinforcement learning, and reflection-based techniques [1]--[4], [6]--[8], [17], [18]. Phoenix Agents classifies failures and applies bounded recovery by retrying tasks, correcting parameters, switching adapters, or replanning. This avoids continuous LLM inference for every recovery step. The framework integrates task planning, security governance, memory, and recovery in one multi-agent platform.
+
+\section{Problem Definition and Formal Modeling}
+
+Phoenix Agents processes user requests through planning, permission checking, execution monitoring, and failure recovery. The following models describe these operations.
+
+\subsection{Goal Clarification and Task Graph Formulation}
+
+Let a user request be represented by $g \in \mathcal{G}_{\text{user}}$. The system checks whether the request is sufficiently clear:
+
+\begin{equation}
+\Phi(g) =
+\begin{cases}
+1, & \text{if the request is sufficiently clear,}\\
+0, & \text{if clarification is required.}
+\end{cases}
+\end{equation}
+
+If clarification is needed, the system presents options to the user and updates the request:
+
+\begin{equation}
+g \leftarrow g \oplus g_{\text{clarified}}
+\end{equation}
+
+The confirmed goal is converted into a Directed Acyclic Graph (DAG):
+
+\begin{equation}
+W = (\mathcal{V}, \mathcal{E})
+\end{equation}
+
+Here, $\mathcal{V}=\{v_1,v_2,\ldots,v_n\}$ contains the task nodes, while $\mathcal{E}$ represents their dependencies. A task starts only after its dependent tasks are completed.
+
+Each task is represented as:
+
+\begin{equation}
+v_i = \langle \text{id}_i,\tau_i,\theta_i,r_i,S_i\rangle
+\end{equation}
+
+where $\text{id}_i$ is the task identifier, $\tau_i$ the target tool adapter, $\theta_i$ the execution parameters, and $r_i$ the risk level:
+
+\begin{equation}
+r_i \in \{\text{LOW},\text{MEDIUM},\text{HIGH},\text{CRITICAL}\}
+\end{equation}
+
+The task status is maintained as:
+
+\begin{equation}
+\begin{aligned}
+S_i \in \{&\text{PENDING},\text{READY},\text{RUNNING},\\
+          &\text{COMPLETED},\text{FAILED},\text{BLOCKED}\}.
+\end{aligned}
+\end{equation}
+
+\subsection{Security Policy and Permission Checking}
+
+Before execution, the Permission Manager evaluates the task risk and execution mode $M$:
+
+\begin{equation}
+P(v_i,M) =
+\begin{cases}
+\text{APPROVE}, &
+r_i=\text{LOW} \lor M=\text{AUTONOMOUS},\\
+\text{PROMPT}, &
+r_i\ne\text{LOW} \land M=\text{SAFE}.
+\end{cases}
+\end{equation}
+
+When approval is required, the workflow awaits an \texttt{asyncio.Event}; the awaiting coroutine remains suspended until the event is set after the user responds. If approval is denied, the task is blocked:
+
+\begin{equation}
+S_i \leftarrow \text{BLOCKED}
+\end{equation}
+
+\subsection{Supervision and Bounded Recovery}
+
+After execution, the Supervisor validates the worker output $O_i$ using the following condition:
+
+\begin{equation}
+\begin{gathered}
+\Psi(v_i,O_i) =
+(\text{exit\_code}=0)\\
+{}\land (O_i \models \text{Schema}(v_i))\\
+{}\land I_{\text{file}}(v_i,O_i),
+\end{gathered}
+\end{equation}
+where $I_{\text{file}}(v_i,O_i)=1$ if no output file is expected or if the expected file exists, and $0$ otherwise.
+
+If validation fails, the task is marked as failed:
+
+\begin{equation}
+S_i \leftarrow \text{FAILED}
+\end{equation}
+
+The failure is recorded as:
+
+\begin{equation}
+F = (E_{\text{err}},C_{\text{ctx}},S_{\text{workflow}})
+\end{equation}
+
+where $E_{\text{err}}$ contains the error details, $C_{\text{ctx}}$ contains the execution context, and $S_{\text{workflow}}$ denotes the current workflow state.
+
+The Healing Agent classifies the failure and selects a recovery action:
+
+\begin{equation}
+R(F) =
+\begin{cases}
+A_{\text{retry}}, &
+F \in \mathcal{C}_{\text{recoverable}}
+\land k_i < K_{\text{max}},\\
+A_{\text{reject}}, &
+F \in \mathcal{C}_{\text{unsafe}}
+\lor k_i \geq K_{\text{max}}.
+\end{cases}
+\end{equation}
+
+Here, $k_i$ is the retry count and $K_{\text{max}}=3$ is the maximum number of recovery retries. Recovery may involve exponential backoff, parameter correction, tool substitution, or task replanning. Unsafe operations and tasks exceeding the retry limit are rejected.
+
+\section{Phoenix Agents System Architecture}
+
+Phoenix Agents follows an event-driven architecture organized into five main layers. Its components are loaded as in-process modules and communicate through an asynchronous EventBus to coordinate workflow execution and reduce redundant inter-agent messaging.
+
+\subsection{Presentation and API Layer}
+
+The presentation layer provides a React 19 dashboard developed using TypeScript, Vite, and Tailwind CSS. It supports user interaction through chat, task-graph visualization, permission dialogs, and execution monitoring. FastAPI provides the REST interface between the dashboard and the backend services. The streaming interface allows users to submit requests and observe execution updates as they are produced.
+
+\subsection{Pipeline Orchestrator and Event Bus}
+
+The EventBus uses Python's \texttt{asyncio} event loop to distribute events such as \texttt{goal.submitted}, \texttt{plan.created}, \texttt{task.ready}, \texttt{task.completed}, and \texttt{task.failed}. The Pipeline Orchestrator maintains workflow state and checks task dependencies using Kahn's topological sorting algorithm. Independent tasks are executed concurrently using \texttt{asyncio.gather()}.
+
+\subsection{Core Multi-Agent Subsystems}
+
+The core subsystem coordinates planning, task execution, permission checks, supervision, and recovery. The Planner identifies missing information, requests clarification when needed, and converts confirmed goals into a directed acyclic graph (DAG) using rule-based matching with an LLM fallback. The Permission Engine assigns one of four risk levels (\texttt{LOW}, \texttt{MEDIUM}, \texttt{HIGH}, or \texttt{CRITICAL}) and pauses privileged operations in SAFE mode pending approval. Worker Agents execute assigned tasks; the Supervisor monitors outputs, while the Healing Agent handles recoverable failures.
+
+\subsection{Tool Adapter Layer}
+
+The adapter layer connects agents to external applications and system operations. Playwright supports browser automation, while pywinauto and PyAutoGUI handle desktop interactions. The PowerShell adapter executes terminal commands asynchronously, with timeout handling and output capture. ReportLab generates PDF reports in in under 50 ms, while the presentation-generation component uses \texttt{python-pptx} to create PowerPoint files in in under 125 ms. Additional utilities include Tesseract for optical character recognition (OCR), \texttt{pypdf} for PDF processing, and web-search tools.
+
+\subsection{Memory and Storage Subsystem}
+
+SQLite, SQLAlchemy, and Alembic store conversation details and task logs. FAISS indexes task embeddings for similarity-based retrieval. The Retrieval-Augmented Generation (RAG) component supplies relevant stored information to subsequent prompts, preserving conversation and task continuity.
+
+% Single-column architecture diagram, matching the IEEE two-column layout.
+% The figure is placed here so LaTeX can position it at the top of a column,
+% while the architecture subsection text continues in the adjacent column.
+\begin{figure}[!t]
+    \centering
+    \includegraphics[width=0.88\columnwidth,height=0.42\textheight,keepaspectratio]{figures/phoenix_architecture.jpg}
+    \caption{High-level architecture of Phoenix Agents, showing the planner, permission manager, orchestrator, agents, tool adapters, and EventBus coordination.}
+    \label{fig:architecture}
+\end{figure}
+
+Figure~\ref{fig:architecture} shows requests moving through presentation, planning, orchestration, permission checks, agents, and tool adapters. The EventBus coordinates execution, the Supervisor monitors results, and the self-healing subsystem handles failures.
+
+\subsection{Five-Stage Self-Healing Pipeline}
+
+The self-healing process consists of five stages:
+
+\begin{enumerate}
+    \item \textbf{Exception Capture:} Exceptions are converted into structured information, including the tool type, execution parameters, and relevant system state.
+    \item \textbf{Root-Cause Analysis:} The Root-Cause Analyzer classifies failures, including timeouts, missing files, invalid arguments, permission denials, and unsafe actions.
+    \item \textbf{Recovery Planning:} The Recovery Planner checks the retry limit and selects an appropriate response, such as exponential backoff, task replanning, adapter switching, or parameter correction.
+    \item \textbf{Patch Generation:} The Patch Generator prepares the corrections required for the selected recovery action.
+    \item \textbf{Task Re-queueing:} The task status is reset to \texttt{READY} and the task is placed back on the EventBus through a \texttt{task.retry} event. A maximum of three recovery retries is permitted. Unsafe actions are rejected and cannot bypass permission checks.
+\end{enumerate}
+
+\section{Experimental Evaluation}
+
+\subsection{Experimental Setup}
+
+Phoenix Agents was evaluated using the automated benchmark suite
+(\texttt{test\_performance\_benchmarks.py}). Mocked tool adapters
+performed no-op operations to measure the framework's internal
+performance independently of delays from browser rendering, network
+requests, and process creation. The evaluation covered goal
+decomposition, EventBus communication, DAG scheduling, and concurrent
+task execution. All experiments were conducted on a Windows 11
+workstation running Python 3.11.
+
+\subsection{Latency and Throughput Performance}
+
+Table~\ref{tab:performance_benchmarks} presents the results for the
+11 measured operations. The measurements show that most internal
+operations completed within a few milliseconds. PowerPoint
+presentation generation recorded the longest execution time among
+the measured operations, while remaining within its specified SLA
+target.
+
+\begin{table*}[t]
+\centering
+\caption{Performance Benchmarks of Phoenix Agents}
+\label{tab:performance_benchmarks}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{p{3.2cm} p{5.0cm} p{3.0cm} p{2.2cm} c}
+\toprule
+\textbf{Pipeline Stage / Metric} &
+\textbf{Workload} &
+\textbf{Measured Performance} &
+\textbf{SLA Target} &
+\textbf{Status} \\
+\midrule
+Goal Decomposition & Regex Rule Engine (100 runs) & 12.18~ms & $<50$~ms & Passed \\
+Planner Processing & Goal-to-DAG Compilation & 14.85~ms & $<500$~ms & Passed \\
+Execution Bridge & Registry Resolution and Routing & 0.85~ms & $<100$~ms & Passed \\
+Workflow Startup & Queue and State Initialization & 2.31~ms & $<50$~ms & Passed \\
+Worker Execution & Task Dispatch Overhead & 0.25~ms/task & $<20$~ms & Passed \\
+PowerPoint Generation & 5-Slide Deck Generation & 124.50~ms & $<1500$~ms & Passed \\
+PDF Generation & ReportLab Report Compilation & $<50$~ms & $<500$~ms & Passed \\
+FastAPI Response & Planner and Health Endpoints & 1.98--18.52~ms & $<200$~ms & Passed \\
+Database Operations & SQLite Session and Query & 1.24~ms & $<20$~ms & Passed \\
+Frontend Loading & Dashboard Payload Retrieval & 2.84~ms & $<100$~ms & Passed \\
+Concurrent Throughput & 10 Workflows, 500 Tasks & 3,891~tasks/s & $>1000$~tasks/s & Passed \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+\subsection{Concurrency and Memory Stability}
+
+Concurrency was evaluated using 10 workflows, each containing
+50 tasks. All 500 tasks were processed, reaching a measured throughput
+of 3,891~tasks/s and a reported workflow duration of 12.85 ms.
+No deadlocks or thread contention were observed during the test.
+
+Memory usage was monitored across 30 workflow cycles, followed by
+garbage collection. The object count increased by 1,812; however,
+continuous memory growth was not observed during the monitoring
+period.
+
+\subsection{Automated Test Verification}
+
+The automated test suite recorded 846 passing tests across the
+backend, worker adapters, permission manager, and self-healing
+subsystem. The tests were used to verify functional correctness,
+performance behavior, and security-related functionality.
+
+\section{Results and Analysis}
+
+The evaluation measures planning latency, fault-injection task completion, self-healing performance, and rejection of unsafe operations.
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.92\columnwidth,height=0.22\textheight,keepaspectratio]{graphs/graph_planning_latency.jpg}
+\caption{Comparison of planning and decision-cycle latency.}
+\label{fig:user_planning_graph}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.92\columnwidth,height=0.22\textheight,keepaspectratio]{graphs/graph_recovery_rate.jpg}
+\caption{Comparison of self-healing and fault-recovery rates.}
+\label{fig:user_recovery_graph}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.92\columnwidth,height=0.22\textheight,keepaspectratio]{graphs/graph_task_success.jpg}
+\caption{Comparison of end-to-end task success rates.}
+\label{fig:user_task_success_graph}
+\end{figure}
+
+\begin{figure}[!t]
+\centering
+\includegraphics[width=0.92\columnwidth,height=0.22\textheight,keepaspectratio]{graphs/graph_throughput.jpg}
+\caption{Comparison of asynchronous framework throughput.}
+\label{fig:user_throughput_graph}
+\end{figure}
+
+\subsection{Planning Latency}
+
+As shown in Figure~\ref{fig:user_planning_graph}, Phoenix Agents
+performs goal decomposition in 12.18~ms and completes the full
+planning request in 14.85~ms. The comparison includes 51.80~ms for Patel et al. [7] and 106~ms
+for RoleFix [6]. This lower latency is achieved through rule-based
+matching for familiar instructions, with an LLM fallback for more
+complex requests.
+
+\subsection{Fault Injection and Recovery Performance}
+
+Fault injection was conducted at four intensity levels to evaluate
+the effect of increasing failure rates on task completion. The
+measured completion rates are presented in Table~\ref{tab:fault_intensity}.
+
+\begin{table}[t]
+\centering
+\caption{Fault Injection Results}
+\label{tab:fault_intensity}
+\footnotesize
+\renewcommand{\arraystretch}{1.18}
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\columnwidth}{|>{\centering\arraybackslash}p{0.22\columnwidth}|>{\centering\arraybackslash}p{0.19\columnwidth}|>{\raggedright\arraybackslash}X|}
+\hline
+\textbf{Fault Intensity} &
+\textbf{Completion Rate} &
+\textbf{Observed Behaviour} \\
+\hline
+0\% & 95.2\% & Baseline completion under normal conditions. \\
+\hline
+10\% & 92.1\% & Most tasks handled despite minor failures. \\
+\hline
+25\% & 87.4\% & Recovery handled parameter and timeout errors. \\
+\hline
+50\% & 60.3\% & Completion decreased as the retry limit was reached. \\
+\hline
+\end{tabularx}
+\end{table}
+
+Figure~\ref{fig:user_recovery_graph} compares recovery performance
+across systems. Phoenix Agents achieved an 86.7\% recovery rate,
+compared with 73.3\% for the ``Think it, Run it'' baseline [5], 67.4\%
+for RoleFix [6], and 45.9\% for EvoConfig [3].
+
+\subsection{Effect of the Self-Healing Mechanism}
+
+The contribution of self-healing was evaluated through 25 identical
+transient-fault trials with recovery enabled and disabled. The
+comparison is shown in Table~\ref{tab:recovery_comparison}.
+
+\begin{table*}[t]
+\centering
+\caption{Recovery Enabled and Fail-Fast Comparison}
+\label{tab:recovery_comparison}
+\begin{tabular}{|p{4.0cm}|c|c|p{3.0cm}|}
+\hline
+\textbf{Evaluation Metric} &
+\textbf{Recovery Enabled} &
+\textbf{No Recovery} &
+\textbf{Difference} \\
+\hline
+Total Fault Trials & 25 & 25 & -- \\
+\hline
+Successful Workflows & 25 & 0 & +25 \\
+\hline
+Unrecovered Failures & 0 & 25 & -25 \\
+\hline
+Completion Rate & 100\% & 0\% & +100 percentage points \\
+\hline
+Recovery Retries & 50 & 0 & -- \\
+\hline
+Mean Handling Latency & 1.88~ms & 0.44~ms & 1.44~ms overhead \\
+\hline
+\end{tabular}
+\end{table*}
+
+All 25 workflows completed with recovery enabled, whereas none
+completed in the fail-fast configuration. Recovery introduced an
+additional mean handling latency of 1.44~ms, indicating that bounded
+retries resolved the tested transient failures with a small latency
+overhead.
+
+\subsection{Fault Recovery and Safety Rejection}
+
+A total of 125 trials were conducted across five fault classes, with
+25 trials per class. All 75 recoverable failures involving missing
+resources, timeouts, and adapter failures were resolved successfully,
+giving a 100\% recovery rate. The remaining 50 trials involving
+invalid actions and state inconsistencies were safely rejected,
+resulting in a 100\% rejection rate. These results indicate that the
+system can retry recoverable execution failures while preventing
+unsafe operations from bypassing permission checks.
+
+\section{Discussion and Limitations}
+
+\subsection{Performance and Recovery}
+
+With mocked adapters, Phoenix Agents recorded 14.85~ms planning latency, 0.25~ms worker dispatch, and 3,891~tasks/s throughput. Actual execution also depends on browser rendering, application startup, and network communication. These results indicate that orchestration was not a significant bottleneck under the tested workload.
+
+Rather than repeatedly invoking an LLM during every recovery attempt,
+Phoenix Agents classifies failures and applies bounded recovery
+actions, including parameter correction, exponential backoff, and
+tool substitution. The additional handling latency reported for
+the recovery-enabled trials is 1.44~ms. When the existing task
+structure cannot be continued, the system can replan the task graph.
+
+\subsection{Security and Safe Execution}
+
+Phoenix Agents classifies operations using four risk levels
+(\texttt{LOW}, \texttt{MEDIUM}, \texttt{HIGH}, and \texttt{CRITICAL}).
+This classification distinguishes recoverable execution failures
+from actions that must be blocked for safety. In the evaluation,
+all 75 recoverable failures were resolved, while all 50 unsafe-action
+trials were rejected. This demonstrates that recovery can proceed
+without bypassing permission checks.
+
+\subsection{System Limitations}
+
+The current implementation has three main limitations:
+
+\begin{enumerate}
+    \item \textbf{Synthetic Evaluation:} Tests primarily use mocked
+    tools and synthetic workflows. Further evaluation with real
+    applications and established benchmarks, including WebArena,
+    OSWorld, and Mind2Web [10], [14], [16], is required.
+
+    \item \textbf{Static Permission Rules:} The permission system
+    relies on predefined risk levels. Context-aware approval rules
+    could provide greater flexibility by considering action risk
+    and operator requirements.
+
+    \item \textbf{Single-Node Execution:} The system currently runs
+    within a single host process. Distributed workers and multi-node
+    execution could improve scalability for larger workloads.
+\end{enumerate}
+
+\section{Conclusion and Future Work}
+
+\subsection{Conclusion}
+
+This paper presented \textbf{Phoenix Agents}, a governed multi-agent platform for desktop and browser automation. It combines interactive clarification, hybrid planning, four-level permission control, FAISS-based memory, PDF and PowerPoint generation, and browser, desktop, terminal, and OCR adapters.
+
+The evaluation measured a goal-decomposition time of 12.18~ms and
+a full planning latency of 14.85~ms. The system processed 500 tasks
+at a throughput of 3,891~tasks/s, generated PDF reports in under
+50~ms, and generated PowerPoint presentations in 124.50~ms.
+Across the tested recovery trials, it resolved 100\% of recoverable
+failures and rejected 100\% of unsafe actions. The automated test
+suite also recorded 846 passing tests. These findings demonstrate
+the potential of Phoenix Agents as a governed approach to desktop
+automation under the evaluated conditions.
+
+\subsection{Future Work}
+
+Future development will focus on the following areas:
+
+\begin{itemize}
+    \item \textbf{Public Benchmark Evaluation:} Evaluating task
+    completion and visual-interaction latency on WebArena [14],
+    OSWorld, and Mind2Web [10], [16] to assess performance in realistic
+    application environments.
+
+    \item \textbf{Vision-Based GUI Control:} Integrating
+    Vision-Language Models (VLMs) to support applications where
+    accessible DOM elements or Win32 handles are unavailable.
+
+    \item \textbf{Adaptive Permission Management:} Developing
+    context-aware approval policies that adapt to action risk and
+    operator requirements.
+
+    \item \textbf{Distributed Execution:} Extending the architecture
+    to support multi-node worker clusters for large-scale parallel
+    processing.
+\end{itemize}
+
+\begin{thebibliography}{18}
+
+\bibitem{babu2026}
+R. S. Babu and A. Agrawal,
+``Self-Healing Agentic Orchestrators for Reliable Tool-Augmented Large Language Model Systems,''
+arXiv:2606.01416, 2026.
+
+\bibitem{jeong2026}
+C. Jeong and Y. Shin,
+``A Self-Healing Framework for Reliable LLM-Based Autonomous Agents,''
+arXiv:2605.06737, 2026.
+
+\bibitem{guo2026}
+X. Guo et al.,
+``EvoConfig: Self-Evolving Multi-Agent Systems for Efficient Autonomous Environment Configuration,''
+arXiv:2601.16489, 2026.
+
+\bibitem{ju2025}
+T. Ju et al.,
+``When Disagreements Elicit Robustness: Investigating Self-Repair Capabilities under LLM Multi-Agent Disagreements,''
+arXiv:2502.15153, 2025.
+
+\bibitem{bara2026}
+A. Bara, G. Dobriţa, and S.-V. Oprea,
+``Think it, Run it: Autonomous machine learning pipeline generation via self-healing multi-agent artificial intelligence,''
+Knowledge-Based Systems, vol. 351, p. 116688, 2026,
+doi: 10.1016/j.knosys.2026.116688.
+
+\bibitem{wang2026}
+F. Wang et al.,
+``Detecting and Repairing Role Drift in Multi-Agent Collaboration with Lightweight Protocols,''
+CNML 2026,
+doi: 10.1109/CNML68938.2026.11453032.
+
+\bibitem{patel2026a}
+T. P. Patel et al.,
+``Predictive Self-Healing for Multi-Agent LLM Pipelines Using Model Predictive Control,''
+IEEE SusTech 2026,
+doi: 10.1109/SUSTECH67720.2026.11536606.
+
+\bibitem{patel2026b}
+T. P. Patel et al.,
+``Self-Healing AI Systems using Multi-Agent Learning,''
+ISIBER 2026,
+doi: 10.1109/ISIBER68248.2026.11470173.
+
+\bibitem{garcia2026}
+B. García et al.,
+``A survey on Selenium usage, practices, and challenges in end-to-end testing,''
+Information and Software Technology, vol. 194, p. 108077, 2026.
+
+\bibitem{nguyen2025}
+D. Nguyen et al.,
+``GUI Agents: A Survey,''
+Findings of ACL 2025, pp. 22522--22538, 2025.
+
+\bibitem{bajoria2026}
+S. Bajoria et al.,
+``From Language Models to Agentic AI: A Survey of Autonomous, Action-Enabled, and Collaborative LLM Agents,''
+Cognitive Computation, vol. 18, p. 103, 2026.
+
+\bibitem{wu2024}
+Q. Wu, G. Bansal, J. Zhang, et al.,
+``AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation,''
+arXiv:2308.08155, 2024.
+
+\bibitem{yao2023}
+S. Yao, J. Zhao, D. Yu, N. Du, I. Shafran, K. Narasimhan, and Y. Cao,
+``ReAct: Synergizing Reasoning and Acting in Language Models,''
+in \textit{Proc. International Conference on Learning Representations (ICLR)}, 2023.
+
+\bibitem{zhou2023}
+S. Zhou, F. F. Xu, H. Zhu, X. Zhou, R. Lo, A. Sridhar, A. Cheng,
+Y. Bisk, D. Fried, U. Alon, and G. Neubig,
+``WebArena: A Realistic Web Environment for Building Autonomous Agents,''
+arXiv:2307.13854, 2023.
+
+\bibitem{trivedi2024}
+H. Trivedi, T. Khot, M. Hartmann, R. Manku, V. Dong, E. Li,
+S. Gupta, A. Sabharwal, and D. Balasubramanian,
+``AppWorld: A Controllable World of Apps and People for Benchmarking Interactive Coding Agents,''
+arXiv:2407.18901, 2024.
+
+\bibitem{koh2024}
+J. Y. Koh, R. Lo, L. Jang, V. Duvvur, M. C. Lim, P.-Y. Huang,
+G. Neubig, S. Zhou, R. Salakhutdinov, and D. Fried,
+``VisualWebArena: Evaluating Multimodal Agents on Realistic Visually Grounded Web Tasks,''
+arXiv:2401.13649, 2024.
+
+\bibitem{wu2025}
+Q. Wu, P. Gao, W. Liu, and J. Luan,
+``BacktrackAgent: Enhancing GUI Agent with Error Detection and Backtracking Mechanism,''
+in \textit{Proc. Conference on Empirical Methods in Natural Language Processing (EMNLP)},
+pp. 4250--4272, 2025.
+
+\bibitem{mulian2026}
+H. Mulian, S. Zeltyn, I. Levy, L. Galanti, A. Yaeli, and S. Shlomov,
+``AgentFixer: From Failure Detection to Fix Recommendations in LLM Agentic Systems,''
+in \textit{Proc. 1st International Workshop on Agentic Engineering (AGENT 2026)},
+2026.
+
+\end{thebibliography}
+\end{document}

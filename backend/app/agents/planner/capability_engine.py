@@ -34,6 +34,14 @@ class CapabilityDiscoveryEngine:
                 if unavailable_tools and task.required_tool in unavailable_tools:
                     task.required_tool = ""
                 else:
+                    # Validate that the assigned tool exists in registered capabilities
+                    all_registered_tools = {
+                        t
+                        for cap in self.registry.list_all()
+                        for t in (cap.required_tools or [cap.name])
+                    } | {cap.name for cap in self.registry.list_all()}
+                    if task.required_tool not in all_registered_tools:
+                        unsupported.append(task.required_tool)
                     continue
 
             if task.assigned_agent == "System":

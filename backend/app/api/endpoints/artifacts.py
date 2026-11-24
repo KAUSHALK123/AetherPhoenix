@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 import mimetypes
 from pathlib import Path
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
@@ -22,12 +25,12 @@ mimetypes.add_type(
 )
 
 
-@router.get("", response_model=list[Artifact])
+@router.get("", response_model=List[Artifact])
 async def list_artifacts(
-    workflow_id: UUID | None = None,
-    task_id: UUID | None = None,
-    artifact_type: ArtifactType | None = None,
-) -> list[Artifact]:
+    workflow_id: Optional[UUID] = None,
+    task_id: Optional[UUID] = None,
+    artifact_type: Optional[ArtifactType] = None,
+) -> List[Artifact]:
     """Lists registered workflow and task artifacts."""
     return await artifact_storage_service.list_artifacts(
         workflow_id=workflow_id,
@@ -69,24 +72,29 @@ async def download_artifact(artifact_id: UUID) -> FileResponse:
             ),
         )
 
-    # Determine MIME type
-    mime_type, _ = mimetypes.guess_type(str(filepath))
-    if not mime_type:
-        ext = filepath.suffix.lower()
-        if ext == ".pptx":
-            mime_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"  # noqa: E501
-        elif ext == ".pdf":
-            mime_type = "application/pdf"
-        elif ext == ".csv":
-            mime_type = "text/csv"
-        elif ext == ".json":
-            mime_type = "application/json"
-        else:
+    # Determine MIME type based on file extension first to avoid platform registry quirks
+    ext = filepath.suffix.lower()
+    if ext == ".pptx":
+        mime_type = (
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        )
+    elif ext == ".pdf":
+        mime_type = "application/pdf"
+    elif ext == ".csv":
+        mime_type = "text/csv"
+    elif ext == ".json":
+        mime_type = "application/json"
+    else:
+        mime_type, _ = mimetypes.guess_type(str(filepath))
+        if not mime_type:
             mime_type = "application/octet-stream"
 
     filename = art.name if art.name and not art.name.startswith("/") else filepath.name
-    if not filename.endswith(filepath.suffix):
-        filename = f"{filename}{filepath.suffix}"
+    # Strip descriptive text parentheses e.g. 'Presentation deck (.pptx)' -> 'presentation.pptx'
+    if "(" in filename and ")" in filename:
+        filename = filepath.name
+    if ext and not filename.lower().endswith(ext):
+        filename = f"{filename}{ext}"
 
     return FileResponse(
         path=str(filepath),

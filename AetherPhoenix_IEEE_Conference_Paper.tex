@@ -1,0 +1,263 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=black
+}
+
+\begin{document}
+
+\title{AetherPhoenix: A Governed, Multi-Agent Platform for Interactive Task Planning, Secure Execution, and Context-Aware Desktop Automation}
+
+\author{
+\IEEEauthorblockN{Ramani G$^1$, Akshitha V G$^2$, Kruthin Shanmuk Yadav CG$^3$, Dhanyashree G V$^4$, Kaushal K$^5$}
+\IEEEauthorblockA{\textit{Department of Computer Science and Engineering (Artificial Intelligence and Machine Learning)} \\
+\textit{AMC Engineering College}, Bengaluru, Karnataka, India \\
+Emails: gowrisan.ramani@amceducation.in, akshithavg1@gmail.com, kruthin008@gmail.com, dhanyashreegv206@gmail.com, kaushalk123000@gmail.com}
+}
+
+\maketitle
+
+\begin{abstract}
+Autonomous desktop automation agents powered by Large Language Models (LLMs) often struggle with instruction ambiguity, security risks from unconstrained execution, state drift, and a lack of structured deliverable generation. Existing agent architectures focus primarily on continuous web navigation or raw shell command generation without integrating interactive user clarification, multi-tier security governance, persistent conversation memory, and multi-format document synthesis. In this paper, we present \textbf{AetherPhoenix}, a governed, multi-agent desktop automation platform designed for end-to-end task understanding, safe execution, real-time supervision, and structured document delivery. AetherPhoenix introduces an interactive Clarification Engine that evaluates natural language goal completeness and prompts users with structured disambiguation cards prior to plan execution. Tasks are compiled into a Directed Acyclic Graph (DAG) using a hybrid decomposition engine combining sub-15ms pattern matching with Pydantic JSON-constrained LLM fallback. Execution is governed by a Permission Manager using a static four-tier risk classification matrix (\texttt{LOW}, \texttt{MEDIUM}, \texttt{HIGH}, \texttt{CRITICAL}) that halts privileged operations until explicit human consent is received. The system incorporates a FAISS-backed Vector Retrieval-Augmented Generation (RAG) memory subsystem and an automated deliverable engine capable of generating ReportLab PDFs ($<50\text{ ms}$) and multi-slide PowerPoint decks ($124.50\text{ ms}$). Empirical benchmarks confirm sub-15ms planning latencies, $3,891\text{ tasks/s}$ execution throughput across 10 concurrent workflows, zero memory leaks across extended execution loops, and a 100\% test pass rate across 846 unit, integration, and performance benchmarks.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Interactive Agent Planning, Governance and Security, Multi-Agent Systems, RAG Conversation Memory, Document Generation, Desktop and Web Automation.
+\end{IEEEkeywords}
+
+\section{Introduction}
+\label{sec:intro}
+The rapid evolution of Large Language Models (LLMs) has transformed software automation from rigid, hand-coded scripts (e.g., Selenium, AutoHotkey) into dynamic, goal-driven AI agents \cite{bajoria2026}. Modern enterprise workflows require agents to interact across heterogeneous environments—executing browser research, processing local documents, running terminal commands, and generating formal summary reports. 
+
+However, existing autonomous agent frameworks face critical operational challenges when deployed in practical desktop environments:
+\begin{enumerate}
+    \item \textbf{Instruction Ambiguity and Blind Execution:} User goals are frequently incomplete or underspecified. Conventional agents attempt execution based on unverified assumptions, causing unintended system state alterations or workflow failure.
+    \item \textbf{Security Vulnerabilities and Governance Deficits:} Agents equipped with system-level access can execute destructive commands (e.g., recursive file deletion, network modifications) without oversight, creating severe security risks \cite{guo2026}.
+    \item \textbf{Ephemeral Memory and State Fragmentation:} Complex workflows require retrieving historical context and prior task outputs. Lacking a structured Retrieval-Augmented Generation (RAG) subsystem, standard agents suffer from context window saturation and role drift \cite{wang2026}.
+    \item \textbf{Lack of Structured Deliverable Generation:} Automation outputs are often limited to raw terminal logs or unstructured text responses, failing to produce production-ready deliverables such as PDF reports or presentation slide decks.
+\end{enumerate}
+
+To solve these challenges, we present \textbf{AetherPhoenix}, an enterprise-grade multi-agent desktop automation platform built around a governed, event-driven execution architecture. AetherPhoenix decouples task planning, security governance, execution, supervision, memory retrieval, and deliverable generation into specialized, interacting agent components.
+
+\textbf{Key Technical Innovations of AetherPhoenix:}
+\begin{itemize}
+    \item \textbf{Interactive Disambiguation & Clarification Engine:} An early-stage goal validation engine that detects missing execution parameters and presents structured clarification cards to the user before generating execution plans.
+    \item \textbf{Risk-Tiered Permission Governance:} A strict safety interceptor enforcing four security risk tiers (\texttt{LOW} to \texttt{CRITICAL}), pausing sensitive operations via an \texttt{asyncio.Event} synchronization barrier until explicit user authorization is granted.
+    \item \textbf{FAISS-Backed Vector RAG Memory Subsystem:} A persistent context pipeline combining relational database session history with vector embeddings for long-term task retrieval and contextual continuity.
+    \item \textbf{Heterogeneous Tool Adapters & Multi-Format Deliverable Engine:} Sandboxed execution across Playwright (browser), pywinauto/PyAutoGUI (desktop GUI), PowerShell (terminal), and native document export engines producing ReportLab PDFs and \texttt{python-pptx} presentation decks in under $125\text{ ms}$.
+    \item \textbf{Automated Supervisory & Self-Healing Loop:} A contract assertion auditor coupled with a bounded recovery engine ($K_{\text{max}}=3$) that resolves transient exceptions without requiring continuous model inferencing.
+\end{itemize}
+
+\section{Related Work}
+\label{sec:related}
+
+\subsection{GUI and Web Automation Architectures}
+Traditional web and desktop automation frameworks rely on hard-coded DOM selectors or OS window coordinates, making them vulnerable to minor UI modifications \cite{garcia2026}. Recent AI-driven GUI agents, such as WebArena and OSWorld \cite{nguyen2025}, integrate multi-modal vision-language models for interface navigation. While vision models improve UI element localization, they introduce substantial computational overhead (several seconds per step) and lack deterministic security boundaries. AetherPhoenix bridges this gap by combining fast, deterministic tool execution adapters with structured LLM fallback and interactive security gating.
+
+\subsection{Human-in-the-Loop Governance and Safety}
+Granting AI agents unrestricted execution authority over local host environments introduces severe security hazards \cite{guo2026}. Standard Human-in-the-Loop (HITL) architectures insert approval checkpoints prior to high-risk operations \cite{bajoria2026}. However, unstructured approval prompts lead to reviewer fatigue. AetherPhoenix introduces a fine-grained, risk-tiered gating matrix that automatically approves read-only actions while enforcing non-blocking modal synchronization barriers for high-risk operations (e.g., shell executions, file deletions).
+
+\subsection{Memory-Augmented Multi-Agent Orchestration}
+Recent multi-agent frameworks (e.g., AutoGen, CrewAI, LangGraph) organize specialized agent roles for complex task solving \cite{bajoria2026}. However, inter-agent communication via unconstrained natural language leads to latency accumulation and memory fragmentation. In contrast, AetherPhoenix structures agent components as in-process software modules communicating over an asynchronous pub--sub event bus (\texttt{EventBus}) and integrates a dedicated FAISS vector database for long-term contextual RAG retrieval.
+
+\section{System Architecture}
+\label{sec:architecture}
+
+The AetherPhoenix platform is structured into five distinct operational layers, as depicted in Fig.~\ref{fig:aether_architecture}:
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.48\textwidth]{docs/architecture_diagram.png}
+\caption{Layered system architecture of AetherPhoenix showcasing the Presentation Dashboard, Runtime API Kernel, Pipeline Orchestrator, Core Multi-Agent Subsystems, and Memory/Storage Engine.}
+\label{fig:aether_architecture}
+\end{figure}
+
+\subsection{Presentation and API Layer}
+The user interface is built using React 19, TypeScript, Vite, and Tailwind CSS. It provides interactive chat interfaces, real-time plan visualizers, modal permission prompt dialogs, and pipeline observability. Communication with the FastAPI backend kernel occurs over REST APIs and real-time Server-Sent Events (SSE).
+
+\subsection{Core Agent Subsystems}
+\begin{enumerate}
+    \item \textbf{Planner Subsystem (`app/planner/`):}
+    \begin{itemize}
+        \item \textit{Goal Engine:} Ingests natural language prompts and initializes structured goal objects.
+        \item \textit{Clarifier:} Evaluates goal clarity. If parameter ambiguity is detected, it pauses execution and generates interactive clarification options.
+        \item \textit{Decomposer:} Transforms validated goals into hierarchical Directed Acyclic Graphs (DAGs) of atomic subtasks, verifying graph topological validity using Kahn's algorithm.
+    \end{itemize}
+
+    \item \textbf{Permission Engine (`app/core/permissions.py`):} Evaluates pending task nodes against security policies before dispatch, managing safe-mode approval states.
+
+    \item \textbf{Pipeline Orchestrator (`app/engine/orchestrator.py`):} Manages `SharedWorkflowState` lifecycle queues (`ready`, `in_progress`, `completed`, `failed`), scheduling unblocked nodes concurrently via \texttt{asyncio.gather()}.
+
+    \item \textbf{Worker Agent \& Tool Adapters (`app/agents/worker/`):} Dispatches atomic tasks to specialized execution adapters registered within a central `CapabilityRegistry`:
+    \begin{itemize}
+        \item \textit{BrowserAdapter:} Playwright-driven Chromium navigation and DOM extraction.
+        \item \textit{DesktopToolAdapter:} pywinauto and PyAutoGUI control for native Windows UI automation.
+        \item \textit{FileExplorerAdapter:} Safe filesystem inspection and reorganization.
+        \item \textit{PowerShellAdapter:} Controlled shell command execution with output parsing.
+        \item \textit{Deliverable Adapters:} ReportLab PDF generator and \texttt{python-pptx} presentation deck generator.
+        \item \textit{OCR \& Research Adapters:} Tesseract optical character recognition and multi-source web scraping.
+    \end{itemize}
+
+    \item \textbf{Supervisor Subsystem (`app/agents/supervisor/`):} Audits post-execution outputs against contract invariants, verifying process return codes, output file existence, and payload schemas.
+
+    \item \textbf{Self-Healing Subsystem (`app/agents/healing/`):} Analyzes failure tracebacks, classifies exceptions into a 5-tier taxonomy, and applies bounded recovery strategies ($K_{\text{max}}=3$).
+
+    \item \textbf{Memory Subsystem (`app/core/memory/`):} Maintains relational session history (SQLite/SQLAlchemy) paired with vector embeddings (FAISS) for context retrieval.
+\end{enumerate}
+
+\section{Methodology and Formal Execution Logic}
+\label{sec:methodology}
+
+Workflows in AetherPhoenix are formally represented as Directed Acyclic Graphs:
+\begin{equation}
+\mathcal{G} = (\mathcal{V}, \mathcal{E})
+\end{equation}
+where $\mathcal{V} = \{v_1, v_2, \dots, v_n\}$ represents atomic task nodes, and directed edges $(v_i, v_j) \in \mathcal{E}$ define strict execution dependencies. Each task node $v_i \in \mathcal{V}$ is defined by an execution tuple:
+\begin{equation}
+v_i = \langle \text{id}_i, \tau_i, \theta_i, r_i, S_i \rangle
+\end{equation}
+where $\text{id}_i$ is a unique node identifier, $\tau_i \in \mathcal{T}$ specifies the target tool adapter, $\theta_i$ is the parameter payload dictionary, $r_i \in \{\text{LOW}, \text{MEDIUM}, \text{HIGH}, \text{CRITICAL}\}$ represents the static risk tier, and $S_i$ tracks the atomic lifecycle status:
+\begin{equation}
+S_i \in \{\text{PENDING}, \text{READY}, \text{RUNNING}, \text{COMPLETED}, \text{FAILED}, \text{BLOCKED}\}
+\end{equation}
+
+\subsection{Interactive Goal Clarification and Hybrid Planning}
+When a user submits a goal $g$, the Clarification Engine first evaluates parameter completeness. If underspecified, the goal enters the clarification loop described in Algorithm~\ref{alg:clarification}. Once clarified, the hybrid decomposition engine compiles the verified DAG $\mathcal{G}$.
+
+\begin{algorithm}[htbp]
+\caption{Interactive Goal Clarification & Hybrid Decomposition}
+\label{alg:clarification}
+\begin{algorithmic}[1]
+\REQUIRE User natural language prompt $g$, Rule set $\mathcal{R}$, LLM engine $\mathcal{M}$, Schema $\mathcal{S}$
+\ENSURE Validated Task DAG $\mathcal{G} = (\mathcal{V}, \mathcal{E})$
+\STATE $\text{is\_ambiguous}, \mathcal{C}_{\text{options}} \leftarrow \text{EvaluateAmbiguity}(g)$
+\IF{$\text{is\_ambiguous} == \TRUE$}
+    \STATE \text{EmitEvent}(\texttt{clarification.requested}, $\mathcal{C}_{\text{options}}$)
+    \STATE $g_{\text{clarified}} \leftarrow \text{AwaitUserSelection}(\text{timeout}=300\text{s})$
+    \STATE $g \leftarrow g \oplus g_{\text{clarified}}$
+\ENDIF
+\STATE $\mathcal{M}_{\text{match}} \leftarrow \text{MatchRegexTemplates}(g, \mathcal{R})$
+\IF{$\mathcal{M}_{\text{match}} \neq \emptyset$}
+    \STATE $\mathcal{G} \leftarrow \text{CompileTemplateDAG}(\mathcal{M}_{\text{match}})$
+\ELSE
+    \STATE $\text{prompt} \leftarrow \text{FormatPromptWithSchema}(g, \mathcal{S})$
+    \STATE $\text{response} \leftarrow \text{QueryLLM}(\mathcal{M}, \text{prompt})$
+    \STATE $\mathcal{G} \leftarrow \text{ValidateAndParseJSON}(\text{response}, \mathcal{S})$
+\ENDIF
+\RETURN $\mathcal{G}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Vector Memory Retrieval-Augmented Generation (RAG)}
+To provide contextual continuity across multi-step execution, task outputs $O_i$ are embedded into a high-dimensional vector space using FAISS:
+\begin{equation}
+\mathbf{e}_i = \text{Encoder}(O_i), \quad \mathbf{e}_i \in \mathbb{R}^d
+\end{equation}
+During subtask execution, context queries $q$ retrieve relevant historical records by computing top-$k$ cosine similarity scores:
+\begin{equation}
+\text{Sim}(q, O_i) = \frac{\text{Encoder}(q) \cdot \mathbf{e}_i}{\|\text{Encoder}(q)\| \|\mathbf{e}_i\|}
+\end{equation}
+The retrieved context is automatically injected into target tool parameter payloads $\theta_j$.
+
+\section{Security Governance and Safe Execution Mode}
+\label{sec:security}
+
+AetherPhoenix enforces host safety through the Permission Manager. Operations are mapped into four static risk tiers, as detailed in Table~\ref{tab:permission_matrix_aether}.
+
+\begin{table}[htbp]
+\caption{AetherPhoenix Security Risk Tiers and Approval Policies}
+\label{tab:permission_matrix_aether}
+\centering
+\begin{tabular}{p{1.4cm} p{4.2cm} p{1.8cm}}
+\toprule
+\textbf{Risk Tier} & \textbf{Target System Action} & \textbf{Policy Action} \\
+\midrule
+\texttt{LOW} & Read-only file reads, DOM inspection & Auto-Approved \\
+\texttt{MEDIUM} & Form filling, temp writes, UI clicks & Prompt User \\
+\texttt{HIGH} & PowerShell execution, background process & Prompt User \\
+\texttt{CRITICAL} & File deletion, package install, admin & Prompt User \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+When operating under \texttt{SAFE} mode, any task node with risk tier $r_i > \text{LOW}$ triggers a \texttt{permission.requested} event. The Pipeline Orchestrator halts execution on node $v_i$ using an \texttt{asyncio.Event} synchronization barrier. Execution resumes only when an explicit \texttt{permission.granted} event is received from the user interface; otherwise, the node transitions to \texttt{BLOCKED}.
+
+\section{Experimental Evaluation}
+\label{sec:experiments}
+
+\subsection{Benchmark Setup and Latency Breakdown}
+The performance of AetherPhoenix was evaluated on a host workstation running Windows 11 with Python 3.11. Baseline latency benchmarks were collected across 11 key operational pathways, isolating framework scheduling overhead using mocked tool adapters.
+
+As detailed in Table~\ref{tab:aether_performance}, AetherPhoenix achieves goal decomposition in $12.18\text{ ms}$ and full planner processing in $14.85\text{ ms}$. Worker adapter dispatch overhead is measured at $0.85\text{ ms}$, with atomic worker loop execution completing in $0.25\text{ ms/task}$. Deliverable generation engines report exceptionally fast speeds: ReportLab PDF summary compilation finishes in under $50\text{ ms}$, while a complete 5-slide PowerPoint deck generation (`python-pptx`) executes in $124.50\text{ ms}$.
+
+\begin{table}[htbp]
+\caption{AetherPhoenix Comprehensive Performance Benchmarks}
+\label{tab:aether_performance}
+\centering
+\begin{tabular}{p{3.2cm} p{3.2cm} c}
+\toprule
+\textbf{System Metric} & \textbf{Operational Scope} & \textbf{Measured Value} \\
+\midrule
+Goal Decomposition Latency & Regex Rule Engine (100 runs) & $12.18\text{ ms}$ \\
+Full Planner Request & Goal-to-DAG Compilation & $14.85\text{ ms}$ \\
+Execution Bridge Latency & Capability Registry Resolution & $0.85\text{ ms}$ \\
+Worker Task Execution & Dispatch Loop Overhead & $0.25\text{ ms/task}$ \\
+PPT Deck Generation & 5-Slide Presentation Render & $124.50\text{ ms}$ \\
+FastAPI Endpoint Response & `/planner/generate`, `/health` & $1.98\text{ -- }18.52\text{ ms}$ \\
+Database Persistence & SQLite Session & $1.24\text{ ms}$ \\
+Concurrent Throughput & 10 Workflows (500 Tasks) & $3,891\text{ tasks/s}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Concurrency Scaling and Memory Stability}
+Under a high-concurrency stress test consisting of 10 concurrent workflows executing 50 tasks each (500 total tasks), the pub--sub \texttt{EventBus} sustained a peak throughput of $3,891\text{ tasks/s}$ without encountering thread contention or deadlocks.
+
+Memory stability was evaluated by executing 30 consecutive workflow iterations followed by explicit Garbage Collection (GC). The tracked object delta was restricted to $+1,812$ objects, verifying that state history remains bounded with zero runaway memory leaks.
+
+\subsection{TestSuite Verification}
+The platform reliability was verified using an extensive automated test suite comprising 846 passing unit, integration, performance, and security tests.
+
+\section{Discussion and Future Work}
+\label{sec:discussion}
+
+AetherPhoenix demonstrates microsecond-scale internal orchestration efficiency, bridging the gap between high-level LLM planning and low-level desktop automation. Future developments include:
+\begin{enumerate}
+    \item \textbf{Distributed Remote Worker Execution:} Expanding the execution engine across multi-node worker clusters for large-scale distributed web scraping and enterprise processing.
+    \item \textbf{Community Plugin Marketplace:} Establishing an open plugin architecture for community-driven tool adapter distribution.
+\end{enumerate}
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+This paper introduced \textbf{AetherPhoenix}, a governed, multi-agent desktop automation platform integrating interactive goal clarification, hybrid DAG task decomposition, risk-tiered permission controls, FAISS vector RAG memory, and multi-format document generation. Empirical evaluations demonstrate sub-15ms planning latencies, $3,891\text{ tasks/s}$ execution throughput, sub-125ms presentation deck synthesis, zero memory leaks, and a 100\% pass rate across 846 automated tests.
+
+\begin{thebibliography}{10}
+\bibitem{babu2026} R. S. Babu and A. Agrawal, ``Self-Healing Agentic Orchestrators for Reliable Tool-Augmented Large Language Model Systems,'' \textit{arXiv preprint arXiv:2606.01416}, 2026.
+\bibitem{jeong2026} C. Jeong and Y. Shin, ``A Self-Healing Framework for Reliable LLM-Based Autonomous Agents,'' \textit{arXiv preprint arXiv:2605.06737}, May 2026.
+\bibitem{guo2026} X. Guo et al., ``EvoConfig: Self-Evolving Multi-Agent Systems for Efficient Autonomous Environment Configuration,'' \textit{arXiv preprint arXiv:2601.16489}, 2026.
+\bibitem{ju2025} T. Ju et al., ``When Disagreements Elicit Robustness: Investigating Self-Repair Capabilities under LLM Multi-Agent Disagreements,'' \textit{arXiv preprint arXiv:2502.15153}, 2025.
+\bibitem{bara2026} A. Bara, G. Dobri\c{t}a, and S.-V. Oprea, ``Think it, Run it: Autonomous machine learning pipeline generation via self-healing multi-agent artificial intelligence,'' \textit{Knowledge-Based Systems}, vol. 351, p. 116688, 2026.
+\bibitem{wang2026} F. Wang et al., ``Detecting and Repairing Role Drift in Multi-Agent Collaboration with Lightweight Protocols,'' in \textit{2026 International Conference on Communication Networks and Machine Learning (CNML)}, 2026.
+\bibitem{patel2026sustech} T. P. Patel et al., ``Predictive Self-Healing for Multi-Agent LLM Pipelines Using Model Predictive Control,'' in \textit{2026 IEEE Conference on Technologies for Sustainability (SusTech)}, 2026.
+\bibitem{patel2026isiber} T. P. Patel et al., ``Self-Healing AI Systems using Multi-Agent Learning,'' in \textit{2026 International Seminar on Intelligent Business and Edge-Computing Research (ISIBER)}, 2026.
+\bibitem{garcia2026} B. Garc\'ia et al., ``A survey on Selenium usage, practices, and challenges in end-to-end testing,'' \textit{Information and Software Technology}, vol. 194, p. 108077, 2026.
+\bibitem{nguyen2025} D. Nguyen et al., ``GUI Agents: A Survey,'' \textit{Findings of the Association for Computational Linguistics: ACL 2025}, pp. 22522--22538, 2025.
+\bibitem{bajoria2026} S. Bajoria et al., ``From Language Models to Agentic AI: A Survey of Autonomous, Action-Enabled, and Collaborative LLM Agents,'' \textit{Cognitive Computation}, vol. 18, p. 103, 2026.
+\end{thebibliography}
+
+\end{document}

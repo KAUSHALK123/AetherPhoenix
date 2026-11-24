@@ -73,8 +73,9 @@ class RootCauseAnalyzer:
     ]
 
     PERMISSION_PATTERNS = [
-        re.compile(r"permission\s*denied", re.IGNORECASE),
-        re.compile(r"access\s*denied", re.IGNORECASE),
+        re.compile(r"permission\s*(?:is\s*)?denied", re.IGNORECASE),
+        re.compile(r"permissionerror", re.IGNORECASE),
+        re.compile(r"access\s*(?:is\s*)?denied", re.IGNORECASE),
         re.compile(r"unauthorized", re.IGNORECASE),
         re.compile(r"user\s*rejected", re.IGNORECASE),
         re.compile(r"forbidden", re.IGNORECASE),
@@ -91,6 +92,8 @@ class RootCauseAnalyzer:
         re.compile(r"not\s*found\s*in\s*registry", re.IGNORECASE),
         re.compile(r"unregistered\s*tool", re.IGNORECASE),
         re.compile(r"capability\s*not\s*supported", re.IGNORECASE),
+        re.compile(r"adapter.*(?:error|fail)", re.IGNORECASE),
+        re.compile(r"adapter_error", re.IGNORECASE),
     ]
 
     def __init__(self, confidence_threshold: float = 0.5) -> None:
@@ -135,17 +138,18 @@ class RootCauseAnalyzer:
                     parsed_error, "message", ""
                 )
             if not failure_type:
-                failure_type = (
-                    getattr(parsed_error, "original_failure_type", None)
-                    or getattr(parsed_error, "normalized_code", None)
-                    or getattr(parsed_error, "code", None)
-                )
-                if not failure_type and hasattr(parsed_error, "category"):
+                if hasattr(parsed_error, "category"):
                     cat_val = getattr(
                         parsed_error.category, "value", str(parsed_error.category)
                     )
                     if "TOOL" in cat_val.upper():
                         failure_type = FailureType.TOOL_UNAVAILABLE
+                if not failure_type:
+                    failure_type = (
+                        getattr(parsed_error, "original_failure_type", None)
+                        or getattr(parsed_error, "normalized_code", None)
+                        or getattr(parsed_error, "code", None)
+                    )
 
         # Resolve IDs
         task_id = (
@@ -205,22 +209,29 @@ class RootCauseAnalyzer:
         # 1. Dependency Analysis
         dep_cause = self._inspect_dependencies(task, state, evidence)
 
-        # 2. Filesystem & Path Analysis
-        fs_cause = self._inspect_filesystem_and_paths(
-            combined_message, task, result, evidence
+        # 2. Permission & Security Signals (evaluated before filesystem inspection)
+        perm_cause = self._inspect_permissions_and_security(
+            combined_message, f_type, all_logs, evidence
         )
 
-        # 3. Tool Health & Availability Analysis
+        # 3. Filesystem & Path Analysis (skipped if permission violation detected)
+        fs_cause = None
+        if not perm_cause:
+            fs_cause = self._inspect_filesystem_and_paths(
+                combined_message, task, result, evidence
+            )
+
+        # 4. Tool Health & Availability Analysis
         tool_cause = self._inspect_tool_information(
             task, result, tool_info, combined_message, f_type, evidence
         )
 
-        # 4. Pattern & Log Analysis (Timeout, Network, Permission)
+        # 5. Pattern & Log Analysis (Timeout, Network, Permission)
         pattern_cause = self._inspect_patterns_and_logs(
             combined_message, f_type, all_logs, evidence
         )
 
-        # 5. Synthesize primary root cause and confidence score
+        # 6. Synthesize primary root cause and confidence score
         (
             likely_cause,
             category,
@@ -235,6 +246,7 @@ class RootCauseAnalyzer:
             f_type=f_type,
             combined_message=combined_message,
             evidence=evidence,
+            perm_cause=perm_cause,
         )
 
         is_confident = confidence >= self.confidence_threshold
@@ -301,6 +313,27 @@ class RootCauseAnalyzer:
                     f"Dependency '{dep_id}' was not found in workflow state.",
                 )
 
+        return None
+
+    def _inspect_permissions_and_security(
+        self,
+        message: str,
+        f_type: FailureType,
+        logs: List[str],
+        evidence: DiagnosticEvidence,
+    ) -> Optional[Tuple[str, RootCauseCategory, float, str]]:
+        """Evaluates permission and security signals prior to filesystem checks."""
+        log_block = message + "\n" + "\n".join(logs)
+        if f_type == FailureType.PERMISSION_DENIED or any(
+            p.search(log_block) for p in self.PERMISSION_PATTERNS
+        ):
+            evidence.matched_patterns.append("PERMISSION_DENIED")
+            return (
+                "PERMISSION_DENIED",
+                RootCauseCategory.PERMISSION,
+                0.98,
+                "Task execution rejected due to permission or authorization policy.",
+            )
         return None
 
     def _inspect_filesystem_and_paths(
@@ -512,12 +545,15 @@ class RootCauseAnalyzer:
         f_type: FailureType,
         combined_message: str,
         evidence: DiagnosticEvidence,
+        perm_cause: Optional[Tuple[str, RootCauseCategory, float, str]] = None,
     ) -> Tuple[str, RootCauseCategory, float, str, List[AlternativeCause]]:
         """Ranks candidate root causes and computes final confidence score."""
         candidates: List[Tuple[str, RootCauseCategory, float, str]] = []
 
         if dep_cause:
             candidates.append(dep_cause)
+        if perm_cause:
+            candidates.append(perm_cause)
         if fs_cause:
             candidates.append(fs_cause)
         if tool_cause:

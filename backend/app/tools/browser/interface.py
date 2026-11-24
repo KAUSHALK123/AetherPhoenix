@@ -82,8 +82,13 @@ class BrowserAdapter(BaseToolAdapter):
         workflow_id = task.workflow_id
         task_id = task.task_id
 
+        res = None
         try:
-            if action == "start_session":
+            if action in ("status", "ping", "check_health"):
+                logs.append(f"Browser health check: {action}")
+                output = {"status": "ok", "action": action, "available": True}
+
+            elif action == "start_session":
                 logs.append("Starting browser session...")
                 res = await self.controller.start_session(
                     workflow_id=workflow_id, task_id=task_id

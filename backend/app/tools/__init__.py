@@ -58,7 +58,7 @@ except ImportError:
     TerminalToolAdapter = None
     register_terminal_tool = None
 
-from app.tools.ppt import PPTGenerator, ppt_tool_metadata
+from app.tools.ppt import PPTGenerator, ppt_tool_metadata, register_ppt_tool
 from app.tools.registry import ToolRegistry
 
 try:
@@ -74,6 +74,8 @@ try:
         StructuredResearchResult,
         WebResearchRequest,
         WebResearchTool,
+        WebResearchToolAdapter,
+        register_web_research_tool,
     )
 except ImportError:
     BaseResearchTool = None
@@ -87,6 +89,8 @@ except ImportError:
     StructuredResearchResult = None
     WebResearchRequest = None
     WebResearchTool = None
+    WebResearchToolAdapter = None
+    register_web_research_tool = None
 
 try:
     from app.tools.file_explorer import (
@@ -147,6 +151,8 @@ __all__ = [
     "register_git_tool",
     "GitToolAdapter",
     "WebResearchTool",
+    "WebResearchToolAdapter",
+    "register_web_research_tool",
     "BaseResearchTool",
     "SearchEngineInterface",
     "DuckDuckGoSearchEngine",

@@ -1,3 +1,4 @@
+from shared.contracts.permission import PermissionType
 from shared.contracts.tool import Tool, ToolHealth, ToolState
 
 from app.tools.web_scraping.adapter import WebScrapingAdapter
@@ -29,7 +30,7 @@ def register_web_scraping_tool(registry, worker_agent=None) -> Tool:
         health=ToolHealth.HEALTHY,
         adapter="web_scraping_adapter",
         dependencies=["httpx", "beautifulsoup4"],
-        required_permissions=["network_access"],
+        required_permissions=[PermissionType.INTERNET.value],
     )
     registry.register(tool)
 

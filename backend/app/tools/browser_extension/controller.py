@@ -201,13 +201,20 @@ class BrowserExtensionController:
                 return BrowserResult(success=False, error=err_msg)
             return BrowserResult(success=True, data=res.data)
         except ExtensionNotConnectedError:
-            logger.info(f"Extension not connected; opening URL in system browser: {url}")
+            logger.info(
+                f"Extension not connected; opening URL in system browser: {url}"
+            )
             try:
                 import webbrowser
+
                 webbrowser.open(url)
                 return BrowserResult(
                     success=True,
-                    data={"url": url, "status": "opened_in_system_browser", "target": url},
+                    data={
+                        "url": url,
+                        "status": "opened_in_system_browser",
+                        "target": url,
+                    },
                 )
             except Exception as ex:
                 return BrowserResult(success=False, error=str(ex))
@@ -243,13 +250,20 @@ class BrowserExtensionController:
                 return BrowserResult(success=False, error=err_msg)
             return BrowserResult(success=True, data=res.data)
         except ExtensionNotConnectedError:
-            logger.info(f"Extension not connected; opening new tab in system browser: {url}")
+            logger.info(
+                f"Extension not connected; opening new tab in system browser: {url}"
+            )
             try:
                 import webbrowser
+
                 webbrowser.open(url)
                 return BrowserResult(
                     success=True,
-                    data={"url": url, "status": "opened_in_system_browser", "target": url},
+                    data={
+                        "url": url,
+                        "status": "opened_in_system_browser",
+                        "target": url,
+                    },
                 )
             except Exception as ex:
                 return BrowserResult(success=False, error=str(ex))

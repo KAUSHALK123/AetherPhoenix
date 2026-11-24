@@ -4,6 +4,7 @@ from app.api.endpoints import (
     artifacts,
     browser_extension,
     dashboard,
+    execution,
     export,
     mcp_command,
     notifications,
@@ -29,3 +30,4 @@ api_router.include_router(
 )
 api_router.include_router(export.router, prefix="/export", tags=["export"])
 api_router.include_router(artifacts.router, prefix="/artifacts", tags=["artifacts"])
+api_router.include_router(execution.router, prefix="/workflows", tags=["execution"])

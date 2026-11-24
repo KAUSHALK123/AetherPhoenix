@@ -1,6 +1,10 @@
+import copy
+import logging
 from enum import Enum
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
+
+logger = logging.getLogger(__name__)
 
 from shared.contracts.execution import FailureType
 from shared.contracts.permission import PermissionType, RiskLevel
@@ -10,6 +14,12 @@ from shared.contracts.recovery_plan import (
 )
 
 from app.agents.healing.validator import validate_recovery_plan
+from app.core.permissions.models import ExecutionMode
+from app.core.permissions.policies import (
+    SafeExecutionPolicy,
+    evaluate_task_risk_and_permissions,
+    risk_rank,
+)
 
 RISK_HIERARCHY = {
     RiskLevel.SAFE: 0,
@@ -48,6 +58,9 @@ class RecoveryPlanner:
     Note: The Recovery Planner ONLY plans and validates strategies.
     It DOES NOT execute them.
     """
+
+    def __init__(self, tool_registry: Optional[Any] = None) -> None:
+        self.tool_registry = tool_registry
 
     def plan(
         self,
@@ -138,6 +151,22 @@ class RecoveryPlanner:
         if task_context:
             context.update(task_context)
 
+        state_obj = kwargs.get("state")
+        exec_mode = (
+            kwargs.get("mode")
+            or getattr(getattr(state_obj, "metadata", None), "execution_mode", None)
+            or ExecutionMode.SAFE
+        )
+        orig_risk: Optional[RiskLevel] = None
+        if task_obj is not None:
+            orig_risk, _, _, _ = evaluate_task_risk_and_permissions(
+                task_obj, mode=exec_mode
+            )
+            if not context.get("target_tool") and getattr(
+                task_obj, "required_tool", None
+            ):
+                context["target_tool"] = task_obj.required_tool
+
         likely_cause = getattr(root_cause, "likely_root_cause", "")
         rc_cat_str = str(getattr(root_cause, "category", ""))
         err_type = getattr(parsed_error, "error_type", None)
@@ -169,7 +198,7 @@ class RecoveryPlanner:
                 )
             )
             or rc_cat_str == "UNRECOVERABLE"
-            or root_cause.confidence_score < 0.3
+            or root_cause.confidence_score <= 0.30
             or err_type == FailureType.UNEXPECTED_EXCEPTION
         ):
             unviable_plan = RecoveryPlan(
@@ -383,7 +412,12 @@ class RecoveryPlanner:
                     target_tool=target_tool,
                     required_capabilities=["task_execution"],
                     required_permissions=[],
-                    risk_level=RiskLevel.MEDIUM,
+                    risk_level=(
+                        orig_risk
+                        if orig_risk is not None
+                        and risk_rank(orig_risk) < risk_rank(RiskLevel.MEDIUM)
+                        else RiskLevel.MEDIUM
+                    ),
                     preconditions=["Extended timeout applied"],
                     success_criteria=["Task completed within extended window"],
                     failure_criteria=["Task timed out again after extended window"],
@@ -560,6 +594,40 @@ class RecoveryPlanner:
 
         overall_risk = _determine_highest_risk(risk_levels)
 
+        # Strategy demotion and parameter patching for parameter/syntax/argument faults
+        raw_msg_lower = (
+            str(getattr(parsed_error, "raw_error_message", ""))
+            or str(getattr(parsed_error, "message", ""))
+            or ""
+        ).lower()
+        err_code_upper = str(getattr(parsed_error, "normalized_code", "")).upper()
+        task_retry_count = getattr(task_obj, "retry_count", 0) if task_obj else 0
+        is_param_error = (
+            "syntax" in raw_msg_lower
+            or "argument" in raw_msg_lower
+            or "parameter" in raw_msg_lower
+            or "file not found" in raw_msg_lower
+            or "invalid" in raw_msg_lower
+            or "near '|'" in raw_msg_lower
+            or "SYNTAX" in err_code_upper
+            or "ARGUMENT" in err_code_upper
+            or "PARAM" in err_code_upper
+        )
+
+        patched_task_params = {}
+        if (is_param_error or task_retry_count > 0) and task_obj is not None:
+            try:
+                from app.agents.healing.patch_generator import LLMParameterPatcher
+
+                patcher = LLMParameterPatcher()
+                patched_task_params = patcher.repair_parameters(
+                    task_obj, parsed_error, mode=exec_mode
+                )
+                if patched_task_params:
+                    strategy_name = "PARAMETER_PATCH_RECOVERY"
+            except Exception as e:
+                logger.warning(f"Parameter patcher error: {e}")
+
         plan = RecoveryPlan(
             plan_id=uuid4(),
             failure_id=parsed_error.failure_id,
@@ -575,6 +643,7 @@ class RecoveryPlanner:
             max_retries=max_retries,
             is_viable=True,
             task_context=context,
+            updated_task_params=patched_task_params,
         )
 
         # Generate replacement tasks for alternative tool recovery when applicable
@@ -584,22 +653,105 @@ class RecoveryPlanner:
             or strategy_name in ("ALTERNATIVE_TOOL", "REPLACE_TOOL")
         ) and task_obj is not None:
             from shared.contracts.task import Task
+            from shared.contracts.tool import ToolHealth, ToolState
 
-            alt_tool = (
-                "web_research_tool"
-                if getattr(task_obj, "required_tool", None) == "browser_tool"
-                else "web_research"
-            )
-            alt_task = Task(
-                task_id=uuid4(),
-                workflow_id=task_obj.workflow_id,
-                task_name=f"{task_obj.task_name} (Recovered)",
-                description=task_obj.description,
-                required_tool=alt_tool,
-                category=task_obj.category,
-                expected_output=task_obj.expected_output,
-            )
-            plan.replacement_tasks = [alt_task]
+            orig_tool = getattr(task_obj, "required_tool", None)
+            registry = kwargs.get("tool_registry") or getattr(self, "tool_registry", None)
+            alt_tool = None
 
-        validate_recovery_plan(plan)
+            # Tool compatibility lookup mappings
+            compat_candidates = {
+                "browser_tool": ["web_research_tool", "web_research"],
+                "browser": ["web_research_tool", "web_research"],
+                "browser_automation": ["web_research_tool", "web_research"],
+                "web_scraping": ["web_research_tool", "web_research"],
+                "web_research": ["web_research_tool", "browser_tool"],
+                "web_research_tool": ["web_research", "browser_tool"],
+                "test_tool": ["web_research_tool", "web_research"],
+                "pdf_generator": ["pdf_tool", "document_generator"],
+                "pdf_tool": ["pdf_generator", "document_generator"],
+                "document_generator": ["content_tool", "pdf_generator"],
+                "ocr": ["ocr_tool"],
+                "ocr_tool": ["ocr"],
+                "file_explorer": ["file_manager_tool"],
+            }
+
+            if registry is not None:
+                # 1. First search registry for prioritized compatible tools
+                preferred = compat_candidates.get(orig_tool, [])
+                candidates = []
+                for cand_name in preferred:
+                    t = registry.get(cand_name)
+                    if t and t.status in (ToolState.READY, ToolState.INSTALLED) and t.health != ToolHealth.FAILED:
+                        candidates.append(cand_name)
+
+                # 2. Also search other ready tools in registry if no preferred found
+                if not candidates:
+                    for t in registry.list_all():
+                        if t.name != orig_tool and t.status in (ToolState.READY, ToolState.INSTALLED) and t.health != ToolHealth.FAILED:
+                            candidates.append(t.name)
+
+                # 3. Check monotonic risk and permission constraints for candidate tools
+                for cand_name in candidates:
+                    cand_inputs = copy.deepcopy(getattr(task_obj, "inputs", None) or {})
+                    cand_risk = SafeExecutionPolicy.classify_risk(cand_name, cand_inputs)
+                    cand_decision = SafeExecutionPolicy.evaluate(
+                        action=cand_name,
+                        mode=exec_mode,
+                        context=SafeExecutionPolicy.sanitize_context(cand_inputs, action=cand_name),
+                    )
+                    # Candidate must pass permission policy and never exceed original risk
+                    if cand_decision.allowed and (orig_risk is None or risk_rank(cand_risk) <= risk_rank(orig_risk)):
+                        alt_tool = cand_name
+                        break
+            else:
+                # Fallback candidate when no registry is provided
+                fallback_preferred = compat_candidates.get(orig_tool, ["web_research_tool", "web_research"])
+                for cand_name in fallback_preferred:
+                    cand_inputs = copy.deepcopy(getattr(task_obj, "inputs", None) or {})
+                    cand_risk = SafeExecutionPolicy.classify_risk(cand_name, cand_inputs)
+                    cand_decision = SafeExecutionPolicy.evaluate(
+                        action=cand_name,
+                        mode=exec_mode,
+                        context=SafeExecutionPolicy.sanitize_context(cand_inputs, action=cand_name),
+                    )
+                    if cand_decision.allowed and (orig_risk is None or risk_rank(cand_risk) <= risk_rank(orig_risk)):
+                        alt_tool = cand_name
+                        break
+
+            if alt_tool is not None:
+                alt_inputs = copy.deepcopy(getattr(task_obj, "inputs", None) or {})
+                alt_risk = SafeExecutionPolicy.classify_risk(alt_tool, alt_inputs)
+                alt_risk_str = getattr(alt_risk, "value", str(alt_risk))
+                orig_task_perms = list(getattr(task_obj, "permissions", None) or [])
+                alt_task = Task(
+                    task_id=uuid4(),
+                    workflow_id=task_obj.workflow_id,
+                    task_name=f"{task_obj.task_name} (Recovered)",
+                    description=task_obj.description,
+                    required_tool=alt_tool,
+                    category=task_obj.category,
+                    expected_output=task_obj.expected_output,
+                    permissions=orig_task_perms,
+                    risk_level=alt_risk_str,
+                    inputs=alt_inputs,
+                    retry_count=getattr(task_obj, "retry_count", 0) + 1,
+                )
+                plan.replacement_tasks = [alt_task]
+                plan.strategy_name = "ALTERNATIVE_TOOL"
+            else:
+                # No safe substitute adapter available; mark non-viable
+                plan.replacement_tasks = []
+                plan.is_viable = False
+                plan.strategy_name = "ESCALATE_USER"
+
+        is_valid, _ = validate_recovery_plan(
+            plan,
+            original_task=task_obj,
+            mode=exec_mode,
+        )
+        if not is_valid:
+            plan.is_viable = False
+            plan.replacement_tasks = []
+            plan.strategy_name = "ESCALATE_USER"
         return plan

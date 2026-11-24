@@ -16,6 +16,11 @@ class ExecutionMetrics(BaseModel):
     memory_usage_mb: float | None = Field(default=None, ge=0.0)
     cpu_usage_percent: float | None = Field(default=None, ge=0.0)
     exit_code: int | None = None
+    prompt_tokens: int = Field(default=0, ge=0)
+    completion_tokens: int = Field(default=0, ge=0)
+    total_cost_usd: float = Field(default=0.0, ge=0.0)
+    memory_rss_mb: float | None = Field(default=None, ge=0.0)
+    planning_strategy_used: str | None = Field(default=None)
 
 
 class TaskError(BaseModel):

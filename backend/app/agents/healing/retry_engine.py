@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple
@@ -9,7 +10,7 @@ from shared.contracts.execution import (
     TaskError,
     WorkerReexecutionRequest,
 )
-from shared.contracts.permission import PermissionStatus, PermissionType
+from shared.contracts.permission import PermissionStatus, PermissionType, RiskLevel
 from shared.contracts.retry import (
     RecoveryPlan,
     RetryRequest,
@@ -19,8 +20,15 @@ from shared.contracts.retry import (
 from shared.contracts.task import Task, TaskStatus
 from shared.contracts.workflow import SharedWorkflowState, WorkflowStatus
 
+from app.agents.healing.validator import (
+    PROTECTED_TASK_IDENTITY_KEYS,
+    simulate_task_patch,
+    validate_retry_plan_security,
+)
 from app.agents.worker.reexecution import WorkerReexecutionManager
 from app.core.events.bus import EventBus
+from app.core.permissions.models import ExecutionMode
+from app.core.permissions.policies import evaluate_task_risk_and_permissions
 from app.engine.workflow import WorkflowEngine
 
 logger = logging.getLogger(__name__)
@@ -73,17 +81,42 @@ class RetryEngine:
         base_backoff_seconds: float = 1.0,
         max_backoff_seconds: float = 60.0,
         reexecution_manager: Optional[WorkerReexecutionManager] = None,
+        permission_manager: Optional[Any] = None,
     ) -> None:
         self.event_bus = event_bus
         self.default_max_retries = default_max_retries
         self.default_max_healing_attempts = default_max_healing_attempts
         self.base_backoff_seconds = base_backoff_seconds
         self.max_backoff_seconds = max_backoff_seconds
+        self.permission_manager = permission_manager
 
         self.reexecution_manager = reexecution_manager or WorkerReexecutionManager()
 
         # Used to prevent repeatedly attempting the exact same recovery.
+        # Keyed by (workflow_id, task_id, signature) for safe concurrency
         self._failure_signature_counts: Dict[Tuple[str, str, str], int] = {}
+        self._lock: Optional[asyncio.Lock] = None
+
+    def _get_lock(self) -> asyncio.Lock:
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
+
+    def record_failure_signature(
+        self, workflow_id: Any, task_id: Any, signature: str
+    ) -> int:
+        """Atomically records and increments the failure signature count (safe read-modify-write)."""
+        key = (str(workflow_id), str(task_id), str(signature))
+        current = self._failure_signature_counts.get(key, 0) + 1
+        self._failure_signature_counts[key] = current
+        return current
+
+    def get_failure_signature_count(
+        self, workflow_id: Any, task_id: Any, signature: str
+    ) -> int:
+        """Retrieves current failure count for a specific (workflow_id, task_id, signature)."""
+        key = (str(workflow_id), str(task_id), str(signature))
+        return self._failure_signature_counts.get(key, 0)
 
     def calculate_backoff_delay(
         self,
@@ -165,6 +198,21 @@ class RetryEngine:
             logger.info(msg)
             return False, msg
 
+        # Permission re-check before retry
+        if self.permission_manager is not None:
+            exec_mode = (
+                getattr(getattr(state, "metadata", None), "execution_mode", None)
+                or getattr(self.permission_manager, "mode", None)
+                or ExecutionMode.SAFE
+            )
+            _, _, cand_decision, _ = evaluate_task_risk_and_permissions(
+                task, mode=exec_mode
+            )
+            if not cand_decision.allowed:
+                msg = f"Task {task.task_id} failed permission policy: {cand_decision.reason}"
+                logger.warning(msg)
+                return False, msg
+
         limit_retries = (
             max_retries if max_retries is not None else self.default_max_retries
         )
@@ -194,18 +242,19 @@ class RetryEngine:
             logger.info(msg)
             return False, msg
 
-        # 3. Infinite-loop protection.
+        # 3. Infinite-loop protection keyed by (workflow_id, task_id, signature)
         signature = (
+            str(getattr(task, "workflow_id", "")),
             str(task.task_id),
-            root_cause_category,
-            root_cause_summary,
+            f"{root_cause_category}:{root_cause_summary}",
         )
 
         current_count = self._failure_signature_counts.get(signature, 0)
         matching_counts = [
             count
-            for (t_id, _, _), count in self._failure_signature_counts.items()
-            if t_id == str(task.task_id)
+            for key, count in self._failure_signature_counts.items()
+            if (isinstance(key, tuple) and len(key) == 3 and key[0] == str(getattr(task, "workflow_id", "")) and key[1] == str(task.task_id))
+            or (isinstance(key, tuple) and len(key) == 3 and key[0] == str(task.task_id))
         ]
 
         if current_count >= 3 or (matching_counts and max(matching_counts) >= 3):
@@ -217,7 +266,24 @@ class RetryEngine:
             return False, msg
 
         # 4. Root-cause recoverability.
-        if not is_recoverable and not has_replacements:
+        if cat_upper == "INFRASTRUCTURE":
+            is_allowed_infra = any(
+                sub in sum_upper or sub in cat_upper
+                for sub in (
+                    "OUTPUT_DIRECTORY_MISSING",
+                    "FILE_NOT_FOUND",
+                    "FILE_OR_DIRECTORY_NOT_FOUND",
+                )
+            )
+            if not is_allowed_infra:
+                msg = f"Root cause '{root_cause_category}' ({root_cause_summary}) is non-recoverable."
+                logger.info(msg)
+                return False, msg
+            effective_recoverable = True
+        else:
+            effective_recoverable = is_recoverable
+
+        if not effective_recoverable and not has_replacements:
             msg = f"Root cause '{root_cause_category}' is non-recoverable."
             logger.info(msg)
             return False, msg
@@ -474,11 +540,109 @@ class RetryEngine:
                     msg,
                 )
 
+        # 9. Monotonic privilege-invariance and parameter-aware security check.
+        sec_ok, sec_reason = self._verify_monotonic_and_policy(
+            task=task,
+            state=state,
+            recovery_plan=recovery_plan,
+        )
+        if not sec_ok:
+            logger.warning(
+                "Retry eligibility rejected for task %s due to security invariant: %s",
+                task.task_id,
+                sec_reason,
+            )
+            return (
+                False,
+                RetryStatus.REJECTED_PERMISSION_DENIED,
+                sec_reason,
+            )
+
         return (
             True,
             RetryStatus.TRIGGERED,
             "Task is eligible for retry.",
         )
+
+    def _verify_monotonic_and_policy(
+        self,
+        task: Task,
+        state: SharedWorkflowState,
+        recovery_plan: Optional[Any] = None,
+        original_baseline: Optional[Tuple[RiskLevel, set[str]]] = None,
+    ) -> Tuple[bool, str]:
+        """
+        Enforce monotonic privilege invariance and parameter-aware policy evaluation
+        before any retry mutation, replacement task, or re-enqueueing occurs.
+        """
+        exec_mode = (
+            getattr(getattr(state, "metadata", None), "execution_mode", None)
+            or getattr(self.permission_manager, "mode", None)
+            or ExecutionMode.SAFE
+        )
+        baseline = original_baseline
+        if baseline is None:
+            orig_risk, orig_perms, _, _ = evaluate_task_risk_and_permissions(
+                task, mode=exec_mode
+            )
+            baseline = (orig_risk, orig_perms)
+
+        if recovery_plan is not None:
+            is_sec_valid, sec_errors = validate_retry_plan_security(
+                recovery_plan,
+                original_task=task,
+                mode=exec_mode,
+                original_baseline=baseline,
+            )
+            if not is_sec_valid:
+                return False, "; ".join(sec_errors)
+
+        updated_params = (
+            getattr(recovery_plan, "updated_task_params", None)
+            if recovery_plan is not None
+            else None
+        )
+        candidate_task = (
+            simulate_task_patch(task, updated_params)
+            if isinstance(updated_params, dict) and updated_params
+            else task
+        )
+
+        # If replacement tasks are present, they were validated above; validate candidate retry too
+        cand_risk, cand_perms, cand_decision, cand_ctx = (
+            evaluate_task_risk_and_permissions(candidate_task, mode=exec_mode)
+        )
+        if not cand_decision.allowed:
+            return (
+                False,
+                f"Policy blocked recovery task ({cand_decision.risk_level.value}): "
+                f"{cand_decision.reason}",
+            )
+        if cand_risk == RiskLevel.CRITICAL:
+            return (
+                False,
+                f"CRITICAL-risk operation '{cand_decision.action}' cannot be auto-healed.",
+            )
+
+        # Verify grant-reuse isolation when PermissionManager is attached
+        if self.permission_manager is not None and cand_perms:
+            for perm_str in cand_perms:
+                try:
+                    perm_type = PermissionType(perm_str.upper())
+                except ValueError:
+                    continue
+                if hasattr(self.permission_manager, "has_valid_grant_for"):
+                    ok, reason = self.permission_manager.has_valid_grant_for(
+                        workflow_id=task.workflow_id,
+                        permission_type=perm_type,
+                        action=cand_decision.action,
+                        context=cand_ctx,
+                        task_id=task.task_id,
+                    )
+                    if not ok:
+                        return False, reason
+
+        return True, "Monotonic privilege invariance and policy verified."
 
     async def execute_retry(
         self,
@@ -612,15 +776,11 @@ class RetryEngine:
                 message=reason,
             )
 
-        # Record the failure signature.
-        signature = (
-            str(task.task_id),
-            root_cause_category,
-            root_cause_summary,
-        )
-
-        self._failure_signature_counts[signature] = (
-            self._failure_signature_counts.get(signature, 0) + 1
+        # Record the failure signature keyed by (workflow_id, task_id, signature).
+        self.record_failure_signature(
+            getattr(task, "workflow_id", request.workflow_id),
+            task.task_id,
+            f"{root_cause_category}:{root_cause_summary}",
         )
 
         # Calculate backoff.
@@ -652,11 +812,17 @@ class RetryEngine:
         # Update retry count.
         task.retry_count += 1
 
-        # Apply recovery-plan task parameter changes.
+        # Apply recovery-plan task parameter changes safely.
         if request.recovery_plan and request.recovery_plan.updated_task_params:
-            for key, value in request.recovery_plan.updated_task_params.items():
+            patched = simulate_task_patch(
+                task, request.recovery_plan.updated_task_params
+            )
+            for key in request.recovery_plan.updated_task_params.keys():
+                if key in PROTECTED_TASK_IDENTITY_KEYS:
+                    continue
                 if hasattr(task, key):
-                    setattr(task, key, value)
+                    setattr(task, key, getattr(patched, key))
+            task.inputs = patched.inputs
 
         # Append execution log.
         log_entry = (
@@ -867,6 +1033,41 @@ class RetryEngine:
             )
 
         try:
+            # Verify monotonic privilege-invariance and parameter safety before any mutation/enqueue
+            sec_ok, sec_reason = self._verify_monotonic_and_policy(
+                task=task,
+                state=state,
+                recovery_plan=plan,
+            )
+            if not sec_ok:
+                logger.warning(
+                    "RetryEngine.execute_recovery blocked unsafe plan for task %s: %s",
+                    task.task_id,
+                    sec_reason,
+                )
+                if self.event_bus:
+                    await self.event_bus.publish(
+                        RuntimeEvent(
+                            workflow_id=state.metadata.workflow_id,
+                            task_id=task.task_id,
+                            event_type=EventType.HEALING_FAILED,
+                            source_component=EventSource.HEALING,
+                            payload={
+                                "reason": sec_reason,
+                                "security_violation": True,
+                            },
+                        )
+                    )
+                return HealingResult(
+                    task_id=task.task_id,
+                    workflow_id=task.workflow_id,
+                    root_cause=root_cause_category,
+                    recovery_strategy=strategy_val,
+                    replacement_tasks=[],
+                    attempt_number=attempt_number,
+                    success=False,
+                )
+
             # Record failure signature.
             desc = getattr(
                 plan,
@@ -878,21 +1079,34 @@ class RetryEngine:
                 ),
             )
             signature = (
+                str(getattr(task, "workflow_id", "")),
                 str(task.task_id),
-                root_cause_category,
-                desc,
+                f"{root_cause_category}:{desc}",
+            )
+            wf_task_key = (
+                str(getattr(task, "workflow_id", "")),
+                str(getattr(task, "task_name", "")),
+                "WORKFLOW_TASK_LIMIT",
             )
 
             prior_count = self._failure_signature_counts.get(signature, 0)
+            wf_prior_count = self._failure_signature_counts.get(wf_task_key, 0)
             matching_counts = [
                 count
-                for (t_id, cat, _), count in self._failure_signature_counts.items()
-                if t_id == str(task.task_id) and cat == root_cause_category
+                for key, count in self._failure_signature_counts.items()
+                if (isinstance(key, tuple) and len(key) == 3 and key[0] == str(getattr(task, "workflow_id", "")) and key[1] == str(task.task_id) and root_cause_category in key[2])
+                or (isinstance(key, tuple) and len(key) == 3 and key[0] == str(task.task_id) and key[1] == root_cause_category)
             ]
-            if prior_count >= 3 or (matching_counts and max(matching_counts) >= 3):
+            if (
+                prior_count >= 3
+                or wf_prior_count >= 3
+                or task.retry_count >= 3
+                or (matching_counts and max(matching_counts) >= 3)
+            ):
                 logger.warning(
-                    "Infinite recovery loop detected for task %s.",
+                    "Recovery budget exhausted (K_max=3) for task %s ('%s').",
                     task.task_id,
+                    getattr(task, "task_name", ""),
                 )
 
                 return HealingResult(
@@ -905,7 +1119,9 @@ class RetryEngine:
                     success=False,
                 )
 
+            # Atomic read-modify-write without intervening await
             self._failure_signature_counts[signature] = prior_count + 1
+            self._failure_signature_counts[wf_task_key] = wf_prior_count + 1
 
             engine = WorkflowEngine(state)
 

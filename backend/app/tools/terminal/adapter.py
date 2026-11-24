@@ -78,6 +78,7 @@ class TerminalToolAdapter(BaseToolAdapter):
 
             # Dynamic resolution of natural language queries to shell commands
             from app.tools.terminal.command_resolver import CommandResolverEngine
+
             resolver = CommandResolverEngine()
             resolved = resolver.resolve(command)
             command = resolved.command

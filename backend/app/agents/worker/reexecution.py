@@ -15,6 +15,9 @@ from shared.contracts.workflow import SharedWorkflowState
 
 from app.agents.worker.agent import WorkerAgent
 from app.core.events.bus import EventBus
+from app.core.exceptions import PermissionDeniedException
+from app.core.permissions.models import ExecutionMode
+from app.core.permissions.policies import evaluate_task_risk_and_permissions
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +42,30 @@ class WorkerReexecutionManager:
         """
         if not task:
             raise ValueError("Task is required to create a re-execution request.")
+
+        # Validate recovery plan monotonicity and parameter safety BEFORE any task mutation
+        if recovery_plan is not None:
+            from app.agents.healing.validator import validate_retry_plan_security
+
+            exec_mode = (
+                getattr(getattr(state, "metadata", None), "execution_mode", None)
+                or ExecutionMode.SAFE
+            )
+            is_sec_valid, sec_errors = validate_retry_plan_security(
+                recovery_plan,
+                original_task=task,
+                mode=exec_mode,
+            )
+            if not is_sec_valid:
+                err_msg = "; ".join(sec_errors)
+                logger.warning(
+                    "Blocked unsafe recovery plan during reexecution request creation: %s",
+                    err_msg,
+                )
+                raise PermissionDeniedException(
+                    message=f"Unsafe recovery plan blocked: {err_msg}",
+                    details={"task_id": str(task.task_id), "errors": sec_errors},
+                )
 
         # 1. Snapshot previous execution attempt history
         previous_attempt_number = len(task.attempt_history)
@@ -163,6 +190,57 @@ class WorkerReexecutionManager:
                     pass
 
         try:
+            # Re-evaluate actual task parameters against SafeExecutionPolicy before dispatch
+            exec_mode = (
+                getattr(getattr(state, "metadata", None), "execution_mode", None)
+                or getattr(
+                    getattr(worker_agent, "permission_manager", None), "mode", None
+                )
+                or ExecutionMode.SAFE
+            )
+            _, _, pre_decision, _ = evaluate_task_risk_and_permissions(
+                task, mode=exec_mode
+            )
+            if not pre_decision.allowed:
+                deny_msg = (
+                    f"Re-execution blocked by execution policy "
+                    f"({pre_decision.risk_level.value}): {pre_decision.reason}"
+                )
+                logger.warning(deny_msg)
+                deny_res = ExecutionResult(
+                    task_id=request.task_id,
+                    workflow_id=request.workflow_id,
+                    success=False,
+                    error=TaskError(
+                        error_code="PERMISSION_DENIED",
+                        error_message=deny_msg,
+                        is_recoverable=False,
+                    ),
+                )
+                if event_bus:
+                    await event_bus.publish(
+                        RuntimeEvent(
+                            workflow_id=request.workflow_id,
+                            task_id=request.task_id,
+                            event_type=EventType.WORKER_REEXECUTION_FAILED,
+                            source_component=EventSource.WORKER,
+                            payload={
+                                "attempt_id": str(request.attempt_id),
+                                "attempt_number": request.attempt_number,
+                                "success": False,
+                                "error_code": "PERMISSION_DENIED",
+                            },
+                        )
+                    )
+                return WorkerReexecutionResult(
+                    attempt_id=request.attempt_id,
+                    task_id=request.task_id,
+                    workflow_id=request.workflow_id,
+                    attempt_number=request.attempt_number,
+                    execution_result=deny_res,
+                    previous_attempt_ids=previous_ids,
+                )
+
             # Delegate execution through WorkerAgent using execution infrastructure
             exec_result = await worker_agent.execute(task)
 

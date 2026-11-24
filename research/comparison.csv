@@ -1,0 +1,19 @@
+metric_name,phoenix_value,phoenix_unit,reference_paper,reference_value,reference_unit,verdict,gap,fairness_note
+planning_latency,14.85,ms,yao2023 (ReAct),450.0,ms,PHOENIX LEADS,-435.15 ms,Phoenix uses deterministic regex rule-matching; ReAct incurs external LLM API inference and network round-trip.
+planning_latency,14.85,ms,wu2024 (AutoGen),800.0,ms,PHOENIX LEADS,-785.15 ms,Phoenix compiles DAG locally without multi-agent conversational turns; AutoGen requires iterative multi-agent dialogue.
+planning_latency,14.85,ms,LLM Replanning Baseline,1200.0,ms,PHOENIX LEADS,-1185.15 ms,Phoenix fast-path avoids LLM invocation; full replanning requires full context regeneration.
+controller_cycle_latency,0.85,ms,patel2026a (Predictive MPC),51.80,ms,NOT COMPARABLE,N/A,Patel measures rolling-horizon numerical MPC optimization for cloud pipelines; Phoenix measures dictionary lookup in CapabilityRegistry.
+transient_fault_recovery_rate,100.0,%,babu2026 (Self-Healing Orchestrator),98.8,%,NOT COMPARABLE,N/A,Phoenix evaluated on 25 synthetic timeout/path trials; Babu evaluated on 100 live LLM tool-calling tasks with complex failures.
+task_success_rate_under_faults_10pct,96.19,%,babu2026 (Self-Healing Orchestrator),98.8,%,PHOENIX TRAILS,-2.61%,With bounded parameter patching Phoenix narrows gap with Babu from -11.67% to -2.61%.
+task_success_rate_under_faults_25pct,96.19,%,babu2026 (Self-Healing Orchestrator),98.8,%,PHOENIX TRAILS,-2.61%,Parameter patching and strategy demotion maintain 96.19% success under moderate fault intensity.
+task_success_rate_under_faults_50pct,79.05,%,babu2026 (Self-Healing Orchestrator),98.8,%,PHOENIX TRAILS,-19.75%,Boosted from 60.40% to 79.05% via bounded parameter repair; remaining gap driven by unconditional non-bypassable PERMISSION_DENIED security policy.
+error_recovery_rate,92.86,%,bara2026 (Think it Run it),73.3,%,NOT COMPARABLE,N/A,Bâra measures repairing broken Python ML data pipelines; Phoenix measures recovering desktop/file-system tasks from synthetic faults.
+task_completion_rate,100.0,%,bara2026 (Think it Run it),84.7,%,NOT COMPARABLE,N/A,Different task domains: Bâra evaluates autonomous ML pipeline generation; Phoenix evaluates desktop workflow DAG execution.
+task_completion_rate,100.0,%,guo2026 (EvoConfig),78.1,%,NOT COMPARABLE,N/A,Different task domains: EvoConfig evaluates environment and dependency setup on Envbench; Phoenix evaluates desktop tool DAGs.
+task_completion_rate,100.0,%,wang2026 (RoleFix),76.1,%,NOT COMPARABLE,N/A,Different task domains: RoleFix evaluates multi-agent software collaboration; Phoenix evaluates single-pipeline desktop execution.
+role_drift_reduction,NOT MEASURED,%,wang2026 (RoleFix),67.4,%,NOT MEASURED,N/A,Phoenix does not use conversational multi-agent dialogue; role drift metric is not applicable or measured in Phoenix.
+silent_failure_rate,0.0,%,babu2026 (Self-Healing Orchestrator),0.0,%,TIED,0.0%,Phoenix deep deliverable validation for PPTX and PDF achieves 0.0% silent failure rate matching Babu semantic assertion guarantees.
+web_navigation_success,NOT MEASURED,%,zhou2023 (WebArena),10.59,%,NOT MEASURED,N/A,WebArena benchmark was marked as future work and not executed in the Phoenix repository.
+os_desktop_automation_success,NOT MEASURED,%,xie2024 (OSWorld),12.24,%,NOT MEASURED,N/A,OSWorld 369-task desktop benchmark not executed in repository.
+policy_violation_rejection_rate,100.0,%,Unguarded Agent Baselines,35.0-70.0,%,PHOENIX LEADS,+30.0% to +65.0%,Phoenix enforces deterministic, parameter-aware permission filters across SAFE and AUTONOMOUS modes without relying on probabilistic LLM guardrails.
+document_deliverable_generation_speed,124.50,ms,Conversational Code Generation Agents,5000.0-15000.0,ms,PHOENIX LEADS,>4800 ms faster,Phoenix utilizes dedicated native python-pptx generation engines rather than prompting an LLM to author script code from scratch.

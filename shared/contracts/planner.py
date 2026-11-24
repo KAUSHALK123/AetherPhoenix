@@ -113,6 +113,10 @@ class ClarificationResult(BaseModel):
     missing_fields: list[str] = Field(
         default_factory=list, description="List of missing required fields."
     )
+    options: list[str] | None = Field(
+        default=None,
+        description="Contextual dynamic clarification options if applicable.",
+    )
 
 
 class PlannerRequest(BaseModel):
@@ -146,12 +150,17 @@ class PlannerResponse(BaseModel):
     )
     status: str = Field(
         ...,
-        description="Status of the request (e.g., 'clarifying', 'planning', 'ready').",
+        description="Status of the request (e.g., 'clarifying', 'planning', 'ready', 'chat', 'error').",
     )
     reply: str | None = Field(
-        None, description="A text reply, usually a clarification question."
+        None,
+        description="A text reply, usually a clarification question, direct answer, or plan JSON.",
     )
     action: str | None = Field(None, description="The next action if applicable.")
+    options: list[str] | None = Field(
+        default=None,
+        description="Structured dynamic clarification options if clarifying.",
+    )
 
 
 class TaskDecompositionPlan(BaseModel):
@@ -207,6 +216,13 @@ class PlanMetadata(BaseModel):
         default="ASSISTED", description="Execution mode requested"
     )
     session_id: str | None = None
+    workflow_id: str | None = None
+    goal: str | None = None
+    prompt_tokens: int = Field(default=0, ge=0)
+    completion_tokens: int = Field(default=0, ge=0)
+    total_cost_usd: float = Field(default=0.0, ge=0.0)
+    memory_rss_mb: float | None = Field(default=None, ge=0.0)
+    planning_strategy_used: str | None = Field(default=None)
 
 
 class PlannerOutput(BaseModel):

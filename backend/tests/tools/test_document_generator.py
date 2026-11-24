@@ -277,7 +277,8 @@ class TestDocumentGenerator:
         assert fetched_tool is not None
         assert fetched_tool.name == "document_generator"
 
-    def test_document_tool_adapter_execution(self, temp_dir):
+    @pytest.mark.asyncio
+    async def test_document_tool_adapter_execution(self, temp_dir):
         output_file = temp_dir / "adapter_doc.md"
         adapter = DocumentToolAdapter()
 
@@ -295,7 +296,7 @@ class TestDocumentGenerator:
             "output_path": str(output_file),
         }
 
-        result = adapter.execute(payload)
+        result = await adapter.execute(payload)
         assert result.status == "SUCCESS"
         assert output_file.exists()
         assert "# Adapter Execution Test" in output_file.read_text(encoding="utf-8")

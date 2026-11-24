@@ -1,0 +1,5 @@
+system_name,policy_rejection_rate_pct,governance_mechanism,source
+Phoenix PermissionManager,100.0,Deterministic parameter-aware in-process gating,backend/tests/core/test_parameter_aware_permissions.py:1
+GuardAgent Framework,85.2,Dynamic LLM code guardrail,Saha et al. ICML 2024 (Mind2Web-SC safety evaluation)
+AutoDefense Multi-Agent Filter,68.5,Collaborative response filtering,Yin et al. ACL 2024 (jailbreak interception)
+Unguarded LLM Agent Baseline,42.5,Prompt-only alignment (unshielded),Bajoria et al. 2026 / AutoDefense benchmark baseline

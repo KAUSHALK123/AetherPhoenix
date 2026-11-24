@@ -1,4 +1,6 @@
 import asyncio
+import hashlib
+import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
@@ -26,9 +28,27 @@ from .models import (
     PermissionStatus,
     PermissionType,
 )
-from .policies import PermissionPolicy, PolicyDecision, SafeExecutionPolicy
+from .policies import PermissionPolicy, PolicyDecision, SafeExecutionPolicy, risk_rank
 
 logger = get_logger(__name__)
+
+
+def _action_fingerprint(
+    action: Optional[str], context: Optional[Dict[str, Any]] = None
+) -> str:
+    """Compute a deterministic fingerprint of action and security-relevant parameters."""
+    sanitized = SafeExecutionPolicy.sanitize_context(context, action=action)
+    key_fields = {
+        "action": str(action or sanitized.get("action") or "").strip().lower(),
+        "command": sanitized.get("command", ""),
+        "script": sanitized.get("script", ""),
+        "url": sanitized.get("url", ""),
+        "keys": sanitized.get("keys", ""),
+        "path": sanitized.get("path", ""),
+        "tool": sanitized.get("tool", ""),
+    }
+    encoded = json.dumps(key_fields, sort_keys=True, ensure_ascii=True)
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()[:16]
 
 
 class AwaitablePermissionCheck:
@@ -236,12 +256,20 @@ class PermissionManager:
         permission_type: Optional[PermissionType] = None,
     ) -> PolicyDecision:
         """
-        Evaluates an action against the Safe Execution Policy.
+        Evaluates an action against the Safe Execution Policy using sanitized parameters.
         """
+        raw_ctx = dict(context or {})
+        sanitized = SafeExecutionPolicy.sanitize_context(raw_ctx, action=action)
+        for k, v in raw_ctx.items():
+            if k not in sanitized and not any(
+                s in str(k).lower()
+                for s in ("password", "passwd", "secret", "token", "api_key", "apikey")
+            ):
+                sanitized[k] = v
         return SafeExecutionPolicy.evaluate(
             action=action,
             mode=self.mode,
-            context=context,
+            context=sanitized,
             permission_type=permission_type,
         )
 
@@ -348,13 +376,27 @@ class PermissionManager:
             task_id = kwargs.get("task_id") or context.get("task_id") or "test"
             timeout_seconds = kwargs.get("timeout_seconds")
 
+            # Normalize & sanitize context while binding risk and action fingerprint
+            eval_context = SafeExecutionPolicy.sanitize_context(
+                context,
+                action=str(action or ""),
+                extra={"workflow_id": str(workflow_id), "task_id": str(task_id)},
+            )
+            for k, v in context.items():
+                if k not in eval_context and k not in (
+                    "_evaluated_risk",
+                    "_action_fingerprint",
+                ):
+                    eval_context[k] = v
+            action_fp = _action_fingerprint(str(action or ""), eval_context)
+
             # Check execution limits
             if task_id and not self.record_action_execution(task_id):
                 logger.error(f"Action '{action}' blocked: execution limit exceeded")
                 return AwaitableBool(False)
 
-            # Evaluate against Safe Execution Policy
-            decision = self.evaluate_action(action, context, permission_type)
+            # Evaluate against Safe Execution Policy (parameter-aware)
+            decision = self.evaluate_action(action, eval_context, permission_type)
             if not decision.allowed:
                 logger.warning(
                     f"Action '{action}' blocked by policy: {decision.reason}"
@@ -382,35 +424,21 @@ class PermissionManager:
                         pass
                 return AwaitableBool(False)
 
-            # In Safe/Assisted mode, if low risk, allow immediately
+            # In Safe/Assisted/Autonomous mode, if policy does not require approval
             if not decision.requires_approval:
                 logger.debug(
                     f"Action '{action}' allowed (Risk: {decision.risk_level.value})"
                 )
                 return AwaitableBool(True)
 
-            # Check if permission is already granted/approved for this workflow/task
+            # Check if permission is already granted/approved with matching risk & scope
             perm_str = (
                 getattr(permission_type, "value", None) or str(permission_type)
             ).upper()
             wf_id_str = str(workflow_id)
-            for req in self.requests.values():
-                req_wf = str(getattr(req, "workflow_id", ""))
-                req_perm = (
-                    getattr(req.permission_type, "value", None)
-                    or str(req.permission_type)
-                ).upper()
-                if (
-                    req_wf == wf_id_str
-                    or req_wf == "None"
-                    or not req_wf
-                    or wf_id_str == "test"
-                ) and req_perm == perm_str:
-                    status_str = getattr(req.status, "value", str(req.status)).upper()
-                    if status_str in ("GRANTED", "APPROVED"):
-                        return AwaitableBool(True)
+            task_id_str = str(task_id)
+            required_rank = risk_rank(decision.risk_level)
 
-            # Check for duplicate pending requests
             for req in self.requests.values():
                 req_wf = str(getattr(req, "workflow_id", ""))
                 req_task = str(getattr(req, "task_id", ""))
@@ -418,10 +446,67 @@ class PermissionManager:
                     getattr(req.permission_type, "value", None)
                     or str(req.permission_type)
                 ).upper()
+                if not (
+                    (
+                        req_wf == wf_id_str
+                        or req_wf == "None"
+                        or not req_wf
+                        or wf_id_str == "test"
+                    )
+                    and req_perm == perm_str
+                ):
+                    continue
+
+                req_ctx = getattr(req, "context", None) or {}
+                req_fp = (
+                    req_ctx.get("_action_fingerprint")
+                    if isinstance(req_ctx, dict)
+                    else None
+                )
+                status_str = getattr(req.status, "value", str(req.status)).upper()
+
+                # Do not silently override an explicit rejection for this same action/task
+                if status_str == "REJECTED" and (
+                    req_task == task_id_str or (req_fp and req_fp == action_fp)
+                ):
+                    return AwaitableBool(False)
+
+                if status_str in ("GRANTED", "APPROVED"):
+                    req_risk = (
+                        req_ctx.get("_evaluated_risk")
+                        if isinstance(req_ctx, dict) and "_evaluated_risk" in req_ctx
+                        else getattr(req, "risk_level", RiskLevel.LOW)
+                    )
+                    # Monotonicity guard: an earlier lower-risk grant never authorizes a higher-risk action
+                    if risk_rank(req_risk) < required_rank:
+                        continue
+                    # For HIGH/CRITICAL operations, bind grant to matching action/parameter fingerprint
+                    if required_rank >= risk_rank(RiskLevel.HIGH):
+                        if req_fp and req_fp != action_fp:
+                            continue
+                        if not req_fp and decision.risk_level == RiskLevel.CRITICAL:
+                            continue
+                    return AwaitableBool(True)
+
+            # Check for duplicate pending requests (only reuse if fingerprint matches)
+            for req in self.requests.values():
+                req_wf = str(getattr(req, "workflow_id", ""))
+                req_task = str(getattr(req, "task_id", ""))
+                req_perm = (
+                    getattr(req.permission_type, "value", None)
+                    or str(req.permission_type)
+                ).upper()
+                req_ctx = getattr(req, "context", None) or {}
+                req_fp = (
+                    req_ctx.get("_action_fingerprint")
+                    if isinstance(req_ctx, dict)
+                    else None
+                )
                 if (
                     req_wf == wf_id_str
                     and req_task == str(task_id)
                     and req_perm == perm_str
+                    and (not req_fp or req_fp == action_fp)
                     and getattr(req.status, "value", str(req.status)).upper()
                     == "PENDING"
                 ):
@@ -443,12 +528,16 @@ class PermissionManager:
                         timeout_seconds=timeout_seconds,
                     )
 
+            req_context = dict(eval_context)
+            req_context["_evaluated_risk"] = decision.risk_level.value
+            req_context["_action_fingerprint"] = action_fp
+
             req = self.request_permission(
                 workflow_id=workflow_id,
                 task_id=task_id,
                 permission_type=permission_type,
                 reason=f"Action: {action}",
-                context=context,
+                context=req_context,
             )
 
             # If the request is awaitable wrapper, get the underlying request
@@ -632,8 +721,17 @@ class PermissionManager:
                 f"for workflow {workflow_id} (Expires: {expires_at})"
             )
 
-            # Auto-approve based on mode
-            if not PermissionPolicy.requires_approval(permission_type, self.mode):
+            # Auto-approve based on mode, but NEVER auto-approve CRITICAL operations
+            eval_risk = str(
+                (context or {}).get("_evaluated_risk")
+                or SafeExecutionPolicy.classify_risk(
+                    str((context or {}).get("action") or reason or ""), context
+                ).value
+            ).upper()
+            if (
+                eval_risk != RiskLevel.CRITICAL.value
+                and not PermissionPolicy.requires_approval(permission_type, self.mode)
+            ):
                 req.status = PermissionStatus.APPROVED
 
             return make_awaitable(req)
@@ -650,6 +748,18 @@ class PermissionManager:
         if status_str == "REJECTED":
             return False
 
+        req_ctx = getattr(req, "context", None) or {}
+        eval_risk = (
+            req_ctx.get("_evaluated_risk")
+            if isinstance(req_ctx, dict) and "_evaluated_risk" in req_ctx
+            else getattr(
+                getattr(req, "risk_level", None),
+                "value",
+                getattr(req, "risk_level", None),
+            )
+        )
+        is_critical = str(eval_risk or "").upper() == RiskLevel.CRITICAL.value
+
         # Handle shared model
         if hasattr(req, "permission_id"):
             perm_str = getattr(req.permission_type, "value", str(req.permission_type))
@@ -658,14 +768,16 @@ class PermissionManager:
             except ValueError:
                 perm_enum = PermissionType.BROWSER_ACCESS
 
-            if PermissionPolicy.requires_approval(perm_enum, self.mode):
+            if is_critical or PermissionPolicy.requires_approval(perm_enum, self.mode):
                 return getattr(req.status, "value", str(req.status)) == "GRANTED"
 
             req.status = SharedPermissionStatus.GRANTED
             return True
 
         # Handle local model
-        if PermissionPolicy.requires_approval(req.permission_type, self.mode):
+        if is_critical or PermissionPolicy.requires_approval(
+            req.permission_type, self.mode
+        ):
             return req.status == PermissionStatus.APPROVED
 
         req.status = PermissionStatus.APPROVED
@@ -859,45 +971,104 @@ class PermissionManager:
             pending = [req for req in pending if str(req.workflow_id) == wf_id_str]
         return pending
 
-    def enforce_permission(self, permission_type: Any, workflow_id: Any) -> None:
+    def enforce_permission(
+        self,
+        permission_type: Any,
+        workflow_id: Any,
+        *,
+        action: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+        task_id: Optional[Any] = None,
+    ) -> None:
+        from app.core.exceptions import PermissionDeniedException
+
         wf_id_str = str(workflow_id)
         perm_str = getattr(permission_type, "value", str(permission_type))
+
+        decision: Optional[PolicyDecision] = None
+        action_fp: Optional[str] = None
+        if action is not None or context is not None:
+            eff_action = str(action or perm_str)
+            decision = self.evaluate_action(eff_action, context, permission_type)
+            action_fp = _action_fingerprint(eff_action, context)
+            if not decision.allowed:
+                raise PermissionDeniedException(
+                    message=f"Permission '{perm_str}' blocked by policy: {decision.reason}",
+                    details={
+                        "permission_type": perm_str,
+                        "workflow_id": wf_id_str,
+                        "risk_level": decision.risk_level.value,
+                    },
+                )
+            if not decision.requires_approval:
+                return
+
+        required_rank = risk_rank(decision.risk_level) if decision else 0
+        matched_grant = False
 
         for req in self.requests.values():
             if str(req.workflow_id) == wf_id_str and (
                 getattr(req.permission_type, "value", str(req.permission_type))
                 == perm_str
             ):
-                status_str = getattr(req.status, "value", str(req.status))
-                if status_str in ("GRANTED", "APPROVED"):
-                    return
-                elif status_str in ("REJECTED", "PENDING", "EXPIRED"):
-                    try:
-                        perm_enum = PermissionType(perm_str)
-                    except ValueError:
-                        perm_enum = PermissionType.BROWSER_ACCESS
-
-                    requires_app = PermissionPolicy.requires_approval(
-                        perm_enum, self.mode
+                status_str = getattr(req.status, "value", str(req.status)).upper()
+                req_ctx = getattr(req, "context", None) or {}
+                req_fp = (
+                    req_ctx.get("_action_fingerprint")
+                    if isinstance(req_ctx, dict)
+                    else None
+                )
+                req_task = str(getattr(req, "task_id", ""))
+                if status_str == "REJECTED" and (
+                    task_id is None
+                    or req_task == str(task_id)
+                    or (action_fp and req_fp == action_fp)
+                ):
+                    raise PermissionDeniedException(
+                        message=(
+                            f"Permission '{perm_str}' denied "
+                            f"for workflow {workflow_id}."
+                        ),
+                        details={
+                            "permission_type": perm_str,
+                            "workflow_id": wf_id_str,
+                        },
                     )
-                    if (
-                        requires_app
-                        and status_str != "GRANTED"
-                        and status_str != "APPROVED"
-                    ):
-                        from app.core.exceptions import PermissionDeniedException
-
-                        raise PermissionDeniedException(
-                            message=(
-                                f"Permission '{perm_str}' denied "
-                                f"for workflow {workflow_id}."
-                            ),
-                            details={
-                                "permission_type": perm_str,
-                                "workflow_id": wf_id_str,
-                            },
+                if status_str in ("GRANTED", "APPROVED"):
+                    if decision is not None:
+                        req_risk = (
+                            req_ctx.get("_evaluated_risk")
+                            if isinstance(req_ctx, dict)
+                            and "_evaluated_risk" in req_ctx
+                            else getattr(req, "risk_level", RiskLevel.LOW)
                         )
-                    return
+                        if risk_rank(req_risk) < required_rank:
+                            continue
+                        if required_rank >= risk_rank(RiskLevel.HIGH):
+                            if req_fp and action_fp and req_fp != action_fp:
+                                continue
+                            if not req_fp and decision.risk_level == RiskLevel.CRITICAL:
+                                continue
+                    matched_grant = True
+                    break
+
+        if matched_grant:
+            return
+
+        if decision is not None:
+            if decision.requires_approval:
+                raise PermissionDeniedException(
+                    message=(
+                        f"Permission '{perm_str}' requires explicit approval "
+                        f"for workflow {workflow_id} (risk: {decision.risk_level.value})."
+                    ),
+                    details={
+                        "permission_type": perm_str,
+                        "workflow_id": wf_id_str,
+                        "risk_level": decision.risk_level.value,
+                    },
+                )
+            return
 
         try:
             perm_enum = PermissionType(perm_str)
@@ -905,8 +1076,6 @@ class PermissionManager:
             perm_enum = PermissionType.BROWSER_ACCESS
 
         if PermissionPolicy.requires_approval(perm_enum, self.mode):
-            from app.core.exceptions import PermissionDeniedException
-
             raise PermissionDeniedException(
                 message=(f"Permission '{perm_str}' denied for workflow {workflow_id}."),
                 details={
@@ -914,6 +1083,90 @@ class PermissionManager:
                     "workflow_id": wf_id_str,
                 },
             )
+
+    def has_valid_grant_for(
+        self,
+        workflow_id: Any,
+        permission_type: Any,
+        action: str,
+        context: Optional[Dict[str, Any]] = None,
+        task_id: Optional[Any] = None,
+    ) -> tuple[bool, str]:
+        """Synchronously check whether a prior grant authorizes an action without blocking."""
+        eval_ctx = SafeExecutionPolicy.sanitize_context(
+            context,
+            action=str(action or ""),
+            extra={"workflow_id": str(workflow_id), "task_id": str(task_id or "")},
+        )
+        decision = self.evaluate_action(action, eval_ctx, permission_type)
+        if not decision.allowed:
+            return False, decision.reason
+
+        action_fp = _action_fingerprint(str(action or ""), eval_ctx)
+        wf_id_str = str(workflow_id)
+        perm_str = (
+            getattr(permission_type, "value", None) or str(permission_type)
+        ).upper()
+        required_rank = risk_rank(decision.risk_level)
+        matched_grant = False
+        task_bound_mismatch = False
+
+        for req in self.requests.values():
+            req_wf = str(getattr(req, "workflow_id", ""))
+            req_task = str(getattr(req, "task_id", ""))
+            req_perm = (
+                getattr(req.permission_type, "value", None) or str(req.permission_type)
+            ).upper()
+            if not (
+                (req_wf == wf_id_str or req_wf == "None" or not req_wf)
+                and req_perm == perm_str
+            ):
+                continue
+
+            req_ctx = getattr(req, "context", None) or {}
+            req_fp = (
+                req_ctx.get("_action_fingerprint")
+                if isinstance(req_ctx, dict)
+                else None
+            )
+            status_str = getattr(req.status, "value", str(req.status)).upper()
+            if status_str == "REJECTED" and (
+                (task_id is not None and req_task == str(task_id))
+                or (req_fp and req_fp == action_fp)
+            ):
+                return False, f"Explicit rejection exists for '{perm_str}'"
+
+            if status_str in ("GRANTED", "APPROVED"):
+                req_risk = (
+                    req_ctx.get("_evaluated_risk")
+                    if isinstance(req_ctx, dict) and "_evaluated_risk" in req_ctx
+                    else getattr(req, "risk_level", RiskLevel.LOW)
+                )
+                if risk_rank(req_risk) < required_rank:
+                    continue
+                if required_rank >= risk_rank(RiskLevel.HIGH):
+                    if req_fp and req_fp != action_fp:
+                        if task_id is not None and req_task == str(task_id):
+                            task_bound_mismatch = True
+                        continue
+                    if not req_fp and decision.risk_level == RiskLevel.CRITICAL:
+                        continue
+                matched_grant = True
+
+        if matched_grant:
+            return True, "Matching grant verified"
+        if task_bound_mismatch:
+            return (
+                False,
+                f"Prior grant for '{perm_str}' is bound to different action parameters and cannot be reused",
+            )
+        if not decision.requires_approval:
+            return True, "Policy allows operation without prior approval"
+
+        return (
+            False,
+            f"No matching grant for '{perm_str}' at risk '{decision.risk_level.value}'",
+        )
 
     def list_permissions(
         self,

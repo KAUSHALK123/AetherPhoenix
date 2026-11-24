@@ -1,0 +1,28 @@
+metric_name,value,unit,benchmark_or_workload,setting,evidence_file_path,notes
+planning_latency,14.85,ms,Deterministic Goal Parsing & DAG Compilation,Fast regex rule-based engine,backend/tests/performance/test_performance_benchmarks.py:135,Measured across 100 runs on standard prompt templates.
+goal_decomposition_latency,12.18,ms,Goal Decomposition Engine,TaskDecompositionEngine,docs/PERFORMANCE_BENCHMARK_REPORT.md:14,Sub-component of planning time.
+execution_bridge_latency,0.85,ms,ExecutionBridge tool resolution,CapabilityRegistry resolution,docs/PERFORMANCE_BENCHMARK_REPORT.md:15,Internal routing overhead to adapter.
+workflow_startup_latency,2.31,ms,SharedWorkflowState & Orchestrator init,Async pipeline startup,docs/PERFORMANCE_BENCHMARK_REPORT.md:16,Queue startup and state initialization.
+worker_dispatch_latency,0.25,ms/task,WorkerAgent execution loop,In-process adapter dispatch,docs/PERFORMANCE_BENCHMARK_REPORT.md:17,Per-task dispatch loop overhead.
+tool_execution_batch_latency,12.44,ms,ToolRegistry execution,50 tasks batch dispatch,docs/PERFORMANCE_BENCHMARK_REPORT.md:18,Batch execution throughput.
+pptx_generation_latency,124.50,ms,python-pptx document synthesis,5 styled slides creation,docs/PERFORMANCE_BENCHMARK_REPORT.md:19,Real PPTX deliverable compilation time.
+pdf_generation_latency,35.0,ms,ReportLab document synthesis,Multi-page structured PDF,revised_paper/validation_report.md:122,Document generator report generation (<50 ms SLA).
+concurrent_throughput,3891,tasks/s,10 concurrent workflows (500 tasks),Mocked no-op adapters in-process,backend/tests/performance/test_performance_benchmarks.py:310,Measures internal DAG dispatch scheduling overhead only (not physical I/O).
+transient_fault_recovery_rate,100.0,%,25 transient failure injection trials,HealingAgent enabled (K_max=3),backend/tests/reliability/test_success_rate_benchmark.py:150,100% recovery on transient timeouts/missing dirs vs 0% on fail-fast.
+policy_violation_rejection_rate,100.0,%,50 security policy violation attempts,PermissionManager SAFE/AUTONOMOUS,backend/tests/core/test_parameter_aware_permissions.py:1,Blocks destructive commands, restricted URLs, hotkeys, paths.
+overall_fault_recovery_rate,92.86,%,105-task benchmark suite,Weighted across 0-50% fault rates,backend/tests/reliability/results/results.csv:2,Overall self-healing recovery rate across synthetic fault taxonomy with parameter repair.
+task_success_rate_0pct_fault,100.0,%,105 synthetic tasks (0% injected faults),HealingAgent enabled,backend/tests/reliability/results/results.csv:2,Baseline execution success with 0 failures after deterministic permission routing.
+task_success_rate_10pct_fault,96.19,%,105 synthetic tasks (10% injected faults),HealingAgent enabled,backend/tests/reliability/results/results.csv:5,Outperforms retry-only (92.38%) and no-recovery (83.81%).
+task_success_rate_25pct_fault,96.19,%,105 synthetic tasks (25% injected faults),HealingAgent enabled,backend/tests/reliability/results/results.csv:8,Outperforms retry-only (85.71%) and no-recovery (65.71%).
+task_success_rate_50pct_fault,79.05,%,105 synthetic tasks (50% injected faults),HealingAgent enabled,backend/tests/reliability/results/results.csv:11,Outperforms retry-only (58.10%) and no-recovery (43.81%).
+mean_latency_0pct_fault,37.15,ms/task,105 synthetic tasks (0% injected faults),HealingAgent enabled,backend/tests/reliability/results/results.csv:2,Average duration per task under 0% fault injection.
+mean_latency_10pct_fault,37.06,ms/task,105 synthetic tasks (10% injected faults),HealingAgent enabled,backend/tests/reliability/results/results.csv:5,Average duration per task under 10% fault injection.
+mean_latency_25pct_fault,37.14,ms/task,105 synthetic tasks (25% injected faults),HealingAgent enabled,backend/tests/reliability/results/results.csv:8,Average duration per task under 25% fault injection.
+mean_latency_50pct_fault,41.02,ms/task,105 synthetic tasks (50% injected faults),HealingAgent enabled,backend/tests/reliability/results/results.csv:11,Average duration per task under 50% fault injection.
+webarena_success_rate,NOT MEASURED,%,WebArena 812 tasks,Live browser environment,revised_paper/validation_report.md:137,Marked as future work. Not evaluated on WebArena.
+osworld_success_rate,NOT MEASURED,%,OSWorld 369 tasks,Live desktop environment,revised_paper/validation_report.md:137,Marked as future work. Not evaluated on OSWorld.
+visualwebarena_success_rate,NOT MEASURED,%,VisualWebArena 910 tasks,Live multimodal web environment,revised_paper/validation_report.md:137,Marked as future work. Not evaluated on VisualWebArena.
+humaneval_pass_at_1,NOT MEASURED,%,HumanEval 164 coding tasks,Code generation benchmark,None,No coding benchmark harness exists in repository.
+token_cost_per_workflow,0.0005,USD,Instrumented PlanMetadata & ExecutionMetrics telemetry,Gemini/deterministic planning,backend/tests/performance/test_resource_telemetry.py:35,Explicit accounting of prompt/completion tokens and cost.
+memory_rss_overhead_mb,17.69,MB,Process memory resident set size,psutil Process memory info,backend/tests/performance/test_resource_telemetry.py:20,Base memory RSS overhead for planning & execution runtime.
+silent_failure_detection_rate,100.0,%,Structural deliverable validation (corrupted PDF/PPTX/empty containers),Supervisor OutputValidationService,backend/tests/engine/test_structural_validator.py:10,100% detection rate on 0-byte files, invalid ZIP OpenXML parts, missing %PDF- headers/%%EOF trailers.

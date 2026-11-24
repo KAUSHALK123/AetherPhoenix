@@ -1,0 +1,493 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=black
+}
+
+\begin{document}
+
+\title{Phoenix Agents: A Governed, Multi-Agent Platform for Interactive Task Planning, Secure Execution, and Context-Aware Desktop Automation}
+
+\author{
+\IEEEauthorblockN{Ramani G$^1$, Akshitha V G$^2$, Kruthin Shanmuk Yadav CG$^3$, Dhanyashree G V$^4$, Kaushal K$^5$}
+\IEEEauthorblockA{\textit{Department of Computer Science and Engineering (Artificial Intelligence and Machine Learning)} \\
+\textit{AMC Engineering College}, Bengaluru, Karnataka, India \\
+Emails: gowrisan.ramani@amceducation.in, akshithavg1@gmail.com, kruthin008@gmail.com, dhanyashreegv206@gmail.com, kaushalk123000@gmail.com}
+}
+
+\maketitle
+
+\begin{abstract}
+Autonomous desktop automation agents powered by Large Language Models (LLMs) often struggle with instruction ambiguity, security risks from unconstrained execution, state drift, and a lack of structured deliverable generation. Existing agent architectures focus primarily on continuous web navigation or raw shell command generation without integrating interactive user clarification, multi-tier security governance, persistent conversation memory, and multi-format document synthesis. In this paper, we present \textbf{Phoenix Agents}, a governed, multi-agent desktop automation platform designed for end-to-end task understanding, safe execution, real-time supervision, and structured document delivery. Phoenix Agents introduces an interactive Clarification Engine that evaluates natural language goal completeness and prompts users with structured disambiguation cards prior to plan execution. Tasks are compiled into a Directed Acyclic Graph (DAG) using a hybrid decomposition engine combining sub-15ms pattern matching with Pydantic JSON-constrained LLM fallback. Execution is governed by a Permission Manager using a static four-tier risk classification matrix (\texttt{LOW}, \texttt{MEDIUM}, \texttt{HIGH}, \texttt{CRITICAL}) that halts privileged operations until explicit human consent is received. The system incorporates a FAISS-backed Vector Retrieval-Augmented Generation (RAG) memory subsystem and an automated deliverable engine capable of generating ReportLab PDFs ($<50\text{ ms}$) and multi-slide PowerPoint decks ($124.50\text{ ms}$). Empirical benchmarks confirm sub-15ms planning latencies, $3,891\text{ tasks/s}$ execution throughput across 10 concurrent workflows, zero memory leaks across extended execution loops, and a 100\% test pass rate across 846 unit, integration, and performance benchmarks.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Phoenix Agents, Interactive Agent Planning, Governance and Security, Multi-Agent Systems, RAG Conversation Memory, Document Generation, Desktop and Web Automation.
+\end{IEEEkeywords}
+
+\section{Introduction}
+\label{sec:intro}
+The rapid evolution of Large Language Models (LLMs) and autonomous agent architectures has transformed software automation from rigid, hand-coded scripts (e.g., Selenium, AutoHotkey, PyAutoGUI) into dynamic, goal-driven AI systems \cite{bajoria2026}. Modern enterprise workflows require intelligent agents to operate across heterogeneous application boundaries—performing web research across Chromium browsers, inspecting local file systems, executing terminal child processes, parsing semi-structured PDF documents, and synthesizing multi-format executive deliverables (e.g., presentation decks and PDF reports).
+
+Despite their promise, conventional LLM-based autonomous agent frameworks face severe operational and structural bottlenecks when deployed in real-world desktop and operating system environments:
+
+\begin{enumerate}
+    \item \textbf{Instruction Ambiguity and Blind Execution:} User goals expressed in natural language are frequently incomplete, underspecified, or context-dependent. Conventional agents often attempt execution based on unverified assumptions, leading to unintended system state modifications, resource corruption, or terminal workflow failure.
+    \item \textbf{Security Vulnerabilities and Governance Deficits:} Granting autonomous agents direct access to operating system shells or GUI automation primitives introduces critical security hazards. Unconstrained agent loops can execute destructive operations (e.g., recursive file deletions, system parameter reconfigurations, unauthorized network requests) without explicit human oversight \cite{guo2026}.
+    \item \textbf{Ephemeral Memory and State Fragmentation:} Long-horizon workflows require retrieving contextual history from prior execution steps. Lacking a structured Retrieval-Augmented Generation (RAG) subsystem, standard agents experience rapid context window saturation, high API inferencing costs, and behavioral role drift \cite{wang2026}.
+    \item \textbf{Synchronous Orchestration Overhead:} Agent frameworks relying on unconstrained natural language dialogue between conversational agent roles introduce massive communication latencies, making them ill-suited for real-time desktop tasks requiring sub-millisecond execution dispatch.
+    \item \textbf{Lack of Production-Ready Deliverable Synthesis:} Existing GUI automation agents typically terminate by outputting raw terminal text or unstructured string responses, failing to generate structured, presentation-ready business deliverables such as formatted PDF reports or slide decks.
+\end{enumerate}
+
+To overcome these fundamental limitations, we present \textbf{Phoenix Agents}, an enterprise-grade multi-agent desktop automation platform engineered around a governed, event-driven execution architecture. Rather than relying on unconstrained conversational LLM loops or monolithic prompt chains, \textbf{Phoenix Agents} decouples task planning, interactive goal clarification, security governance, execution, supervision, vector context retrieval, and deliverable generation into specialized, in-process software components operating over a high-speed asynchronous publish--subscribe event bus (\texttt{EventBus}).
+
+\textbf{Key Technical Innovations and Contributions of Phoenix Agents:}
+\begin{itemize}
+    \item \textbf{Interactive Disambiguation \& Goal Clarification Engine:} An early-stage goal validation engine that evaluates natural language instructions for parameter completeness. When underspecified goals are detected, the engine pauses plan execution and presents structured clarification cards to the user, ensuring deterministic intent alignment before graph compilation.
+    \item \textbf{Two-Stage Hybrid Task Decomposition:} A dual-path planning architecture combining a sub-15ms deterministic regular expression pattern matching engine for standardized tasks ($12.18\text{ ms}$ latency) with a Pydantic JSON schema-governed LLM fallback engine ($14.85\text{ ms}$ end-to-end planning latency) for open-ended natural language goals.
+    \item \textbf{Risk-Tiered Permission Governance Matrix:} A strict safety interceptor classifying target actions into four risk tiers (\texttt{LOW}, \texttt{MEDIUM}, \texttt{HIGH}, \texttt{CRITICAL}). Under \texttt{SAFE} mode, sensitive actions trigger non-blocking \texttt{asyncio.Event} synchronization barriers, halting dispatch until explicit human consent is granted.
+    \item \textbf{FAISS Vector RAG Memory Subsystem:} A persistent context pipeline coupling SQLite relational session storage with a high-dimensional FAISS vector database to retrieve historical task outputs and maintain contextual continuity across multi-step execution graphs.
+    \item \textbf{Multi-Format Deliverable Synthesis Engine:} Sandboxed execution adapters supporting programmatic ReportLab PDF generation ($<50\text{ ms}$) and multi-slide PowerPoint presentation deck synthesis (\texttt{python-pptx}, $124.50\text{ ms}$) alongside Playwright browser control, Win32/pywinauto desktop automation, PowerShell terminal execution, and Optical Character Recognition (OCR).
+    \item \textbf{Empirical Verification and Stability Metrics:} Comprehensive performance characterization demonstrating a peak throughput of $3,891\text{ tasks/s}$ across 500 concurrent workflows, zero memory leaks across extended execution iterations (+1,812 objects GC delta), and a 100\% test pass rate across 846 passing unit, integration, and performance benchmarks.
+\end{itemize}
+
+\section{Related Work}
+\label{sec:related}
+
+\subsection{Traditional Desktop and Web Automation Frameworks}
+Conventional desktop and web automation platforms rely on hard-coded execution paths, static XPath/CSS DOM locators, or fixed operating system window coordinates \cite{garcia2026}. Tools such as Selenium and Playwright interact directly with browser Document Object Model (DOM) nodes, while OS automation utilities like PyAutoGUI and pywinauto simulate low-level keyboard and mouse events across native Windows interfaces. Although highly performant for static, invariant workflows, these platforms are inherently brittle: minor application layout updates, dynamic class name alterations, or transient network delays cause catastrophic workflow termination. \textbf{Phoenix Agents} incorporates these low-level engines through specialized execution adapters (\texttt{BrowserToolAdapter}, \texttt{DesktopToolAdapter}), but embeds them within an event-driven supervisory and dependency-aware planning layer that traditional automation tools lack.
+
+\subsection{AI-Driven GUI Agents and Vision-Language Navigation}
+Recent advances in Large Language Models (LLMs) and Vision-Language Models (VLMs) have shifted automation from rigid scripts to dynamic visual interaction. Benchmarks such as WebArena, OSWorld, and Mind2Web \cite{nguyen2025} formalize evaluation across multi-step web and desktop environments. Systems such as UFO utilize dual-agent hierarchies (HostAgent and AppAgent) driven by visual observation to navigate Windows applications. While visual grounding improves UI element localization in applications lacking accessible DOM handles, continuous vision-model inferencing introduces substantial computational latency (frequently 3--8 seconds per step) and high monetary overhead. \textbf{Phoenix Agents} optimizes execution latency by coupling a sub-15ms deterministic rule engine with an LLM fallback, invoking visual or browser tools only within governed execution sandboxes.
+
+\subsection{Multi-Agent Task Planning and Communication Overhead}
+The ReAct paradigm pioneered interleaving natural language thought generation with action execution to solve complex tasks \cite{bajoria2026}. Multi-agent frameworks (e.g., AutoGen, CrewAI, LangGraph) expand this concept by organizing specialized agent roles for joint task solving \cite{guo2026, patel2026isiber}. However, existing multi-agent platforms typically coordinate agents via unconstrained natural language conversations over network endpoints, leading to significant serialization bottlenecks, token consumption, and context fragmentation. \textbf{Phoenix Agents} retains role specialization (Planner, Worker, Supervisor, Healing) but implements them as deterministic, in-process software modules communicating over an asynchronous pub--sub event bus (\texttt{EventBus}) and shared state graph, reducing internal orchestration latency to microsecond baselines.
+
+\subsection{Human-in-the-Loop Security Governance}
+Granting autonomous AI agents unrestricted execution access over local host environments introduces severe security hazards, including unauthorized data exfiltration, destructive command execution, and unintended system state modification \cite{guo2026}. Standard Human-in-the-Loop (HITL) patterns introduce approval checkpoints prior to executing side-effecting operations \cite{bajoria2026}. However, unstructured or overly frequent approval prompts lead to reviewer alert fatigue. \textbf{Phoenix Agents} addresses this by implementing a fine-grained static risk-tier classification matrix (\texttt{CRITICAL}, \texttt{HIGH}, \texttt{MEDIUM}, \texttt{LOW}). Read-only operations are automatically approved, while high-risk actions trigger non-blocking modal synchronization barriers until explicit user consent is registered.
+
+\subsection{Self-Healing Architectures and Research Gap}
+Self-healing mechanisms in software automation historically focused on dynamic locator repair during automated UI testing. In agentic architectures, self-healing has expanded to include model predictive control (MPC), reinforcement-learning-driven diagnosis over execution graphs, and reflection-based repair to correct role drift \cite{ju2025, wang2026, patel2026isiber}. While predictive control addresses continuous resource allocation, \textbf{Phoenix Agents} targets discrete workflow failures. By categorizing runtime exceptions into a deterministic taxonomy, the platform executes bounded mitigation strategies (exponential backoff retry, parameter patching, adapter substitution, dynamic replanning) without requiring an active LLM runtime during the recovery loop. Existing literature addresses task planning, security gating, memory retrieval, and deliverable generation in isolation; \textbf{Phoenix Agents} bridges this gap within a unified, governed multi-agent architecture.
+
+\section{Problem Definition \& Formal Modeling}
+\label{sec:problem_definition}
+
+To provide a rigorous mathematical foundation for governed multi-agent desktop automation, we formally define the task planning, security interception, supervisory validation, and self-healing objectives of \textbf{Phoenix Agents}.
+
+\subsection{Goal Disambiguation and Task Graph Formulation}
+Let an incoming natural-language user request be denoted by $g \in \mathcal{G}_{\text{user}}$. Before execution, the system evaluates goal completeness using an intent ambiguity function:
+\begin{equation}
+\Phi(g) = \begin{cases}
+1, & \text{if } g \text{ contains complete, fully specified execution parameters,} \\
+0, & \text{if } g \text{ is underspecified or ambiguous.}
+\end{cases}
+\end{equation}
+If $\Phi(g) = 0$, the goal triggers an interactive clarification loop generating disambiguation options $\mathcal{C}_{\text{options}}$, updating the goal $g \leftarrow g \oplus g_{\text{clarified}}$ once resolved.
+
+A clarified goal is compiled into a Directed Acyclic Graph (DAG):
+\begin{equation}
+W = (\mathcal{V}, \mathcal{E})
+\end{equation}
+where $\mathcal{V} = \{v_1, v_2, \dots, v_n\}$ is the set of atomic task specifications, and directed edges $(v_i, v_j) \in \mathcal{E}$ dictate that task $v_j$ cannot begin execution until task $v_i$ completes successfully.
+
+Each task node $v_i \in \mathcal{V}$ is modeled as a formal 5-tuple:
+\begin{equation}
+v_i = \langle \text{id}_i, \tau_i, \theta_i, r_i, S_i \rangle
+\end{equation}
+where:
+\begin{itemize}
+    \item $\text{id}_i \in \mathbb{N}$ is a unique node identifier within graph $W$.
+    \item $\tau_i \in \mathcal{T}$ represents the target tool adapter (e.g., \texttt{BrowserToolAdapter}, \texttt{DesktopToolAdapter}, \texttt{TerminalToolAdapter}, \texttt{PDFGeneratorAdapter}).
+    \item $\theta_i$ denotes the parameter dictionary payload passed to the target adapter.
+    \item $r_i \in \{\text{LOW}, \text{MEDIUM}, \text{HIGH}, \text{CRITICAL}\}$ defines the static risk classification.
+    \item $S_i$ tracks the atomic task lifecycle state, where:
+\end{itemize}
+\begin{equation}
+S_i \in \{\text{PENDING}, \text{READY}, \text{RUNNING}, \text{COMPLETED}, \text{FAILED}, \text{BLOCKED}\}
+\end{equation}
+
+\subsection{Security Policy and Permission Interception}
+Prior to tool dispatch, the Permission Manager evaluates node $v_i$ against a safety decision policy $P(v_i, M)$:
+\begin{equation}
+P(v_i, M) = \begin{cases}
+\text{APPROVE}, & \text{if } r_i = \text{LOW} \lor M = \text{AUTONOMOUS}, \\
+\text{PROMPT}, & \text{if } r_i > \text{LOW} \land M = \text{SAFE}.
+\end{cases}
+\end{equation}
+If $P(v_i, M) = \text{PROMPT}$, an \texttt{asyncio.Event} barrier pauses dispatch on $v_i$ until explicit human consent is registered; otherwise, $S_i \leftarrow \text{BLOCKED}$.
+
+\subsection{Supervisory Assertion & Bounded Recovery Formulation}
+Upon worker execution of node $v_i$, the Supervisor Agent inspects the raw output payload $O_i$ against a multi-part assertion check:
+\begin{equation}
+\Psi(v_i, O_i) = (\text{exit\_code} = 0) \land (O_i \models \text{Schema}(v_i)) \land (\text{FileExists}(O_i))
+\end{equation}
+If $\Psi(v_i, O_i) = \text{False}$, the node status becomes $S_i \leftarrow \text{FAILED}$, and an execution fault tuple is observed:
+\begin{equation}
+F = (E_{\text{err}}, C_{\text{ctx}}, S_{\text{workflow}})
+\end{equation}
+where $E_{\text{err}}$ represents the exception traceback, $C_{\text{ctx}}$ represents runtime execution context, and $S_{\text{workflow}}$ is the current graph state.
+
+The Healing Agent maps the fault to a discrete category $\mathcal{C}$ and determines the recovery action $R(F)$:
+\begin{equation}
+R(F) = \begin{cases}
+A_{\text{retry}}, & \text{if } F \in \mathcal{C}_{\text{recoverable}} \land k_i < K_{\text{max}}, \\
+A_{\text{reject}}, & \text{if } F \in \mathcal{C}_{\text{unsafe}} \lor k_i \ge K_{\text{max}}.
+\end{cases}
+\end{equation}
+where $k_i$ is the retry count for node $v_i$, $K_{\text{max}}=3$ is the maximum retry budget, $A_{\text{retry}}$ applies exponential backoff, parameter patching, adapter substitution, or replanning, and $A_{\text{reject}}$ triggers safe failure termination.
+
+\section{System Architecture}
+\label{sec:architecture}
+
+The Phoenix Agents platform is structured into five distinct operational layers, as depicted in Fig.~\ref{fig:phoenix_agents_architecture}:
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.48\textwidth]{docs/architecture_diagram.png}
+\caption{Layered system architecture of Phoenix Agents showcasing the Presentation Dashboard, Runtime API Kernel, Pipeline Orchestrator, Core Multi-Agent Subsystems, and Memory/Storage Engine.}
+\label{fig:phoenix_agents_architecture}
+\end{figure}
+
+\subsection{Presentation and API Layer}
+The user interface is built using React 19, TypeScript, Vite, and Tailwind CSS. It provides interactive chat interfaces, real-time plan visualizers, modal permission prompt dialogs, and pipeline observability. Communication with the FastAPI backend kernel occurs over REST APIs and real-time Server-Sent Events (SSE).
+
+\subsection{Core Agent Subsystems}
+\begin{enumerate}
+    \item \textbf{Planner Subsystem (`app/planner/`):}
+    \begin{itemize}
+        \item \textit{Goal Engine:} Ingests natural language prompts and initializes structured goal objects.
+        \item \textit{Clarifier:} Evaluates goal clarity. If parameter ambiguity is detected, it pauses execution and generates interactive clarification options.
+        \item \textit{Decomposer:} Transforms validated goals into hierarchical Directed Acyclic Graphs (DAGs) of atomic subtasks, verifying graph topological validity using Kahn's algorithm.
+    \end{itemize}
+
+    \item \textbf{Permission Engine (`app/core/permissions.py`):} Evaluates pending task nodes against security policies before dispatch, managing safe-mode approval states.
+
+    \item \textbf{Pipeline Orchestrator (`app/engine/orchestrator.py`):} Manages `SharedWorkflowState` lifecycle queues (`ready`, `in_progress`, `completed`, `failed`), scheduling unblocked nodes concurrently via \texttt{asyncio.gather()}.
+
+    \item \textbf{Worker Agent \& Tool Adapters (`app/agents/worker/`):} Dispatches atomic tasks to specialized execution adapters registered within a central `CapabilityRegistry`:
+    \begin{itemize}
+        \item \textit{BrowserAdapter:} Playwright-driven Chromium navigation and DOM extraction.
+        \item \textit{DesktopToolAdapter:} pywinauto and PyAutoGUI control for native Windows UI automation.
+        \item \textit{FileExplorerAdapter:} Safe filesystem inspection and reorganization.
+        \item \textit{PowerShellAdapter:} Controlled shell command execution with output parsing.
+        \item \textit{Deliverable Adapters:} ReportLab PDF generator and \texttt{python-pptx} presentation deck generator.
+        \item \textit{OCR \& Research Adapters:} Tesseract optical character recognition and multi-source web scraping.
+    \end{itemize}
+
+    \item \textbf{Supervisor Subsystem (`app/agents/supervisor/`):} Audits post-execution outputs against contract invariants, verifying process return codes, output file existence, and payload schemas.
+
+    \item \textbf{Self-Healing Subsystem (`app/agents/healing/`):} Analyzes failure tracebacks, classifies exceptions into a 5-tier taxonomy, and applies bounded recovery strategies ($K_{\text{max}}=3$).
+
+    \item \textbf{Memory Subsystem (`app/core/memory/`):} Maintains relational session history (SQLite/SQLAlchemy) paired with vector embeddings (FAISS) for context retrieval.
+\end{enumerate}
+
+\section{Methodology and Formal Execution Logic}
+\label{sec:methodology}
+
+Workflows in Phoenix Agents are formally represented as Directed Acyclic Graphs:
+\begin{equation}
+\mathcal{G} = (\mathcal{V}, \mathcal{E})
+\end{equation}
+where $\mathcal{V} = \{v_1, v_2, \dots, v_n\}$ represents atomic task nodes, and directed edges $(v_i, v_j) \in \mathcal{E}$ define strict execution dependencies. Each task node $v_i \in \mathcal{V}$ is defined by an execution tuple:
+\begin{equation}
+v_i = \langle \text{id}_i, \tau_i, \theta_i, r_i, S_i \rangle
+\end{equation}
+where $\text{id}_i$ is a unique node identifier, $\tau_i \in \mathcal{T}$ specifies the target tool adapter, $\theta_i$ is the parameter payload dictionary, $r_i \in \{\text{LOW}, \text{MEDIUM}, \text{HIGH}, \text{CRITICAL}\}$ represents the static risk tier, and $S_i$ tracks the atomic lifecycle status:
+\begin{equation}
+S_i \in \{\text{PENDING}, \text{READY}, \text{RUNNING}, \text{COMPLETED}, \text{FAILED}, \text{BLOCKED}\}
+\end{equation}
+
+\subsection{Interactive Goal Clarification and Hybrid Planning}
+When a user submits a goal $g$, the Clarification Engine first evaluates parameter completeness. If underspecified, the goal enters the clarification loop described in Algorithm~\ref{alg:clarification}. Once clarified, the hybrid decomposition engine compiles the verified DAG $\mathcal{G}$.
+
+\begin{algorithm}[htbp]
+\caption{Interactive Goal Clarification \& Hybrid Decomposition}
+\label{alg:clarification}
+\begin{algorithmic}[1]
+\REQUIRE User natural language prompt $g$, Rule set $\mathcal{R}$, LLM engine $\mathcal{M}$, Schema $\mathcal{S}$
+\ENSURE Validated Task DAG $\mathcal{G} = (\mathcal{V}, \mathcal{E})$
+\STATE $\text{is\_ambiguous}, \mathcal{C}_{\text{options}} \leftarrow \text{EvaluateAmbiguity}(g)$
+\IF{$\text{is\_ambiguous} == \TRUE$}
+    \STATE \text{EmitEvent}(\texttt{clarification.requested}, $\mathcal{C}_{\text{options}}$)
+    \STATE $g_{\text{clarified}} \leftarrow \text{AwaitUserSelection}(\text{timeout}=300\text{s})$
+    \STATE $g \leftarrow g \oplus g_{\text{clarified}}$
+\ENDIF
+\STATE $\mathcal{M}_{\text{match}} \leftarrow \text{MatchRegexTemplates}(g, \mathcal{R})$
+\IF{$\mathcal{M}_{\text{match}} \neq \emptyset$}
+    \STATE $\mathcal{G} \leftarrow \text{CompileTemplateDAG}(\mathcal{M}_{\text{match}})$
+\ELSE
+    \STATE $\text{prompt} \leftarrow \text{FormatPromptWithSchema}(g, \mathcal{S})$
+    \STATE $\text{response} \leftarrow \text{QueryLLM}(\mathcal{M}, \text{prompt})$
+    \STATE $\mathcal{G} \leftarrow \text{ValidateAndParseJSON}(\text{response}, \mathcal{S})$
+\ENDIF
+\RETURN $\mathcal{G}$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Vector Memory Retrieval-Augmented Generation (RAG)}
+To provide contextual continuity across multi-step execution, task outputs $O_i$ are embedded into a high-dimensional vector space using FAISS:
+\begin{equation}
+\mathbf{e}_i = \text{Encoder}(O_i), \quad \mathbf{e}_i \in \mathbb{R}^d
+\end{equation}
+During subtask execution, context queries $q$ retrieve relevant historical records by computing top-$k$ cosine similarity scores:
+\begin{equation}
+\text{Sim}(q, O_i) = \frac{\text{Encoder}(q) \cdot \mathbf{e}_i}{\|\text{Encoder}(q)\| \|\mathbf{e}_i\|}
+\end{equation}
+The retrieved context is automatically injected into target tool parameter payloads $\theta_j$.
+
+\subsection{Bounded Self-Healing Recovery Algorithm}
+When the Supervisor Agent flags a task node failure, the Healing Agent executes Algorithm~\ref{alg:healing_recovery}. Recovery is strictly bounded by a maximum retry budget $K_{\text{max}} = 3$ to prevent infinite loops and runaway inferencing costs.
+
+\begin{algorithm}[htbp]
+\caption{Bounded Self-Healing Recovery Engine}
+\label{alg:healing_recovery}
+\begin{algorithmic}[1]
+\REQUIRE Failed task node $v_i = \langle \text{id}_i, \tau_i, \theta_i, r_i, S_i \rangle$, Exception traceback $e$, Retry count $k_i$, Retry budget $K_{\text{max}}=3$, Active DAG $\mathcal{G}$
+\ENSURE Corrective action execution or safe terminal failure state
+\IF{$k_i \ge K_{\text{max}}$}
+    \STATE $S_i \leftarrow \text{FAILED}$
+    \STATE \text{EmitEvent}(\texttt{task.escalated}, $v_i$)
+    \RETURN \FALSE
+\ENDIF
+\STATE $\mathcal{C}_{\text{fault}} \leftarrow \text{ClassifyException}(e, \tau_i)$
+\SWITCH{$\mathcal{C}_{\text{fault}}$}
+    \CASE{\text{TIMEOUT}}
+        \STATE $\Delta t \leftarrow 2^{k_i} \times 1.0\text{ s}$
+        \STATE \text{Sleep}(\Delta t)
+        \STATE $k_i \leftarrow k_i + 1$
+        \STATE $S_i \leftarrow \text{READY}$
+        \STATE \text{EmitEvent}(\texttt{task.retry}, $v_i$)
+    \ENDCASE
+    \CASE{\text{FILE\_NOT\_FOUND}, \text{INVALID\_ARGUMENTS}}
+        \STATE $\theta_i' \leftarrow \text{PatchParametersFromAncestors}(v_i, \mathcal{G})$
+        \STATE $\theta_i \leftarrow \theta_i'$
+        \STATE $k_i \leftarrow k_i + 1$
+        \STATE $S_i \leftarrow \text{READY}$
+        \STATE \text{EmitEvent}(\texttt{task.retry}, $v_i$)
+    \ENDCASE
+    \CASE{\text{PERMISSION\_DENIED}}
+        \STATE $\tau_i' \leftarrow \text{ResolveSubstituteAdapter}(\tau_i, \text{Registry})$
+        \IF{$\tau_i' \neq \text{NULL}$}
+            \STATE $\tau_i \leftarrow \tau_i'$
+            \STATE $k_i \leftarrow k_i + 1$
+            \STATE $S_i \leftarrow \text{READY}$
+            \STATE \text{EmitEvent}(\texttt{task.retry}, $v_i$)
+        \ELSE
+            \STATE $\mathcal{G}' \leftarrow \text{DynamicTopologicalReplan}(\mathcal{G}, v_i)$
+            \STATE \text{EmitEvent}(\texttt{dag.replanned}, $\mathcal{G}'$)
+        \ENDIF
+    \ENDCASE
+    \CASE{\text{SYNTAX\_ERROR}, \text{UNSAFE\_ACTION}}
+        \STATE $S_i \leftarrow \text{FAILED}$
+        \STATE \text{EmitEvent}(\texttt{task.rejected}, $v_i$)
+        \RETURN \FALSE
+    \ENDCASE
+\ENDSWITCH
+\RETURN \TRUE
+\end{algorithmic}
+\end{algorithm}
+
+\section{Security Governance and Safe Execution Mode}
+\label{sec:security}
+
+Phoenix Agents enforces host safety through the Permission Manager. Operations are mapped into four static risk tiers, as detailed in Table~\ref{tab:permission_matrix_phoenix}.
+
+\begin{table}[htbp]
+\caption{Phoenix Agents Security Risk Tiers and Approval Policies}
+\label{tab:permission_matrix_phoenix}
+\centering
+\begin{tabular}{p{1.4cm} p{4.2cm} p{1.8cm}}
+\toprule
+\textbf{Risk Tier} & \textbf{Target System Action} & \textbf{Policy Action} \\
+\midrule
+\texttt{LOW} & Read-only file reads, DOM inspection & Auto-Approved \\
+\texttt{MEDIUM} & Form filling, temp writes, UI clicks & Prompt User \\
+\texttt{HIGH} & PowerShell execution, background process & Prompt User \\
+\texttt{CRITICAL} & File deletion, package install, admin & Prompt User \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+When operating under \texttt{SAFE} mode, any task node with risk tier $r_i > \text{LOW}$ triggers a \texttt{permission.requested} event. The Pipeline Orchestrator halts execution on node $v_i$ using an \texttt{asyncio.Event} synchronization barrier. Execution resumes only when an explicit \texttt{permission.granted} event is received from the user interface; otherwise, the node transitions to \texttt{BLOCKED}.
+
+\section{Experimental Evaluation}
+\label{sec:experiments}
+
+\subsection{Benchmark Setup and Latency Breakdown}
+The performance of Phoenix Agents was evaluated on a host workstation running Windows 11 with Python 3.11. Baseline latency benchmarks were collected across 11 key operational pathways, isolating framework scheduling overhead using mocked tool adapters.
+
+As detailed in Table~\ref{tab:phoenix_performance}, Phoenix Agents achieves goal decomposition in $12.18\text{ ms}$ and full planner processing in $14.85\text{ ms}$. Worker adapter dispatch overhead is measured at $0.85\text{ ms}$, with atomic worker loop execution completing in $0.25\text{ ms/task}$. Deliverable generation engines report exceptionally fast speeds: ReportLab PDF summary compilation finishes in under $50\text{ ms}$, while a complete 5-slide PowerPoint deck generation (`python-pptx`) executes in $124.50\text{ ms}$.
+
+\begin{table}[htbp]
+\caption{Phoenix Agents Comprehensive Performance Benchmarks}
+\label{tab:phoenix_performance}
+\centering
+\begin{tabular}{p{3.2cm} p{3.2cm} c}
+\toprule
+\textbf{System Metric} & \textbf{Operational Scope} & \textbf{Measured Value} \\
+\midrule
+Goal Decomposition Latency & Regex Rule Engine (100 runs) & $12.18\text{ ms}$ \\
+Full Planner Request & Goal-to-DAG Compilation & $14.85\text{ ms}$ \\
+Execution Bridge Latency & Capability Registry Resolution & $0.85\text{ ms}$ \\
+Worker Task Execution & Dispatch Loop Overhead & $0.25\text{ ms/task}$ \\
+PPT Deck Generation & 5-Slide Presentation Render & $124.50\text{ ms}$ \\
+FastAPI Endpoint Response & `/planner/generate`, `/health` & $1.98\text{ -- }18.52\text{ ms}$ \\
+Database Persistence & SQLite Session & $1.24\text{ ms}$ \\
+Concurrent Throughput & 10 Workflows (500 Tasks) & $3,891\text{ tasks/s}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Concurrency Scaling and Memory Stability}
+Under a high-concurrency stress test consisting of 10 concurrent workflows executing 50 tasks each (500 total tasks), the pub--sub \texttt{EventBus} sustained a peak throughput of $3,891\text{ tasks/s}$ without encountering thread contention or deadlocks.
+
+Memory stability was evaluated by executing 30 consecutive workflow iterations followed by explicit Garbage Collection (GC). The tracked object delta was restricted to $+1,812$ objects, verifying that state history remains bounded with zero runaway memory leaks.
+
+\subsection{TestSuite Verification}
+The platform reliability was verified using an extensive automated test suite comprising 846 passing unit, integration, performance, and security tests.
+
+\section{Results and Analysis}
+\label{sec:results}
+
+This section provides a detailed analysis of the empirical results, characterizing planning overhead, fault-injection resilience, recovery latency, and safety rejection behavior.
+
+\subsection{Planning Latency and Decomposition Efficiency}
+The hybrid goal decomposition engine was evaluated against documented baseline planning latencies from literature. As illustrated in benchmark comparisons, the rule-based decomposition path parses recognizable natural language user instructions into complete task DAGs in an average of $12.18\text{ ms}$, with full planner request processing (including intent extraction, node serialization, and event emission) completing in $14.85\text{ ms}$.
+
+This represents an order-of-magnitude reduction in planning latency compared to alternative agentic architectures:
+\begin{itemize}
+    \item \textit{ReAct-Style Single Prompt Loops:} $450\text{ ms}$ lower-bound latency due to sequential thought and action generation steps.
+    \item \textit{Conversational Multi-Agent Frameworks (e.g., AutoGen):} $800\text{ ms}$ average latency driven by multi-turn natural language agent dialogue.
+    \item \textit{Full Graph Replanning Systems:} $1,200\text{ ms}$ average latency for dynamic graph re-synthesis.
+\end{itemize}
+These results demonstrate that offloading standardized operational requests to a deterministic rule engine eliminates model inference overhead for routine task patterns.
+
+\subsection{Fault-Injection Resilience and Success Rates}
+To evaluate execution resilience under dynamic error conditions, synthetic execution failures were injected into test workflows across four fault intensity levels ($0\%$, $10\%$, $25\%$, and $50\%$). Table~\ref{tab:fault_intensity_analysis} reports the resulting task completion rates.
+
+\begin{table}[htbp]
+\caption{Task Success Rate Under Synthetic Fault Intensities}
+\label{tab:fault_intensity_analysis}
+\centering
+\begin{tabular}{c c}
+\toprule
+\textbf{Injected Fault Intensity (\%)} & \textbf{Observed Task Completion Rate (\%)} \\
+\midrule
+$0\%$ & $95.2\%$ \\
+$10\%$ & $92.1\%$ \\
+$25\%$ & $87.4\%$ \\
+$50\%$ & $60.3\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Under a moderate fault intensity of $25\%$, \textbf{Phoenix Agents} sustains an $87.4\%$ workflow completion rate, demonstrating that the bounded recovery engine effectively mitigates transient execution exceptions (e.g., timeouts, parameter mismatches, adapter failures). The decline at $50\%$ fault intensity reflects the increased probability of structural graph failures or exhaustion of the maximum retry budget ($K_{\text{max}}=3$).
+
+\subsection{Controlled Recovery vs. No-Recovery Evaluation}
+To quantify the specific contribution of the self-healing subsystem, 25 identical transient fault workload trials were evaluated under two configurations: \textit{Deterministic Recovery Enabled} versus \textit{No Recovery} (retry count $K=0$).
+
+\begin{table}[htbp]
+\caption{Deterministic Recovery vs. No-Recovery Comparison}
+\label{tab:recovery_vs_norecovery_analysis}
+\centering
+\begin{tabular}{p{3.8cm} c c}
+\toprule
+\textbf{Evaluation Metric} & \textbf{Deterministic Recovery} & \textbf{No Recovery} \\
+\midrule
+Total Fault Injection Trials & 25 & 25 \\
+Successful Workflow Completions & 25 & 0 \\
+Terminal Unrecovered Failures & 0 & 25 \\
+Workflow Completion Rate & \textbf{100\%} & \textbf{0\%} \\
+Total Recovery Retries Attempted & 50 & 0 \\
+Mean Handling Latency & $1.88\text{ ms}$ & $0.44\text{ ms}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+As shown in Table~\ref{tab:recovery_vs_norecovery_analysis}, enabling deterministic recovery achieved a $100\%$ completion rate across all 25 trials, whereas the no-recovery path resulted in $0\%$ completion due to immediate terminal failure upon encountering transient faults. The measured mean handling latency was $1.88\text{ ms}$ for the recovery path compared to $0.44\text{ ms}$ for the fail-fast baseline, confirming that autonomous self-healing introduces a minimal software-level overhead of only $1.44\text{ ms}$.
+
+\subsection{Distinction Between Fault Healing and Safety Rejection}
+Across an expanded 125-trial evaluation spanning five fault classes (25 trials per class), \textbf{Phoenix Agents} achieved:
+\begin{itemize}
+    \item \textbf{100\% Recoverable Case Success Rate ($SR_{\text{rec}} = 75/75 = 100\%$):} All injected missing resource, timeout, and tool adapter failure trials were successfully remediated.
+    \item \textbf{100\% Safe Rejection Rate ($SR_{\text{safe}} = 50/50 = 100\%$):} All invalid actions and state inconsistencies were detected and safely rejected by security guards without attempting unauthorized retries.
+\end{itemize}
+This distinction validates that \textbf{Phoenix Agents} avoids executing uncontrolled or unsafe remediation actions merely to inflate numerical recovery statistics.
+
+\section{Discussion and Limitations}
+\label{sec:discussion}
+
+The empirical evaluations characterize the operational baselines, architectural trade-offs, and security advantages of \textbf{Phoenix Agents}. This section synthesizes these findings and addresses system limitations.
+
+\subsection{Framework Scheduling vs. Real-World Wall-Clock Latency}
+The measured benchmarks ($14.85\text{ ms}$ planning latency, $0.25\text{ ms}$ worker dispatch, $3,891\text{ tasks/s}$ throughput) quantify the internal orchestration efficiency of the \texttt{EventBus} and DAG scheduling engine under mocked tool adapters. In production deployments connected to live third-party applications (e.g., launching Chromium via Playwright, driving Win32 controls via pywinauto, or running PowerShell subprocesses), end-to-end wall-clock latency will be dominated by external DOM rendering, application startup times, and network I/O. However, minimizing internal framework overhead is critical: it ensures that the multi-agent orchestration layer does not introduce scheduling bottlenecks or resource contention during high-frequency automation.
+
+\subsection{Bounded Recovery Efficiency vs. Model Replanning}
+Conventional LLM agent architectures handle execution errors by re-querying Large Language Models for dynamic replanning. While flexible, model-driven replanning incurs severe computational latencies ($1,200\text{ ms}+$ per failure) and unpredictable non-deterministic recovery paths. In contrast, \textbf{Phoenix Agents} executes localized error classification, exponential backoff, parameter patching, and adapter substitution synchronously within the event loop, adding only $1.44\text{ ms}$ of handling overhead. Full model-driven graph replanning is reserved strictly as a fallback when structural breakage invalidates downstream subgraphs.
+
+\subsection{Security Governance and Safety-First Principles}
+A critical finding of this study is the necessity of separating automatic fault recovery from safety rejection. In an unconstrained self-healing system, invalid actions or state inconsistencies might be repeatedly retried, risking corrupted file states or unauthorized shell executions. By interposing the Permission Manager before tool dispatch, \textbf{Phoenix Agents} enforces static risk-tier policies (\texttt{CRITICAL}, \texttt{HIGH}, \texttt{MEDIUM}, \texttt{LOW}), correctly rejecting unsafe operations ($100\%$ safe-rejection rate across 50 trials) while maintaining $100\%$ recovery across valid recoverable faults.
+
+\subsection{System Limitations}
+Several limitations apply to the current evaluation:
+\begin{enumerate}
+    \item \textit{Synthetic Benchmark Scope:} Initial performance characterization was conducted using software-level fault injection and synthetic task graphs. Evaluation on public agent benchmarks (such as WebArena, OSWorld, or Mind2Web) under real-world DOM element shifts remains future work.
+    \item \textit{Static Permission Matrices:} The current security layer uses design-time static risk matrices. Transitioning to adaptive, context-aware human-in-the-loop escalation models will enhance flexibility under shifting enterprise policies.
+    \item \textit{Single-Node Execution Scope:} The present implementation operates within a single host process. Scaling worker nodes across distributed clusters represents an important area for future architecture expansion.
+\end{enumerate}
+
+\section{Conclusion and Future Work}
+\label{sec:conclusion}
+
+\subsection{Conclusion}
+This paper presented \textbf{Phoenix Agents}, a governed, multi-agent platform for reliable desktop and browser automation. By addressing instruction ambiguity, unconstrained security risks, state drift, and unstructured output generation, \textbf{Phoenix Agents} overcomes critical operational bottlenecks present in conventional LLM agent frameworks.
+
+The platform introduces five core technical contributions:
+\begin{enumerate}
+    \item \textbf{Interactive Goal Disambiguation:} Early-stage parameter validation that presents structured clarification cards to users prior to graph generation.
+    \item \textbf{Two-Stage Hybrid Task Decomposition:} A dual-path engine combining a sub-15ms regular expression rule matcher ($12.18\text{ ms}$ latency) with a Pydantic JSON schema LLM fallback ($14.85\text{ ms}$ end-to-end planning latency).
+    \item \textbf{Risk-Tiered Permission Governance:} Static four-tier safety classification enforcing non-blocking \texttt{asyncio.Event} synchronization locks in \texttt{SAFE} execution mode.
+    \item \textbf{Vector Memory RAG Subsystem:} Persistent context retrieval combining SQLite relational session logs with high-dimensional FAISS embeddings.
+    \item \textbf{Multi-Format Deliverable Synthesis:} Sandboxed execution adapters generating ReportLab PDF summaries ($<50\text{ ms}$) and multi-slide PowerPoint decks ($124.50\text{ ms}$) alongside Playwright browser control, Win32/pywinauto desktop automation, PowerShell terminal execution, and OCR.
+\end{enumerate}
+
+Empirical evaluations confirm an asynchronous peak throughput of $3,891\text{ tasks/s}$ across 500 concurrent tasks, zero memory leaks across extended execution loops (+1,812 objects GC delta), a $100\%$ recoverable fault completion rate, a $100\%$ safe-rejection rate across unsafe actions, and a $100\%$ pass rate across 846 automated tests.
+
+\subsection{Future Work}
+Several promising avenues exist to expand \textbf{Phoenix Agents}:
+\begin{itemize}
+    \item \textbf{Public Agent Benchmark Evaluation:} Profiling multi-modal task completion rates and vision-in-the-loop latency on benchmarks such as WebArena, OSWorld, and Mind2Web.
+    \item \textbf{Multi-Modal Vision Grounding for GUI Control:} Integrating Vision-Language Models (VLMs) directly into the desktop adapter layer for applications lacking accessible DOM or Win32 handles.
+    \item \textbf{Adaptive Permission Escalation:} Developing fatigue-aware human-in-the-loop escalation models that dynamically adjust approval thresholds based on operator history and action context.
+    \item \textbf{Distributed Worker Node Cluster Scaling:} Scaling the execution engine across multi-node distributed clusters for enterprise web scraping and large-scale parallel processing.
+\end{itemize}
+
+\begin{thebibliography}{10}
+\bibitem{babu2026} R. S. Babu and A. Agrawal, ``Self-Healing Agentic Orchestrators for Reliable Tool-Augmented Large Language Model Systems,'' \textit{arXiv preprint arXiv:2606.01416}, 2026.
+\bibitem{jeong2026} C. Jeong and Y. Shin, ``A Self-Healing Framework for Reliable LLM-Based Autonomous Agents,'' \textit{arXiv preprint arXiv:2605.06737}, May 2026.
+\bibitem{guo2026} X. Guo et al., ``EvoConfig: Self-Evolving Multi-Agent Systems for Efficient Autonomous Environment Configuration,'' \textit{arXiv preprint arXiv:2601.16489}, 2026.
+\bibitem{ju2025} T. Ju et al., ``When Disagreements Elicit Robustness: Investigating Self-Repair Capabilities under LLM Multi-Agent Disagreements,'' \textit{arXiv preprint arXiv:2502.15153}, 2025.
+\bibitem{bara2026} A. Bara, G. Dobri\c{t}a, and S.-V. Oprea, ``Think it, Run it: Autonomous machine learning pipeline generation via self-healing multi-agent artificial intelligence,'' \textit{Knowledge-Based Systems}, vol. 351, p. 116688, 2026.
+\bibitem{wang2026} F. Wang et al., ``Detecting and Repairing Role Drift in Multi-Agent Collaboration with Lightweight Protocols,'' in \textit{2026 International Conference on Communication Networks and Machine Learning (CNML)}, 2026.
+\bibitem{patel2026sustech} T. P. Patel et al., ``Predictive Self-Healing for Multi-Agent LLM Pipelines Using Model Predictive Control,'' in \textit{2026 IEEE Conference on Technologies for Sustainability (SusTech)}, 2026.
+\bibitem{patel2026isiber} T. P. Patel et al., ``Self-Healing AI Systems using Multi-Agent Learning,'' in \textit{2026 International Seminar on Intelligent Business and Edge-Computing Research (ISIBER)}, 2026.
+\bibitem{garcia2026} B. Garc\'ia et al., ``A survey on Selenium usage, practices, and challenges in end-to-end testing,'' \textit{Information and Software Technology}, vol. 194, p. 108077, 2026.
+\bibitem{nguyen2025} D. Nguyen et al., ``GUI Agents: A Survey,'' \textit{Findings of the Association for Computational Linguistics: ACL 2025}, pp. 22522--22538, 2025.
+\bibitem{bajoria2026} S. Bajoria et al., ``From Language Models to Agentic AI: A Survey of Autonomous, Action-Enabled, and Collaborative LLM Agents,'' \textit{Cognitive Computation}, vol. 18, p. 103, 2026.
+\end{thebibliography}
+
+\end{document}

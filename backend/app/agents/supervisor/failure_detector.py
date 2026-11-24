@@ -1,15 +1,16 @@
 import logging
 import os
+import re
 from typing import Any, Dict, List, Optional
 
-from shared.contracts.artifact import Artifact
+from shared.contracts.artifact import Artifact, ArtifactType
 from shared.contracts.execution import (
     ExecutionResult,
     FailureType,
     TaskError,
     TaskFailureReport,
 )
-from shared.contracts.task import Task, TaskStatus
+from shared.contracts.task import Task, TaskCategory, TaskStatus, TaskType
 from shared.contracts.workflow import SharedWorkflowState
 
 from app.core.config import get_config
@@ -330,31 +331,168 @@ class FailureDetectorService:
 
     def _is_output_missing(self, task: Task, result: ExecutionResult) -> bool:
         """Validates presence of requested outputs or matching artifacts."""
+        if getattr(task, "task_type", None) == TaskType.PHASE or (
+            not task.required_tool and result.success
+        ):
+            return False
+
         if not task.expected_output:
             return False
 
         expected = task.expected_output.strip()
+        expected_lower = expected.lower()
+
+        # Extract file extension from expected if present, e.g. "Presentation deck (.pptx)" -> ".pptx"
+        ext_match = re.search(r"\.([a-zA-Z0-9]+)", expected)
+        expected_ext = f".{ext_match.group(1).lower()}" if ext_match else None
 
         # Check physical artifacts list first
         for artifact in result.artifacts:
-            if expected == artifact.name or expected in artifact.filepath:
+            art_filepath = artifact.filepath or ""
+            art_name = artifact.name or ""
+            filename = os.path.basename(art_filepath)
+
+            # Direct and substring matches
+            if expected == art_name or expected in art_filepath:
                 return False
+            if (
+                expected_lower in art_name.lower()
+                or expected_lower in art_filepath.lower()
+            ):
+                return False
+
             # Check filename base
-            filename = os.path.basename(artifact.filepath)
             if (
                 expected == filename
                 or os.path.splitext(expected)[0] == os.path.splitext(filename)[0]
             ):
                 return False
 
+            # Extension matching (e.g. (.pptx) matches presentation.pptx)
+            art_ext = os.path.splitext(filename)[1].lower()
+            if expected_ext and art_ext == expected_ext:
+                return False
+
+            # Semantic format matching
+            if "ppt" in expected_lower and (
+                art_ext == ".pptx"
+                or getattr(artifact, "artifact_type", None) == ArtifactType.PPT
+            ):
+                return False
+            if "pdf" in expected_lower and (
+                art_ext == ".pdf"
+                or getattr(artifact, "artifact_type", None) == ArtifactType.PDF
+            ):
+                return False
+
+            # Check if artifact base stem is in expected
+            art_stem = os.path.splitext(filename)[0].lower()
+            if art_stem and (art_stem in expected_lower or expected_lower in art_stem):
+                return False
+
         # Check raw output dict
         if isinstance(result.output, dict):
             if expected in result.output:
                 return False
+            # Check common output file path keys
+            for key in (
+                "filepath",
+                "output_path",
+                "artifact_location",
+                "presentation",
+                "file_path",
+            ):
+                val = result.output.get(key)
+                if val and isinstance(val, str) and os.path.exists(val):
+                    val_ext = os.path.splitext(val)[1].lower()
+                    if expected_ext and val_ext == expected_ext:
+                        return False
+                    if "ppt" in expected_lower and val_ext == ".pptx":
+                        return False
+                    if "pdf" in expected_lower and val_ext == ".pdf":
+                        return False
+
             for val in result.output.values():
                 if isinstance(val, str) and expected.lower() in val.lower():
                     return False
                 if str(val) == expected:
+                    return False
+
+            # Semantic match for File System inspection results
+            if (
+                task.required_tool in ("file_explorer", "file_manager_tool")
+                or getattr(task, "category", None) == TaskCategory.FILE_SYSTEM
+            ):
+                if any(
+                    kw in expected_lower
+                    for kw in (
+                        "folder",
+                        "file",
+                        "list",
+                        "directory",
+                        "inspect",
+                        "check",
+                    )
+                ):
+                    has_items = "items" in result.output or (
+                        isinstance(result.output.get("metadata"), dict)
+                        and "items" in result.output["metadata"]
+                    )
+                    if has_items or result.output.get("action") == "list_files":
+                        return False
+
+            # Semantic match for Web Research results
+            if (
+                task.required_tool in ("web_research", "web_research_tool")
+                or getattr(task, "category", None) == TaskCategory.WEB_RESEARCH
+            ):
+                if any(
+                    k in result.output
+                    for k in (
+                        "summary",
+                        "research_summary",
+                        "sources",
+                        "key_findings",
+                        "notes",
+                        "raw topic notes",
+                    )
+                ):
+                    return False
+                if any(
+                    kw in expected_lower
+                    for kw in (
+                        "note",
+                        "research",
+                        "summary",
+                        "topic",
+                        "findings",
+                        "source",
+                        "claims",
+                    )
+                ):
+                    return False
+
+            # Semantic match for Terminal / Shell command execution results
+            if getattr(task, "category", None) in (
+                TaskCategory.TERMINAL,
+                TaskCategory.POWERSHELL,
+            ) or task.required_tool in ("terminal_tool", "powershell_tool"):
+                if "stdout" in result.output:
+                    return False
+
+        # Task category compatibility check: if task succeeded and produced artifacts matching category
+        if result.success and result.artifacts:
+            if getattr(task, "category", None) == TaskCategory.PPT_GENERATION:
+                if any(
+                    os.path.splitext(a.filepath)[1].lower() == ".pptx"
+                    for a in result.artifacts
+                ):
+                    return False
+            elif getattr(task, "category", None) == TaskCategory.PDF_GENERATION:
+                if any(
+                    os.path.splitext(a.filepath)[1].lower() == ".pdf"
+                    for a in result.artifacts
+                ):
                     return False
 
         return True

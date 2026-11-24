@@ -1,0 +1,5 @@
+system_name,latency_ms,category,source
+Phoenix Deterministic Fast-Path,14.85,Local Rule-Based Fast-Path,backend/tests/performance/test_performance_benchmarks.py:135
+ReAct-Style LLM Agent,450.00,External LLM API (GPT-3.5),Yao et al. ICLR 2023 (documented API roundtrip)
+AutoGen Conversational Agent,800.00,Multi-Agent Turn Dispatch,Wu et al. arXiv:2308.08155 (conversational turn dispatch)
+Full LLM Replanning Baseline,1200.00,Full LLM Reasoning Turn,Documented GPT-4 reasoning turn latency

@@ -1,0 +1,384 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=black
+}
+
+\begin{document}
+
+\title{Supplementary Material for\\Phoenix: An Event-Driven Multi-Agent Framework for Reliable Desktop and Browser Automation}
+
+\author{
+\IEEEauthorblockN{Ramani G$^1$, Akshitha V G$^2$, Kruthin Shanmuk Yadav CG$^3$, Dhanyashree G V$^4$, Kaushal K$^5$}
+\IEEEauthorblockA{\textit{Department of Computer Science and Engineering (AI \& ML)} \\
+\textit{AMC Engineering College}, Bengaluru, Karnataka, India \\
+Emails: gowrisan.ramani@amceducation.in, akshithavg1@gmail.com, kruthin008@gmail.com, dhanyashreegv206@gmail.com, kaushalk123000@gmail.com}
+}
+
+\maketitle
+
+\begin{abstract}
+This supplementary document provides technical, architectural, formal mathematical, and reproducibility details supporting the main manuscript ``Phoenix: An Event-Driven Multi-Agent Framework for Reliable Desktop and Browser Automation.'' It expands upon component interactions, Directed Acyclic Graph (DAG) state resolution algorithms, static risk-tier permission gating, supervisory output auditing, failure recovery mechanisms, event payload mappings, and experimental setup parameters without repeating the high-level manuscript content or altering reported empirical values.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Desktop Automation, Multi-Agent Systems, Task Planning, Workflow Orchestration, Permission Management, Error Recovery, Event-Driven Architecture, Reproducibility.
+\end{IEEEkeywords}
+
+\section{System Component Details}
+\label{sec:components}
+Phoenix coordinates multi-step desktop and browser tasks through eight specialized functional components communicating over an asynchronous, in-process event bus (\texttt{EventBus}). The operational responsibilities and system interactions of each component are detailed below:
+
+\begin{itemize}
+    \item \textbf{Planner Agent:} Parses high-level natural language user goals into structured dependency graphs. It implements a two-stage hybrid planning pipeline combining a deterministic regex/pattern rule matching engine with an LLM fallback mechanism enforcing strict Pydantic JSON schemas.
+    \item \textbf{Permission Manager:} Acts as a security interceptor situated directly before tool dispatch. It maintains an in-memory static risk-tier matrix and evaluates every pending task against risk tiers (\texttt{LOW}, \texttt{MEDIUM}, \texttt{HIGH}, \texttt{CRITICAL}). Under \texttt{SAFE} mode, sensitive actions pause task dispatch until an explicit \texttt{permission.granted} event is received.
+    \item \textbf{Pipeline Orchestrator:} Controls the execution lifecycle of workflow Directed Acyclic Graphs (DAGs). It manages topological queue resolution, evaluates dependency completeness on every event loop tick, transitions tasks through atomic lifecycle states, and dispatches independent unblocked branches concurrently using \texttt{asyncio.gather()}.
+    \item \textbf{Worker Agent:} Listens for \texttt{task.ready} events, resolves target adapters from a central \texttt{ToolRegistry}, unpacks task parameter payloads, and dispatches execution to target environments.
+    \item \textbf{Tool Adapters:} Provide concrete execution bindings across browser, desktop, terminal, document, and system utilities. Adapters translate generic task parameters into library-specific actions (e.g., Playwright, pywinauto, PyAutoGUI, \texttt{asyncio.create\_subprocess\_exec}, pypdf, python-docx, pytesseract).
+    \item \textbf{Supervisor Agent:} Audits post-execution output artifacts $O_i$ against pre-registered contract assertions, including process exit codes, output file existence, and output schema conditions. It marks tasks as \texttt{COMPLETED} or \texttt{FAILED} and emits \texttt{task.completed} or \texttt{task.failed} events.
+    \item \textbf{Healing Agent:} Intercepts \texttt{task.failed} events, classifies runtime exceptions into a discrete failure taxonomy $C$, and executes localized, rule-based recovery strategies (exponential backoff retry, input patching, tool substitution, dynamic topological replanning) bounded by a maximum retry budget $K_{\text{max}} = 3$.
+    \item \textbf{Event Bus:} Built on Python's native \texttt{asyncio} event loop, the \texttt{EventBus} provides asynchronous publish--subscribe channels with strongly typed event objects, callback registration, and background WebSocket telemetry broadcasting.
+\end{itemize}
+
+\section{Task and Workflow Representation}
+\label{sec:dag_representation}
+Workflows in Phoenix are formally modeled as Directed Acyclic Graphs (DAGs):
+\begin{equation}
+\mathcal{G} = (\mathcal{V}, \mathcal{E})
+\end{equation}
+where $\mathcal{V} = \{v_1, v_2, \dots, v_n\}$ represents the set of atomic task nodes, and directed edges $(v_i, v_j) \in \mathcal{E}$ specify strict execution precedence such that task $v_j$ cannot begin execution until task $v_i$ completes successfully.
+
+Each task node $v_i \in \mathcal{V}$ is represented as a formal execution tuple:
+\begin{equation}
+v_i = \langle \text{id}_i, \tau_i, \theta_i, r_i, S_i \rangle
+\end{equation}
+where:
+\begin{itemize}
+    \item $\text{id}_i \in \mathbb{N}$ denotes a unique task identifier within graph $\mathcal{G}$.
+    \item $\tau_i \in \mathcal{T}$ designates the target tool adapter (e.g., \texttt{BrowserToolAdapter}, \texttt{DesktopToolAdapter}, \texttt{TerminalToolAdapter}).
+    \item $\theta_i$ represents the parameter dictionary passed to the target adapter payload.
+    \item $r_i \in \{\text{LOW}, \text{MEDIUM}, \text{HIGH}, \text{CRITICAL}\}$ defines the static risk classification.
+    \item $S_i$ tracks the atomic lifecycle status, taking values from:
+\end{itemize}
+\begin{equation}
+S_i \in \{\text{PENDING}, \text{READY}, \text{RUNNING}, \text{COMPLETED}, \text{FAILED}, \text{BLOCKED}\}
+\end{equation}
+
+\subsection{State Transition Rules and Concurrency}
+Dependency resolution is performed dynamically during event loop execution. A task node $v_j$ transitions from $\text{PENDING}$ to $\text{READY}$ if and only if all predecessor nodes are in state $\text{COMPLETED}$:
+\begin{equation}
+S_j \leftarrow \text{READY} \iff \forall v_i \text{ s.t. } (v_i, v_j) \in \mathcal{E}, \; S_i = \text{COMPLETED}
+\end{equation}
+Independent unblocked branches ($\{v_k \mid S_k = \text{READY}\}$) are executed concurrently via \texttt{asyncio.gather()}, bounded by an internal concurrency semaphore to prevent host resource exhaustion.
+
+\section{Hybrid Task Decomposition}
+\label{sec:decomposition}
+Phoenix uses a two-stage hybrid planning engine to convert natural-language user instructions into validated task graphs $\mathcal{G}$:
+
+\begin{enumerate}
+    \item \textbf{Deterministic Rule Engine:} Evaluates structured requests against predefined regular expressions and parameter pattern templates. Standard operations (such as file moving, document conversion, directory reorganization, and structured web search queries) bypass language model inference, compiling dependency DAGs in under $15\text{ ms}$.
+    \item \textbf{LLM Fallback Engine:} When incoming instructions do not match deterministic pattern schemas, the request is routed to a Large Language Model (e.g., LLaMA-3 or GPT-based APIs). Strict output validation is enforced using Pydantic JSON schemas, guaranteeing that returned JSON payloads adhere to valid node identifiers, edge dependencies, tool names, and parameter formats.
+\end{enumerate}
+
+\section{Permission Governance}
+\label{sec:permissions}
+To prevent unauthorized or destructive operations on the host system, the \texttt{PermissionManager} intercepts task dispatch requests prior to execution. Table~\ref{tab:permission_matrix} summarizes the documented static risk-tier taxonomy and corresponding gating policies.
+
+\begin{table}[htbp]
+\caption{Static Risk Tiers and Permission Gating Policies}
+\label{tab:permission_matrix}
+\centering
+\begin{tabular}{p{1.5cm} p{3.8cm} p{2.2cm}}
+\toprule
+\textbf{Risk Tier} & \textbf{Operation Characteristics} & \textbf{Gating Policy} \\
+\midrule
+\texttt{LOW} & Read-only file reads, DOM inspection, status queries & Automatic approval \\
+\midrule
+\texttt{MEDIUM} & Form filling, temporary file writes, UI clicks & Prompt for approval \\
+\midrule
+\texttt{HIGH} & Terminal shell execution, background processes, system configs & Prompt for approval \\
+\midrule
+\texttt{CRITICAL} & File deletion, package installation, administrative/sudo & Prompt for approval \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Under the default \texttt{SAFE} execution mode, any task with a risk tier above \texttt{LOW} triggers a \texttt{permission.requested} event and halts execution on that node via an \texttt{asyncio.Event} synchronization barrier. Execution resumes only when an external approval emits a \texttt{permission.granted} event; otherwise, the node transitions to state \texttt{BLOCKED}.
+
+\section{Self-Healing and Failure Recovery}
+\label{sec:healing}
+When task execution fails, the \texttt{SupervisorAgent} emits a \texttt{task.failed} event. The \texttt{HealingAgent} categorizes the exception into a failure taxonomy $\mathcal{C}$ and selects a mitigation strategy bounded by a maximum retry budget $K_{\text{max}} = 3$:
+\begin{equation}
+\mathcal{C} \in \{\text{TIMEOUT}, \text{FILE\_NOT\_FOUND}, \text{SYNTAX\_ERROR}, \text{INVALID\_ARGUMENTS}, \text{PERMISSION\_DENIED}\}
+\end{equation}
+
+The mitigation strategies map to discrete failure conditions as follows:
+\begin{itemize}
+    \item \textbf{Parameterized Retries:} Applied to \texttt{TIMEOUT} errors using exponential backoff delays.
+    \item \textbf{Input Patching:} Applied to \texttt{FILE\_NOT\_FOUND} or \texttt{INVALID\_ARGUMENTS} by inspecting preceding node outputs to repair invalid file paths or parameter values.
+    \item \textbf{Tool Substitution:} Applied to \texttt{PERMISSION\_DENIED} or specific tool execution errors by re-routing the task to an alternative functional tool adapter.
+    \item \textbf{Topological Replanning:} Applied when graph execution encounters structural failures, pruning unexecuted subgraphs and synthesizing a replacement graph.
+\end{itemize}
+
+\section{Tool Adapter Implementation}
+\label{sec:adapters}
+All tool adapters derive from a common \texttt{BaseToolAdapter} class and are registered in the \texttt{ToolRegistry}:
+\begin{itemize}
+    \item \textbf{\texttt{BrowserToolAdapter}:} Integrates Playwright to drive headless or headful Chromium browser sessions, exposing selector querying, text entry, form submission, and DOM screenshot extraction.
+    \item \textbf{\texttt{DesktopToolAdapter}:} Combines pywinauto (for native Windows UI Automation and Win32 APIs) and PyAutoGUI to control desktop windows, UI handles, element coordinates, and simulated user inputs.
+    \item \textbf{\texttt{TerminalToolAdapter}:} Executes shell commands using \texttt{asyncio.create\_subprocess\_exec()}, enforcing execution timeouts and capturing \texttt{stdout}/\texttt{stderr} in isolated working directories.
+    \item \textbf{Document and Utility Adapters:} Wraps programmatic libraries including \texttt{pypdf} (PDF extraction/merging), \texttt{python-docx} (Word document processing), \texttt{pytesseract} (OCR text extraction), and \texttt{git} (version control operations).
+\end{itemize}
+
+\section{Event-Driven Execution}
+\label{sec:events}
+System components communicate exclusively through typed events emitted over the \texttt{EventBus}. Table~\ref{tab:event_mapping} documents the complete event lifecycle, trigger conditions, emitting components, and resulting state transitions.
+
+\begin{table*}[htbp]
+\caption{Phoenix Event-Driven Communication Mapping}
+\label{tab:event_mapping}
+\centering
+\begin{tabular}{p{3.2cm} p{4.8cm} p{3.2cm} p{4.8cm}}
+\toprule
+\textbf{Event Name} & \textbf{Trigger Condition} & \textbf{Responsible Component} & \textbf{Resulting State / Transition} \\
+\midrule
+\texttt{goal.submitted} & User submits natural-language instruction & System / User Interface & Triggers \texttt{PlannerAgent} goal parsing \\
+\texttt{plan.created} & DAG compilation finishes & \texttt{PlannerAgent} & Delivers compiled graph $\mathcal{G}$ to \texttt{PipelineOrchestrator} \\
+\texttt{permission.requested} & Task node unblocked and requires safety check & \texttt{PipelineOrchestrator} & \texttt{PermissionManager} checks risk tier; pauses dispatch \\
+\texttt{permission.granted} & External user or policy approves action & \texttt{PermissionManager} / UI & Resumes node dispatch; sets status to \texttt{READY} \\
+\texttt{task.ready} & Node unblocked and permission cleared & \texttt{PipelineOrchestrator} & Enqueues task payload for \texttt{WorkerAgent} dispatch \\
+\texttt{task.executed} & Adapter completes low-level execution & \texttt{WorkerAgent} & Delivers raw execution artifact $O_i$ to \texttt{SupervisorAgent} \\
+\texttt{task.completed} & Output $O_i$ satisfies assertion checks & \texttt{SupervisorAgent} & Sets node status to \texttt{COMPLETED}; triggers downstream tick \\
+\texttt{task.failed} & Output fails assertions or raises exception & \texttt{SupervisorAgent} & Sets node status to \texttt{FAILED}; notifies \texttt{HealingAgent} \\
+\texttt{task.retry} & Recoverable fault within retry budget & \texttt{HealingAgent} & Patches parameters / backoff; re-enqueues as \texttt{READY} \\
+\texttt{dag.replanned} & Structural failure requires dynamic plan repair & \texttt{HealingAgent} & Prunes invalid subgraphs; updates active DAG in orchestrator \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\section{Experimental Configuration}
+\label{sec:experimental_setup}
+The experimental benchmarks reported in the main manuscript were conducted on a host workstation running \textbf{Windows 11} with \textbf{Python 3.11}. To isolate the framework's internal orchestration and scheduling overhead from third-party application rendering times, network latency, and OS process creation delays, tool adapters were configured with mocked controllers executing instantaneous no-op operations.
+
+\begin{itemize}
+    \item \textbf{Decomposition and Planning Workload:} Evaluated across 100 iterations of single-step and multi-step natural language goals to measure mean rule-matching and planning latency.
+    \item \textbf{Worker Dispatch Workload:} Evaluated across batches of 50 dependent and independent tasks processed sequentially to measure per-task adapter routing overhead.
+    \item \textbf{Concurrent Pipeline Workload:} Evaluated using 10 concurrent workflows executing 50 tasks each (500 total tasks) simultaneously across the event bus to test throughput limits.
+    \item \textbf{Hardware Specifications:} \textit{Hardware specifications were not reported in the main manuscript.}
+\end{itemize}
+
+\section{Detailed Performance Results}
+\label{sec:results}
+Table~\ref{tab:performance_results} provides a complete summary of internal pipeline performance benchmarks reported in the main manuscript. All values represent framework-level overhead under mocked adapter execution.
+
+\begin{table}[htbp]
+\caption{Internal Pipeline Performance Benchmarks}
+\label{tab:performance_results}
+\centering
+\begin{tabular}{p{2.6cm} p{3.6cm} p{1.6cm}}
+\toprule
+\textbf{Pipeline Metric} & \textbf{Workload Specification} & \textbf{Measured Value} \\
+\midrule
+Goal Decomposition Latency & Regex \& rule matching (100 runs) & $12.18\text{ ms}$ \\
+Full Planner Request & End-to-end goal-to-DAG (100 runs) & $14.85\text{ ms}$ \\
+Worker Dispatch Latency & Adapter routing (50-task batch) & $0.25\text{ ms/task}$ \\
+Concurrent Throughput & 10 workflows (500 total tasks) & $3,891\text{ tasks/s}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Fault-Injection Evaluation}
+\label{sec:fault_injection}
+To characterize fault tolerance, synthetic task execution failures were injected into test workflows across four fault intensity levels ($0\%$, $10\%$, $25\%$, and $50\%$). Table~\ref{tab:fault_injection} presents the resulting overall task success rates.
+
+\begin{table}[htbp]
+\caption{Task Success Rate under Injected Fault Intensities}
+\label{tab:fault_injection}
+\centering
+\begin{tabular}{c c}
+\toprule
+\textbf{Injected Fault Intensity (\%)} & \textbf{Observed Task Success Rate (\%)} \\
+\midrule
+$0\%$ & $\approx 95\%$ \\
+$10\%$ & $\approx 92\%$ \\
+$25\%$ & $\approx 87\%$ \\
+$50\%$ & $\approx 60\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The reduction in task completion rate at higher fault intensities reflects the increased probability of non-recoverable structural failures or exhaustion of the retry budget ($K_{\text{max}} = 3$).
+
+\section{Reproducibility Information}
+\label{sec:reproducibility}
+Table~\ref{tab:reproducibility_checklist} provides a structured reproducibility checklist summarizing the software parameters and experimental conditions documented in the manuscript.
+
+\begin{table}[htbp]
+\caption{Framework Reproducibility Checklist}
+\label{tab:reproducibility_checklist}
+\centering
+\begin{tabular}{p{3.0cm} p{4.8cm}}
+\toprule
+\textbf{Specification Item} & \textbf{Manuscript Status / Value} \\
+\midrule
+Operating System & Windows 11 \\
+Programming Language & Python 3.11 \\
+Concurrency Architecture & In-process \texttt{asyncio} event loop \\
+Communication Backbone & Asynchronous pub--sub \texttt{EventBus} \\
+State Management & In-memory DAG graph ($G=(V,E)$) \\
+Planning Engine & Rule-based regex engine + LLM fallback \\
+LLM Schema Enforcement & Pydantic JSON schemas \\
+Tool Integration & Playwright, pywinauto, PyAutoGUI \\
+Document Utilities & pypdf, python-docx, pytesseract \\
+Maximum Retry Budget ($K_{\text{max}}$) & 3 retries \\
+Benchmark Tool Adapters & Mocked / instantaneous no-op actions \\
+Hardware Specifications & \textit{Not reported in the main manuscript} \\
+LLM Model Identification & \textit{Not reported in the main manuscript} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Limitations and Scope}
+\label{sec:limitations}
+The experimental evaluation reported in the paper measures internal framework orchestration overhead under synthetic workloads with mocked tool adapters. The following limitations apply to the interpretation of these results:
+\begin{enumerate}
+    \item \textbf{Framework Overhead vs. End-to-End Latency:} The reported metrics ($14.85\text{ ms}$ planning, $0.25\text{ ms}$ dispatch) describe event bus and graph resolution speed. Real-world automation tasks involving Playwright DOM manipulation or pywinauto OS automation will be dominated by external application loading, rendering, and network delays.
+    \item \textbf{Synthetic Workload Scope:} Evaluation was conducted using synthetic task graphs to measure baseline capacity ($3,891\text{ tasks/s}$). Evaluation on public GUI/web agent benchmarks (such as WebArena or OSWorld) remains future work.
+\end{enumerate}
+
+\section{Additional Algorithmic Pseudocode}
+\label{sec:algorithms}
+This section provides formal pseudocode algorithms corresponding to the core operational mechanisms of the Phoenix framework.
+
+\begin{algorithm}[H]
+\caption{Hybrid Task Decomposition}
+\label_alg:decomposition}
+\begin{algorithmic}[1]
+\REQUIRE Natural language user goal $g$, Rule template set $\mathcal{R}$, LLM endpoint $\mathcal{M}$, Pydantic schema $\mathcal{S}$
+\ENSURE Workflow Directed Acyclic Graph $\mathcal{G} = (\mathcal{V}, \mathcal{E})$
+\STATE $\mathcal{M}_{\text{match}} \leftarrow \text{MatchRegexTemplates}(g, \mathcal{R})$
+\IF{$\mathcal{M}_{\text{match}} \neq \emptyset$}
+    \STATE $\mathcal{G} \leftarrow \text{CompileTemplateDAG}(\mathcal{M}_{\text{match}})$
+    \RETURN $\mathcal{G}$
+\ELSE
+    \STATE $\text{prompt} \leftarrow \text{FormatPromptWithSchema}(g, \mathcal{S})$
+    \STATE $\text{response} \leftarrow \text{QueryLLM}(\mathcal{M}, \text{prompt})$
+    \STATE $\mathcal{G} \leftarrow \text{ValidateAndParseJSON}(\text{response}, \mathcal{S})$
+    \RETURN $\mathcal{G}$
+\ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{DAG Scheduling and Task Dispatch}
+\label_alg:scheduling}
+\begin{algorithmic}[1]
+\REQUIRE Workflow DAG $\mathcal{G} = (\mathcal{V}, \mathcal{E})$, Concurrency limit $N_{\text{max}}$
+\ENSURE Task execution lifecycle management
+\WHILE{$\exists v_i \in \mathcal{V}$ s.t. $S_i \notin \{\text{COMPLETED}, \text{FAILED}\}$}
+    \FOR{EACH $v_j \in \mathcal{V}$ with $S_j = \text{PENDING}$}
+        \IF{$\forall v_k \text{ s.t. } (v_k, v_j) \in \mathcal{E}, \; S_k = \text{COMPLETED}$}
+            \STATE $S_j \leftarrow \text{READY}$
+            \STATE \text{EmitEvent}(\texttt{permission.requested}, $v_j$)
+        \ENDIF
+    \ENDFOR
+    \STATE $\mathcal{V}_{\text{ready}} \leftarrow \{v_m \in \mathcal{V} \mid S_m = \text{READY} \land \text{PermissionGranted}(v_m)\}$
+    \STATE \text{ExecuteConcurrentBatch}($\mathcal{V}_{\text{ready}}$, $N_{\text{max}}$)
+\ENDWHILE
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Permission-Gated Execution}
+\label_alg:permission}
+\begin{algorithmic}[1]
+\REQUIRE Task node $v_i = \langle \text{id}_i, \tau_i, \theta_i, r_i, S_i \rangle$, Execution mode $M$
+\ENSURE Safety approval decision
+\IF{$r_i == \text{LOW}$}
+    \RETURN \TRUE
+\ELSIF{$M == \text{SAFE}$}
+    \STATE \text{EmitEvent}(\texttt{permission.requested}, $v_i$)
+    \STATE $\text{approved} \leftarrow \text{AwaitUserApproval}(v_i, \text{timeout}=300\text{s})$
+    \IF{$\text{approved} == \TRUE$}
+        \STATE \text{EmitEvent}(\texttt{permission.granted}, $v_i$)
+        \RETURN \TRUE
+    \ELSE
+        \STATE $S_i \leftarrow \text{BLOCKED}$
+        \RETURN \FALSE
+    \ENDIF
+\ELSE
+    \RETURN \TRUE
+\ENDIF
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Bounded Self-Healing}
+\label_alg:healing}
+\begin{algorithmic}[1]
+\REQUIRE Failed task node $v_i$, Failure exception $e$, Retry count $k_i$, Retry budget $K_{\text{max}} = 3$
+\ENSURE Failure recovery or terminal failure
+\IF{$k_i \ge K_{\text{max}}$}
+    \STATE $S_i \leftarrow \text{FAILED}$
+    \RETURN \FALSE
+\ENDIF
+\STATE $C \leftarrow \text{ClassifyException}(e)$
+\SWITCH{$C$}
+    \CASE{\text{TIMEOUT}}
+        \STATE $\text{delay} \leftarrow 2^{k_i} \times 1.0\text{s}$
+        \STATE \text{Sleep}(\text{delay})
+        \STATE $k_i \leftarrow k_i + 1$
+        \STATE \text{EmitEvent}(\texttt{task.retry}, $v_i$)
+    \ENDCASE
+    \CASE{\text{FILE\_NOT\_FOUND}, \text{INVALID\_ARGUMENTS}}
+        \STATE $\theta_i' \leftarrow \text{PatchParameters}(v_i, \mathcal{G})$
+        \STATE $\theta_i \leftarrow \theta_i'$
+        \STATE $k_i \leftarrow k_i + 1$
+        \STATE \text{EmitEvent}(\texttt{task.retry}, $v_i$)
+    \ENDCASE
+    \CASE{\text{PERMISSION\_DENIED}}
+        \STATE $\tau_i' \leftarrow \text{FindSubstituteAdapter}(\tau_i)$
+        \IF{$\tau_i' \neq \text{NULL}$}
+            \STATE $\tau_i \leftarrow \tau_i'$
+            \STATE $k_i \leftarrow k_i + 1$
+            \STATE \text{EmitEvent}(\texttt{task.retry}, $v_i$)
+        \ELSE
+            \STATE $\mathcal{G}' \leftarrow \text{DynamicReplan}(\mathcal{G}, v_i)$
+            \STATE \text{EmitEvent}(\texttt{dag.replanned}, $\mathcal{G}'$)
+        \ENDIF
+    \ENDCASE
+\ENDSWITCH
+\end{algorithmic}
+\end{algorithm}
+
+\section{Supplementary References}
+\label{sec:references}
+\begin{thebibliography}{10}
+\bibitem{babu2026} R. S. Babu and A. Agrawal, ``Self-Healing Agentic Orchestrators for Reliable Tool-Augmented Large Language Model Systems,'' \textit{arXiv preprint arXiv:2606.01416}, 2026.
+\bibitem{jeong2026} C. Jeong and Y. Shin, ``A Self-Healing Framework for Reliable LLM-Based Autonomous Agents,'' May 2026.
+\bibitem{guo2026} X. Guo, J. Kuang, L. Pan, Y. Li, Y. Li, H.-T. Zheng, Y. Shen, D. Yin, and X. Sun, ``EvoConfig: Self-Evolving Multi-Agent Systems for Efficient Autonomous Environment Configuration,'' \textit{arXiv preprint arXiv:2601.16489}, 2026.
+\bibitem{ju2025} T. Ju, B. Wang, H. Fei, M.-L. Lee, W. Hsu, Y. Li, Q. Wang, P. Cheng, Z. Wu, H. Zhao, Z. Zhang, and G. Liu, ``When Disagreements Elicit Robustness: Investigating Self-Repair Capabilities under LLM Multi-Agent Disagreements,'' \textit{arXiv preprint arXiv:2502.15153}, 2025.
+\bibitem{bara2026} A. Bara, G. Dobri\c{t}a, and S.-V. Oprea, ``Think it, Run it: Autonomous machine learning pipeline generation via self-healing multi-agent artificial intelligence,'' \textit{Knowledge-Based Systems}, vol. 351, p. 116688, 2026.
+\bibitem{wang2026} F. Wang, H. Cui, L. Yang, C. S. Lee, Z. Li, and C. W. Wen, ``Detecting and Repairing Role Drift in Multi-Agent Collaboration with Lightweight Protocols,'' in \textit{2026 International Conference on Communication Networks and Machine Learning (CNML)}, 2026.
+\bibitem{patel2026sustech} T. P. Patel, V. Ranganathan, A. K. Elengovan, and D. Kole, ``Predictive Self-Healing for Multi-Agent LLM Pipelines Using Model Predictive Control,'' in \textit{2026 IEEE Conference on Technologies for Sustainability (SusTech)}, 2026.
+\bibitem{patel2026isiber} T. P. Patel, A. K. Elengovan, and V. Ranganathan, ``Self-Healing AI Systems using Multi-Agent Learning,'' in \textit{2026 International Seminar on Intelligent Business and Edge-Computing Research (ISIBER)}, 2026.
+\bibitem{garcia2026} B. Garc\'ia, F. Ricca, M. Leotta, and M. Mu\~noz-Organero, ``A survey on Selenium usage, practices, and challenges in end-to-end testing,'' \textit{Information and Software Technology}, vol. 194, p. 108077, 2026.
+\bibitem{nguyen2025} D. Nguyen et al., ``GUI Agents: A Survey,'' \textit{Findings of the Association for Computational Linguistics: ACL 2025}, pp. 22522--22538, 2025.
+\bibitem{bajoria2026} S. Bajoria, S. Ranjan, A. M., V. Suri, V. Hassija, V. Chamola, and A. Hussain, ``From Language Models to Agentic AI: A Survey of Autonomous, Action-Enabled, and Collaborative LLM Agents,'' \textit{Cognitive Computation}, vol. 18, p. 103, 2026.
+\end{thebibliography}
+
+\end{document}

@@ -131,6 +131,10 @@ class RecoveryPlan(BaseModel):
         default_factory=dict,
         description="Task context metadata associated with failure",
     )
+    updated_task_params: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Patched task parameters for parameter repair",
+    )
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     @property

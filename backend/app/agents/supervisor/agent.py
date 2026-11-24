@@ -8,7 +8,7 @@ from shared.contracts.execution import (
     SupervisorValidation,
     TaskError,
 )
-from shared.contracts.task import Task, TaskStatus
+from shared.contracts.task import Task, TaskStatus, TaskType
 from shared.contracts.workflow import SharedWorkflowState
 
 from app.agents.healing.retry_engine import RetryEngine
@@ -175,6 +175,16 @@ class SupervisorAgent(BaseAgent):
             f"SupervisorAgent evaluating task: {task.task_id} ({task.task_name})"
         )
 
+        if getattr(task, "task_type", None) == TaskType.PHASE:
+            return SupervisorValidation(
+                task_id=task.task_id,
+                workflow_id=task.workflow_id,
+                is_valid=True,
+                decision=SupervisorDecision.PASSED,
+                checks={"phase_container": True},
+                issues=[],
+            )
+
         await self._emit_event(
             EventType.SUPERVISION_STARTED,
             {"task_id": str(task.task_id), "status": "STARTED"},
@@ -246,10 +256,13 @@ class SupervisorAgent(BaseAgent):
                 task.status = TaskStatus.FAILED
                 if task.task_id not in state.failed_tasks:
                     state.failed_tasks.append(task.task_id)
+                error_code = "SUPERVISOR_VALIDATION_FAILED"
+                if any("corrupted deliverable" in str(i).lower() for i in issues):
+                    error_code = "CORRUPTED_DELIVERABLE"
                 self.task_history_service.record_task_failed(
                     task_id=task.task_id,
                     error=TaskError(
-                        error_code="SUPERVISOR_VALIDATION_FAILED",
+                        error_code=error_code,
                         error_message=(
                             "; ".join(issues) if issues else "Validation failed"
                         ),

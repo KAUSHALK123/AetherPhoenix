@@ -301,3 +301,30 @@ async def test_healing_agent_integration(healing_agent: HealingAgent):
     exec_analysis = await healing_agent.execute(task, report)
     assert isinstance(exec_analysis, RootCauseResult)
     assert exec_analysis.likely_root_cause == "OUTPUT_DIRECTORY_MISSING"
+
+
+def test_permission_signal_prioritized_over_missing_path_b3(analyzer: RootCauseAnalyzer):
+    """Unit test for B3: permission signals must be evaluated before filesystem paths so permission violation is not classified as missing directory."""
+    task = create_sample_task(
+        task_name="Write Protected Batch File",
+        expected_output="C:/Windows/System32/nonexistent_subfolder/script.bat",
+    )
+    err_msg = (
+        "PermissionError: [Errno 13] Access is denied while attempting to access "
+        "C:/Windows/System32/nonexistent_subfolder/script.bat"
+    )
+    report = TaskFailureReport(
+        task_id=task.task_id,
+        workflow_id=task.workflow_id,
+        failure_type=FailureType.PERMISSION_DENIED,
+        message=err_msg,
+        retryability=False,
+    )
+
+    result = analyzer.analyze(report=report, task=task)
+
+    assert result.category == RootCauseCategory.PERMISSION
+    assert result.likely_root_cause == "PERMISSION_DENIED"
+    assert result.category != RootCauseCategory.INFRASTRUCTURE
+    assert result.likely_root_cause != "OUTPUT_DIRECTORY_MISSING"
+

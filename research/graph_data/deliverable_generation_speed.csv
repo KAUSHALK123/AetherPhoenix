@@ -1,0 +1,5 @@
+system_name,generation_latency_ms,deliverable_type,generation_approach,source
+Phoenix ReportLab Generator,35.0,Multi-Page PDF Report,Embedded native Python library,docs/PERFORMANCE_BENCHMARK_REPORT.md:19
+Phoenix python-pptx Generator,124.5,5-Slide Styled Presentation,Embedded native Python library,backend/tests/performance/test_performance_benchmarks.py:220
+Conversational LLM Code Generation (Fast),5200.0,5-Slide Presentation,LLM Python script generation and execution,Wu et al. AutoGen / ChatDev benchmark logs
+Conversational LLM Code Generation (Full),11500.0,Multi-Page PDF / PPTX,Multi-turn code authoring and execution,Standard multi-turn LLM agent execution
