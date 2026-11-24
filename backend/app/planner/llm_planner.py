@@ -213,6 +213,50 @@ class LLMPlanner:
         lower = cleaned.lower()
         words = lower.split()
 
+        if not words:
+            return True
+
+        action_verbs = [
+            "create",
+            "generate",
+            "list",
+            "show",
+            "open",
+            "find",
+            "check",
+            "run",
+            "make",
+            "sort",
+            "organize",
+            "design",
+            "export",
+            "edit",
+            "build",
+            "add",
+            "pick",
+            "apply",
+            "save",
+            "download",
+        ]
+        domain_targets = [
+            "canva",
+            "instagram",
+            "post",
+            "poster",
+            "presentation",
+            "slide",
+            "ppt",
+            "pptx",
+            "pdf",
+            "drive",
+            "folder",
+            "file",
+            "terminal",
+            "thumbnail",
+        ]
+        has_action = any(a in lower for a in action_verbs)
+        has_domain = any(d in lower for d in domain_targets)
+
         # Keyboard mash tokens
         mash_tokens = [
             "asdf",
@@ -228,36 +272,32 @@ class LLMPlanner:
         ]
         if any(token in lower for token in mash_tokens):
             # If request contains mash tokens and no genuine action verbs
-            if not any(
-                action in lower
-                for action in [
-                    "create",
-                    "generate",
-                    "list",
-                    "show",
-                    "open",
-                    "find",
-                    "check",
-                    "run",
-                    "make",
-                    "sort",
-                    "organize",
-                ]
-            ):
+            if not has_action:
                 return True
 
-        # Obvious single-word or repeated gibberish
+        # If it has both a clear action and domain target, it's not random gibberish
+        if has_action and has_domain:
+            return False
+
+        # Obvious single-word or repeated gibberish (alphabetic only)
         if len(words) == 1:
             w = words[0]
-            # No vowels in a string longer than 4 chars
-            if len(w) > 4 and not any(c in "aeiouy" for c in w):
+            clean_w = re.sub(r"[^a-z]", "", w)
+            # No vowels in an alphabetic word longer than 4 chars
+            if len(clean_w) > 4 and not any(c in "aeiouy" for c in clean_w):
                 return True
 
         if re.match(r"^[bcdfghjklmnpqrstvwxyz\s]{6,}$", lower):
             return True
 
-        # Random keystroke mash like 'flkjsdflkjsd'
-        if any(len(w) > 6 and not re.search(r"[aeiouy]{1,}", w) for w in words):
+        # Random alphabetic keystroke mash like 'flkjsdflkjsd' (ignore numbers, dimensions, paths)
+        def is_alpha_mash(w: str) -> bool:
+            if any(c.isdigit() or c in "×*+/-_=@#%:." for c in w):
+                return False
+            clean_w = re.sub(r"[^a-z]", "", w)
+            return len(clean_w) > 6 and not re.search(r"[aeiouy]", clean_w)
+
+        if not has_action and any(is_alpha_mash(w) for w in words):
             return True
 
         return False

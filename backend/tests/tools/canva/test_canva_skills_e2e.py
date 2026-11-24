@@ -471,3 +471,43 @@ async def test_create_5_slide_presentation_verified_design():
         mock_server.stop()
         shutil.rmtree(temp_profile, ignore_errors=True)
         shutil.rmtree(temp_artifacts, ignore_errors=True)
+
+
+def test_canva_dimension_prompts_not_flagged_as_nonsense():
+    """
+    Verifies that Canva design requests with dimensions (1080×1080, 1920x1080, 1080 1080)
+    are recognized as actionable goals and NOT falsely flagged as keyboard-mash nonsense.
+    """
+    from app.planner.llm_planner import LLMPlanner
+    from shared.contracts.planner import PlannerRequest
+    import json
+
+    planner = LLMPlanner()
+
+    dimension_prompts = [
+        "create instagram post 1080×1080 in canva",
+        "create instagram post 1080x1080 in canva",
+        "create presentation 1920x1080 in canva",
+        "create instagram post 1080 1080 in canva",
+        "design a poster 1080*1920 in canva",
+    ]
+
+    for prompt in dimension_prompts:
+        # 1. Must not be classified as nonsense
+        assert not planner.is_nonsense(prompt), f"Prompt '{prompt}' falsely flagged as nonsense"
+
+        # 2. Plan generation must produce a ready plan, not error
+        session_id = f"test-dim-{uuid4()}"
+        res = planner.plan(PlannerRequest(message=prompt, session_id=session_id), uuid4())
+        assert res.status == "ready", f"Expected 'ready' status for '{prompt}', got '{res.status}': {res.reply}"
+        assert res.action == "execute_plan"
+
+        plan = json.loads(res.reply)
+        task_names = [t.get("task_name") for t in plan.get("tasks", [])]
+        assert any("canva" in n.lower() or "design" in n.lower() or "post" in n.lower() for n in task_names)
+
+    # Verify that true gibberish is still properly caught
+    nonsense_prompts = ["asdfghjk", "flkjsdflkjsd", "blabla random qwertyuiop"]
+    for prompt in nonsense_prompts:
+        assert planner.is_nonsense(prompt), f"True nonsense prompt '{prompt}' was not flagged"
+
