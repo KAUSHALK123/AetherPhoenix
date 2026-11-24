@@ -25,7 +25,7 @@ JS_INSPECT_ELEMENT_SCRIPT = (
 JS_DISCOVER_INTERACTIVE_ELEMENTS_SCRIPT = (
     "() => {\n"
     "    const candidates = document.querySelectorAll(\n"
-    "        'button, a[href], input, textarea, select, [role=\"button\"], [role=\"link\"], [onclick], [tabindex=\"0\"]'\n"
+    '        \'button, a[href], input, textarea, select, [role="button"], [role="link"], [onclick], [tabindex="0"]\'\n'
     "    );\n"
     "    const results = [];\n"
     "    const isVisible = (el) => {\n"
@@ -44,11 +44,11 @@ JS_DISCOVER_INTERACTIVE_ELEMENTS_SCRIPT = (
     "        } else if (el.getAttribute('data-testid')) {\n"
     "            selector = `[data-testid=\"${CSS.escape(el.getAttribute('data-testid'))}\"]`;\n"
     "        } else if (el.name) {\n"
-    "            selector = `${tag}[name=\"${CSS.escape(el.name)}\"]`;\n"
+    '            selector = `${tag}[name="${CSS.escape(el.name)}"]`;\n'
     "        } else if (el.getAttribute('aria-label')) {\n"
     "            selector = `${tag}[aria-label=\"${CSS.escape(el.getAttribute('aria-label'))}\"]`;\n"
     "        } else if (el.placeholder) {\n"
-    "            selector = `${tag}[placeholder=\"${CSS.escape(el.placeholder)}\"]`;\n"
+    '            selector = `${tag}[placeholder="${CSS.escape(el.placeholder)}"]`;\n'
     "        } else if (tag === 'a' && el.getAttribute('href') && !el.getAttribute('href').startsWith('javascript:')) {\n"
     "            const href = el.getAttribute('href');\n"
     "            selector = href.length < 50 ? `a[href=\"${CSS.escape(href)}\"]` : 'a';\n"

@@ -1614,15 +1614,31 @@ class TaskDecompositionEngine:
         )
 
         # Detect Observe-Act-Verify action intent
-        step_action = "click" if ("click" in lower_goal) else ("fill" if any(w in lower_goal for w in ["enter text", "fill", "type"]) else "observe")
+        step_action = (
+            "click"
+            if ("click" in lower_goal)
+            else (
+                "fill"
+                if any(w in lower_goal for w in ["enter text", "fill", "type"])
+                else "observe"
+            )
+        )
         target_selector = "button, a, input"
         step_value = None
 
         if step_action == "click":
-            click_match = re.search(r"(?:click\s+(?:on\s+)?(?:a\s+|the\s+)?)([^.,;!?]+)", goal, re.IGNORECASE)
+            click_match = re.search(
+                r"(?:click\s+(?:on\s+)?(?:a\s+|the\s+)?)([^.,;!?]+)",
+                goal,
+                re.IGNORECASE,
+            )
             target_selector = click_match.group(1).strip() if click_match else "button"
         elif step_action == "fill":
-            fill_match = re.search(r"(?:enter\s+text|fill|type)\s+['\"]?([^'\",;!?]+)['\"]?\s+(?:in|into)\s+['\"]?([^'\",;!?]+)['\"]?", goal, re.IGNORECASE)
+            fill_match = re.search(
+                r"(?:enter\s+text|fill|type)\s+['\"]?([^'\",;!?]+)['\"]?\s+(?:in|into)\s+['\"]?([^'\",;!?]+)['\"]?",
+                goal,
+                re.IGNORECASE,
+            )
             if fill_match:
                 step_value = fill_match.group(1).strip()
                 target_selector = fill_match.group(2).strip()
@@ -1641,7 +1657,9 @@ class TaskDecompositionEngine:
             priority=TaskPriority.HIGH,
             dependencies=[task_nav.task_id],
             expected_output="Interaction executed and verified via Observe-Act-Verify",
-            success_criteria=["Element located, action dispatched, and state change verified"],
+            success_criteria=[
+                "Element located, action dispatched, and state change verified"
+            ],
             failure_criteria=["Element not found or verification failed"],
             inputs={
                 "action": "observe_act_verify",

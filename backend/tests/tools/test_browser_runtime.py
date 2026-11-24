@@ -24,6 +24,7 @@ def browser_controller(mock_pm):
 
 # --- 1. Session Lifecycle & Reuse Tests ---
 
+
 @pytest.mark.asyncio
 async def test_session_lifecycle(browser_controller):
     with patch("app.tools.browser.controller.async_playwright") as mock_ap:
@@ -58,6 +59,7 @@ async def test_session_lifecycle(browser_controller):
 
 
 # --- 2. Tab Management Tests ---
+
 
 @pytest.mark.asyncio
 async def test_tab_management(browser_controller):
@@ -102,6 +104,7 @@ async def test_tab_management(browser_controller):
 
 # --- 3. Observe-Act-Verify Interaction Loop Tests ---
 
+
 @pytest.mark.asyncio
 async def test_observe_act_verify_loop_success():
     mock_page = AsyncMock()
@@ -132,11 +135,15 @@ async def test_observe_act_verify_loop_success():
         ),
     ]
 
-    with patch.object(DOMAutomation, "get_interactive_elements", return_value=mock_elements), \
-         patch.object(DOMAutomation, "scroll_into_view", new_callable=AsyncMock), \
-         patch.object(DOMAutomation, "click_element", new_callable=AsyncMock), \
-         patch.object(DOMAutomation, "highlight_element", new_callable=AsyncMock):
-
+    with patch.object(
+        DOMAutomation, "get_interactive_elements", return_value=mock_elements
+    ), patch.object(
+        DOMAutomation, "scroll_into_view", new_callable=AsyncMock
+    ), patch.object(
+        DOMAutomation, "click_element", new_callable=AsyncMock
+    ), patch.object(
+        DOMAutomation, "highlight_element", new_callable=AsyncMock
+    ):
         success, result = await engine.execute_loop(
             page=mock_page,
             action="click",
@@ -147,7 +154,10 @@ async def test_observe_act_verify_loop_success():
         assert success is True
         assert result["action"] == "click"
         assert result["target"] == "button[data-testid='signup-button']"
-        assert "verified" in result["details"].lower() or "click" in result["details"].lower()
+        assert (
+            "verified" in result["details"].lower()
+            or "click" in result["details"].lower()
+        )
 
 
 @pytest.mark.asyncio
@@ -173,11 +183,15 @@ async def test_observe_act_verify_fill():
         )
     ]
 
-    with patch.object(DOMAutomation, "get_interactive_elements", return_value=mock_elements), \
-         patch.object(DOMAutomation, "scroll_into_view", new_callable=AsyncMock), \
-         patch.object(DOMAutomation, "fill_element", new_callable=AsyncMock), \
-         patch.object(DOMAutomation, "highlight_element", new_callable=AsyncMock):
-
+    with patch.object(
+        DOMAutomation, "get_interactive_elements", return_value=mock_elements
+    ), patch.object(
+        DOMAutomation, "scroll_into_view", new_callable=AsyncMock
+    ), patch.object(
+        DOMAutomation, "fill_element", new_callable=AsyncMock
+    ), patch.object(
+        DOMAutomation, "highlight_element", new_callable=AsyncMock
+    ):
         success, result = await engine.execute_loop(
             page=mock_page,
             action="fill",
@@ -191,6 +205,7 @@ async def test_observe_act_verify_fill():
 
 
 # --- 4. Navigation & Error Reporting (Website Fails to Load) ---
+
 
 @pytest.mark.asyncio
 async def test_website_fails_to_load_reporting(browser_controller):
@@ -213,13 +228,16 @@ async def test_website_fails_to_load_reporting(browser_controller):
         mock_page.goto.return_value = mock_response
 
         await browser_controller.start_session()
-        res = await browser_controller.navigate("https://broken-url-example.com/missing")
+        res = await browser_controller.navigate(
+            "https://broken-url-example.com/missing"
+        )
 
         assert res.success is False
         assert "HTTP 404" in res.error
 
 
 # --- 5. Security & Permission Tests ---
+
 
 @pytest.mark.asyncio
 async def test_permission_denied():
@@ -247,9 +265,9 @@ async def test_credential_masking(browser_controller):
 
         await browser_controller.start_session()
 
-        with patch.object(DOMAutomation, "fill_element", new_callable=AsyncMock), \
-             patch.object(DOMAutomation, "highlight_element", new_callable=AsyncMock):
-
+        with patch.object(
+            DOMAutomation, "fill_element", new_callable=AsyncMock
+        ), patch.object(DOMAutomation, "highlight_element", new_callable=AsyncMock):
             res = await browser_controller.interact(
                 selector="input#password", action="fill", value="SuperSecret123!"
             )
@@ -259,6 +277,7 @@ async def test_credential_masking(browser_controller):
 
 
 # --- 6. MCP Browser Adapter Tests ---
+
 
 @pytest.mark.asyncio
 async def test_mcp_browser_tools(browser_controller):
@@ -279,10 +298,14 @@ async def test_mcp_browser_tools(browser_controller):
     assert status["tools_count"] == len(tools)
 
     # 3. Tool execution with mock
-    with patch.object(browser_controller, "navigate", new_callable=AsyncMock) as mock_nav:
+    with patch.object(
+        browser_controller, "navigate", new_callable=AsyncMock
+    ) as mock_nav:
         mock_nav.return_value = MagicMock(
             success=True, data={"url": "https://www.canva.com", "title": "Canva"}
         )
-        res = await adapter.execute_tool("browser_navigate", {"url": "https://www.canva.com"})
+        res = await adapter.execute_tool(
+            "browser_navigate", {"url": "https://www.canva.com"}
+        )
         assert res["isError"] is False
         assert "Successfully navigated" in res["content"][0]["text"]

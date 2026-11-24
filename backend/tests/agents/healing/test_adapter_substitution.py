@@ -30,9 +30,9 @@ def test_error_parser_classifies_real_adapter_signatures():
     ]
     for exc in exc_list:
         parsed = parser.parse(exc)
-        assert parsed.category == ErrorCategory.TOOL_UNAVAILABLE, (
-            f"Expected {type(exc).__name__} to be TOOL_UNAVAILABLE, got {parsed.category}"
-        )
+        assert (
+            parsed.category == ErrorCategory.TOOL_UNAVAILABLE
+        ), f"Expected {type(exc).__name__} to be TOOL_UNAVAILABLE, got {parsed.category}"
 
     # 2. Real adapter error codes emitted across tools
     adapter_codes = [
@@ -61,9 +61,9 @@ def test_error_parser_classifies_real_adapter_signatures():
             ),
         )
         parsed = parser.parse(exec_res)
-        assert parsed.category == ErrorCategory.TOOL_UNAVAILABLE, (
-            f"Expected code {code} to be TOOL_UNAVAILABLE, got {parsed.category}"
-        )
+        assert (
+            parsed.category == ErrorCategory.TOOL_UNAVAILABLE
+        ), f"Expected code {code} to be TOOL_UNAVAILABLE, got {parsed.category}"
 
 
 @pytest.mark.asyncio

@@ -41,7 +41,10 @@ def test_mcp_browser_execute_endpoint(client):
         )
         response = client.post(
             "/api/v1/mcp/browser/execute",
-            json={"name": "browser_navigate", "arguments": {"url": "https://github.com"}},
+            json={
+                "name": "browser_navigate",
+                "arguments": {"url": "https://github.com"},
+            },
         )
         assert response.status_code == 200
         data = response.json()
@@ -74,8 +77,11 @@ def test_browser_live_session_endpoints(client):
         assert res.json()["state"] == "idle"
 
     # 2. POST /session/start
-    with patch.object(ctrl, "start_session", new_callable=AsyncMock) as mock_start, \
-         patch.object(ctrl, "get_live_state", new_callable=AsyncMock) as mock_st:
+    with patch.object(
+        ctrl, "start_session", new_callable=AsyncMock
+    ) as mock_start, patch.object(
+        ctrl, "get_live_state", new_callable=AsyncMock
+    ) as mock_st:
         mock_start.return_value = MagicMock(
             success=True, data={"session_id": "test-uuid-123", "state": "ready"}
         )
@@ -94,8 +100,11 @@ def test_browser_live_session_endpoints(client):
         assert res.json()["success"] is True
 
     # 3. POST /navigate (Canva scenario)
-    with patch.object(ctrl, "navigate", new_callable=AsyncMock) as mock_nav, \
-         patch.object(ctrl, "get_live_state", new_callable=AsyncMock) as mock_st:
+    with patch.object(
+        ctrl, "navigate", new_callable=AsyncMock
+    ) as mock_nav, patch.object(
+        ctrl, "get_live_state", new_callable=AsyncMock
+    ) as mock_st:
         mock_nav.return_value = MagicMock(
             success=True, data={"url": "https://www.canva.com", "title": "Canva"}
         )
@@ -105,28 +114,43 @@ def test_browser_live_session_endpoints(client):
             "page_title": "Canva",
             "state": "ready",
         }
-        res = client.post("/api/v1/browser/navigate", json={"url": "https://www.canva.com"})
+        res = client.post(
+            "/api/v1/browser/navigate", json={"url": "https://www.canva.com"}
+        )
         assert res.status_code == 200
         assert res.json()["success"] is True
 
     # 4. POST /step (Observe-Act-Verify)
-    with patch.object(ctrl, "execute_observe_act_verify", new_callable=AsyncMock) as mock_step, \
-         patch.object(ctrl, "get_live_state", new_callable=AsyncMock) as mock_st:
+    with patch.object(
+        ctrl, "execute_observe_act_verify", new_callable=AsyncMock
+    ) as mock_step, patch.object(
+        ctrl, "get_live_state", new_callable=AsyncMock
+    ) as mock_st:
         mock_step.return_value = MagicMock(
             success=True,
-            data={"action": "click", "target": "button#submit", "details": "Verified click"},
+            data={
+                "action": "click",
+                "target": "button#submit",
+                "details": "Verified click",
+            },
             error=None,
         )
         mock_st.return_value = {"state": "ready", "last_verification": "Verified click"}
         res = client.post(
             "/api/v1/browser/step",
-            json={"action": "click", "target": "button#submit", "expected_outcome": "Form submitted"},
+            json={
+                "action": "click",
+                "target": "button#submit",
+                "expected_outcome": "Form submitted",
+            },
         )
         assert res.status_code == 200
         assert res.json()["success"] is True
 
     # 5. GET /elements
-    with patch.object(ctrl, "get_interactive_elements", new_callable=AsyncMock) as mock_elem:
+    with patch.object(
+        ctrl, "get_interactive_elements", new_callable=AsyncMock
+    ) as mock_elem:
         mock_elem.return_value = [
             InteractiveElement(
                 selector="a.nav-link",

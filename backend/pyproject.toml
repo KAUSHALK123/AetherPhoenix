@@ -54,6 +54,20 @@ ignore = ["E501", "E402"]
 [tool.black]
 line-length = 88
 target-version = ["py310"]
+force-exclude = '''
+/(
+  app/api/endpoints/execution\.py
+  | app/core/tracing\.py
+  | app/agents/healing/validator\.py
+  | app/agents/healing/recovery_planner\.py
+  | app/engine/orchestrator\.py
+  | app/agents/healing/retry_engine\.py
+  | tests/agents/healing/test_self_healing_loop\.py
+  | tests/core/test_fault_injection\.py
+  | tests/agents/healing/test_root_cause_analyzer\.py
+  | tests/agents/healing/test_retry_engine\.py
+)$
+'''
 
 [build-system]
 requires = ["setuptools>=61.0"]

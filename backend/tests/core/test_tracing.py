@@ -116,7 +116,10 @@ async def test_self_healing_loop_tracing_integration(monkeypatch):
 
         # Check trace lines written
         assert Path(trace_file).exists()
-        lines = [json.loads(line) for line in Path(trace_file).read_text(encoding="utf-8").splitlines()]
+        lines = [
+            json.loads(line)
+            for line in Path(trace_file).read_text(encoding="utf-8").splitlines()
+        ]
         stages = [line["stage"] for line in lines]
 
         assert "failure_detected" in stages
@@ -131,8 +134,9 @@ async def test_self_healing_loop_tracing_integration(monkeypatch):
 
         # Also test compute_trace_latencies
         import sys
+
         sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
         from experiments.compute_trace_latencies import compute_latencies
+
         stats = compute_latencies(trace_file)
         assert "T_R" in stats
-

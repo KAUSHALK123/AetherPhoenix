@@ -65,7 +65,9 @@ class BrowserController:
         self._last_verification: Optional[str] = None
 
     @classmethod
-    def get_instance(cls, permission_manager: Optional[PermissionManager] = None) -> "BrowserController":
+    def get_instance(
+        cls, permission_manager: Optional[PermissionManager] = None
+    ) -> "BrowserController":
         """Returns the shared BrowserController singleton instance."""
         if cls._instance is None:
             cls._instance = cls(permission_manager=permission_manager)
@@ -180,7 +182,9 @@ class BrowserController:
         else:
             is_headless = headless
 
-        logger.info(f"Starting browser session (headless={is_headless}, auth_profile={auth_profile})...")
+        logger.info(
+            f"Starting browser session (headless={is_headless}, auth_profile={auth_profile})..."
+        )
         try:
             if async_playwright is None:
                 raise RuntimeError("Playwright is not installed or available.")
@@ -218,7 +222,9 @@ class BrowserController:
             # Attach automatic dialog handler if supported
             try:
                 if hasattr(self._page, "on"):
-                    self._page.on("dialog", lambda dialog: asyncio.create_task(dialog.accept()))
+                    self._page.on(
+                        "dialog", lambda dialog: asyncio.create_task(dialog.accept())
+                    )
             except Exception:
                 pass
 
@@ -335,7 +341,11 @@ class BrowserController:
                     data={"url": url, "status_code": response.status},
                 )
 
-            current_url = self._page.url if isinstance(getattr(self._page, "url", None), str) else url
+            current_url = (
+                self._page.url
+                if isinstance(getattr(self._page, "url", None), str)
+                else url
+            )
             try:
                 raw_title = await self._page.title()
                 title = raw_title if isinstance(raw_title, str) else ""
@@ -428,7 +438,8 @@ class BrowserController:
 
         if not self._pages or tab_index < 0 or tab_index >= len(self._pages):
             return BrowserResult(
-                success=False, error=f"Invalid tab index: {tab_index} (total: {len(self._pages)})"
+                success=False,
+                error=f"Invalid tab index: {tab_index} (total: {len(self._pages)})",
             )
 
         self._active_tab_index = tab_index
@@ -465,7 +476,9 @@ class BrowserController:
         await closing_page.close()
 
         if self._pages:
-            self._active_tab_index = max(0, min(self._active_tab_index, len(self._pages) - 1))
+            self._active_tab_index = max(
+                0, min(self._active_tab_index, len(self._pages) - 1)
+            )
             self._page = self._pages[self._active_tab_index]
             await self._page.bring_to_front()
             await self._update_tabs_list()
@@ -580,7 +593,9 @@ class BrowserController:
                 data={
                     "action": action,
                     "selector": selector,
-                    "value": "[MASKED_CREDENTIAL]" if value and "password" in selector.lower() else value,
+                    "value": "[MASKED_CREDENTIAL]"
+                    if value and "password" in selector.lower()
+                    else value,
                 },
             )
         except Exception as e:
@@ -630,7 +645,9 @@ class BrowserController:
             )
 
             if self._session:
-                self._session.state = BrowserState.READY if success else BrowserState.ERROR
+                self._session.state = (
+                    BrowserState.READY if success else BrowserState.ERROR
+                )
                 self._session.current_url = self._page.url
                 self._session.page_title = await self._page.title()
 
@@ -679,11 +696,15 @@ class BrowserController:
 
         try:
             delta_y = amount if direction.lower() == "down" else -amount
-            await self._page.evaluate(f"window.scrollBy({{top: {delta_y}, behavior: 'smooth'}})")
+            await self._page.evaluate(
+                f"window.scrollBy({{top: {delta_y}, behavior: 'smooth'}})"
+            )
             await self._capture_live_frame()
             self._last_action = f"Scrolled {direction} ({amount}px)"
             self._last_action_status = "SUCCESS"
-            return BrowserResult(success=True, data={"direction": direction, "amount": amount})
+            return BrowserResult(
+                success=True, data={"direction": direction, "amount": amount}
+            )
         except Exception as e:
             logger.error(f"Scroll failed: {e}")
             return BrowserResult(success=False, error=str(e))
@@ -694,11 +715,15 @@ class BrowserController:
             return BrowserResult(success=False, error="No active browser context")
         try:
             PROFILES_DIR.mkdir(parents=True, exist_ok=True)
-            safe_name = "".join(c for c in profile_name if c.isalnum() or c in ("-", "_"))
+            safe_name = "".join(
+                c for c in profile_name if c.isalnum() or c in ("-", "_")
+            )
             file_path = PROFILES_DIR / f"{safe_name}.json"
             await self._context.storage_state(path=str(file_path))
             logger.info(f"Saved auth profile to {file_path}")
-            return BrowserResult(success=True, data={"profile": safe_name, "saved": True})
+            return BrowserResult(
+                success=True, data={"profile": safe_name, "saved": True}
+            )
         except Exception as e:
             logger.error(f"Failed to save auth state: {e}")
             return BrowserResult(success=False, error=str(e))
@@ -742,7 +767,9 @@ class BrowserController:
                 kwargs["quality"] = quality
 
             screenshot_bytes = await self._page.screenshot(**kwargs)
-            self._latest_frame_base64 = base64.b64encode(screenshot_bytes).decode("ascii")
+            self._latest_frame_base64 = base64.b64encode(screenshot_bytes).decode(
+                "ascii"
+            )
 
             return BrowserResult(
                 success=True,
@@ -798,7 +825,9 @@ class BrowserController:
             "last_action_status": self._last_action_status,
             "last_verification": self._last_verification,
             "live_frame_base64": self._latest_frame_base64,
-            "interactive_elements_count": len(await self.get_interactive_elements(limit=30)),
+            "interactive_elements_count": len(
+                await self.get_interactive_elements(limit=30)
+            ),
         }
 
 

@@ -102,7 +102,10 @@ class ObserveActVerifyEngine:
         # 1. Direct CSS Selector match (if target starts with standard selector tokens)
         if clean_target.startswith(("#", ".", "[", "button", "input", "a", "textarea")):
             for el in observation.interactive_elements:
-                if el.selector.lower() == clean_target or clean_target in el.selector.lower():
+                if (
+                    el.selector.lower() == clean_target
+                    or clean_target in el.selector.lower()
+                ):
                     return el
 
         # 2. Exact match on element text, placeholder, or aria-label
@@ -128,7 +131,10 @@ class ObserveActVerifyEngine:
                 or el_text in clean_target
             ):
                 # Filter by action type suitability (e.g. fill prefers inputs, click prefers buttons/links)
-                if action_type in ("fill", "type") and el.tag_name not in ("input", "textarea"):
+                if action_type in ("fill", "type") and el.tag_name not in (
+                    "input",
+                    "textarea",
+                ):
                     continue
                 return el
 
@@ -182,7 +188,9 @@ class ObserveActVerifyEngine:
         elif action_type == "scroll":
             direction = (value or "down").lower()
             delta_y = 500 if direction == "down" else -500
-            await page.evaluate(f"window.scrollBy({{top: {delta_y}, behavior: 'smooth'}})")
+            await page.evaluate(
+                f"window.scrollBy({{top: {delta_y}, behavior: 'smooth'}})"
+            )
             await asyncio.sleep(0.3)
             return {"action": "scroll", "direction": direction}
 
@@ -343,7 +351,9 @@ class ObserveActVerifyEngine:
             retry_obs = await self.observe(page)
             fallback_el = self.identify_element(retry_obs, target, action_type=action)
             if fallback_el and fallback_el.selector != effective_selector:
-                logger.info(f"Recovery found alternative selector: '{fallback_el.selector}'")
+                logger.info(
+                    f"Recovery found alternative selector: '{fallback_el.selector}'"
+                )
                 effective_selector = fallback_el.selector
                 act_result = await self.act(
                     page=page,

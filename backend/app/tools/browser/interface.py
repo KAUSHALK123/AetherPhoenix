@@ -173,12 +173,18 @@ class BrowserAdapter(BaseToolAdapter):
                 output = res.data
 
             elif action in ("observe_act_verify", "step"):
-                step_action = inputs.get("step_action") or inputs.get("interaction_action") or "click"
+                step_action = (
+                    inputs.get("step_action")
+                    or inputs.get("interaction_action")
+                    or "click"
+                )
                 target = inputs.get("target") or inputs.get("selector") or ""
                 value = inputs.get("value")
                 expected = inputs.get("expected_outcome")
                 timeout = inputs.get("timeout_ms", 10000.0)
-                logs.append(f"Executing Observe-Act-Verify: {step_action} on '{target}'...")
+                logs.append(
+                    f"Executing Observe-Act-Verify: {step_action} on '{target}'..."
+                )
                 res = await self.controller.execute_observe_act_verify(
                     action=step_action,
                     target=target,
@@ -194,7 +200,10 @@ class BrowserAdapter(BaseToolAdapter):
                 limit = inputs.get("limit", 50)
                 logs.append(f"Discovering interactive elements (limit={limit})...")
                 elements = await self.controller.get_interactive_elements(limit=limit)
-                output = {"elements": [el.model_dump() for el in elements], "count": len(elements)}
+                output = {
+                    "elements": [el.model_dump() for el in elements],
+                    "count": len(elements),
+                }
 
             elif action == "scroll":
                 direction = inputs.get("direction", "down")

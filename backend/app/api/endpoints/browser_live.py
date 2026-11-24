@@ -57,14 +57,21 @@ async def get_browser_session() -> Dict[str, Any]:
 
 
 @router.post("/session/start")
-async def start_browser_session(request: Optional[StartSessionRequest] = None) -> Dict[str, Any]:
+async def start_browser_session(
+    request: Optional[StartSessionRequest] = None,
+) -> Dict[str, Any]:
     """Starts or reuses a browser session."""
     ctrl = get_browser_controller()
     headless = request.headless if request else None
     auth_profile = request.auth_profile if request else None
     res = await ctrl.start_session(headless=headless, auth_profile=auth_profile)
     live_state = await ctrl.get_live_state()
-    return {"success": res.success, "data": res.data, "error": res.error, "live_state": live_state}
+    return {
+        "success": res.success,
+        "data": res.data,
+        "error": res.error,
+        "live_state": live_state,
+    }
 
 
 @router.post("/session/close")
@@ -81,7 +88,12 @@ async def navigate_browser(request: NavigateRequest) -> Dict[str, Any]:
     ctrl = get_browser_controller()
     res = await ctrl.navigate(url=request.url, timeout_ms=request.timeout_ms)
     live_state = await ctrl.get_live_state()
-    return {"success": res.success, "data": res.data, "error": res.error, "live_state": live_state}
+    return {
+        "success": res.success,
+        "data": res.data,
+        "error": res.error,
+        "live_state": live_state,
+    }
 
 
 @router.post("/interact")
@@ -95,7 +107,12 @@ async def interact_browser(request: InteractRequest) -> Dict[str, Any]:
         timeout_ms=request.timeout_ms,
     )
     live_state = await ctrl.get_live_state()
-    return {"success": res.success, "data": res.data, "error": res.error, "live_state": live_state}
+    return {
+        "success": res.success,
+        "data": res.data,
+        "error": res.error,
+        "live_state": live_state,
+    }
 
 
 @router.post("/step")
@@ -110,7 +127,12 @@ async def execute_observe_act_verify_step(request: StepRequest) -> Dict[str, Any
         timeout_ms=request.timeout_ms,
     )
     live_state = await ctrl.get_live_state()
-    return {"success": res.success, "data": res.data, "error": res.error, "live_state": live_state}
+    return {
+        "success": res.success,
+        "data": res.data,
+        "error": res.error,
+        "live_state": live_state,
+    }
 
 
 @router.post("/scroll")
@@ -119,7 +141,12 @@ async def scroll_browser(request: ScrollRequest) -> Dict[str, Any]:
     ctrl = get_browser_controller()
     res = await ctrl.scroll(direction=request.direction, amount=request.amount)
     live_state = await ctrl.get_live_state()
-    return {"success": res.success, "data": res.data, "error": res.error, "live_state": live_state}
+    return {
+        "success": res.success,
+        "data": res.data,
+        "error": res.error,
+        "live_state": live_state,
+    }
 
 
 @router.post("/tabs")

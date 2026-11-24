@@ -57,7 +57,10 @@ class MCPBrowserToolCatalog:
                             "type": "string",
                             "description": "CSS selector, name, or placeholder of input element",
                         },
-                        "value": {"type": "string", "description": "Text to enter into field"},
+                        "value": {
+                            "type": "string",
+                            "description": "Text to enter into field",
+                        },
                         "timeout_ms": {
                             "type": "number",
                             "description": "Timeout in milliseconds",
@@ -219,16 +222,22 @@ class MCPBrowserAdapter:
                 if not selector:
                     return self._error_response("Argument 'selector' is required.")
                 timeout = args.get("timeout_ms", 10000.0)
-                res = await ctrl.interact(selector=selector, action="click", timeout_ms=timeout)
+                res = await ctrl.interact(
+                    selector=selector, action="click", timeout_ms=timeout
+                )
                 if not res.success:
                     return self._error_response(f"Click failed: {res.error}")
-                return self._success_response(f"Clicked element: {selector}", data=res.data)
+                return self._success_response(
+                    f"Clicked element: {selector}", data=res.data
+                )
 
             elif name == "browser_fill":
                 selector = args.get("selector")
                 value = args.get("value")
                 if not selector or value is None:
-                    return self._error_response("Arguments 'selector' and 'value' are required.")
+                    return self._error_response(
+                        "Arguments 'selector' and 'value' are required."
+                    )
                 timeout = args.get("timeout_ms", 10000.0)
                 res = await ctrl.interact(
                     selector=selector, action="fill", value=value, timeout_ms=timeout
@@ -267,23 +276,30 @@ class MCPBrowserAdapter:
                 direction = args.get("direction", "down")
                 amount = args.get("amount", 500)
                 res = await ctrl.scroll(direction=direction, amount=amount)
-                return self._success_response(f"Scrolled {direction} {amount}px", data=res.data)
+                return self._success_response(
+                    f"Scrolled {direction} {amount}px", data=res.data
+                )
 
             elif name == "browser_tabs":
                 action = args.get("action")
                 if action == "list":
                     live_state = await ctrl.get_live_state()
                     return self._success_response(
-                        f"Active tabs: {live_state['tab_count']}", data={"tabs": live_state["tabs"]}
+                        f"Active tabs: {live_state['tab_count']}",
+                        data={"tabs": live_state["tabs"]},
                     )
                 elif action == "new":
                     url = args.get("url", "about:blank")
                     res = await ctrl.new_tab(url=url)
-                    return self._success_response(f"Opened new tab: {url}", data=res.data)
+                    return self._success_response(
+                        f"Opened new tab: {url}", data=res.data
+                    )
                 elif action == "switch":
                     idx = args.get("tab_index", 0)
                     res = await ctrl.switch_tab(tab_index=idx)
-                    return self._success_response(f"Switched to tab {idx}", data=res.data)
+                    return self._success_response(
+                        f"Switched to tab {idx}", data=res.data
+                    )
                 elif action == "close":
                     idx = args.get("tab_index")
                     res = await ctrl.close_tab(tab_index=idx)
@@ -312,20 +328,26 @@ class MCPBrowserAdapter:
                 )
 
             else:
-                return self._error_response(f"Tool '{name}' not found in MCP browser catalog.")
+                return self._error_response(
+                    f"Tool '{name}' not found in MCP browser catalog."
+                )
 
         except Exception as e:
             logger.exception(f"MCP browser tool '{name}' failed: {e}")
             return self._error_response(f"Internal MCP browser error: {e}")
 
-    def _success_response(self, text: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def _success_response(
+        self, text: str, data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         return {
             "content": [{"type": "text", "text": text}],
             "isError": False,
             "data": data or {},
         }
 
-    def _error_response(self, text: str, data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def _error_response(
+        self, text: str, data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         return {
             "content": [{"type": "text", "text": f"Error: {text}"}],
             "isError": True,

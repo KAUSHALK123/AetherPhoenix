@@ -381,6 +381,7 @@ def test_missing_resource_protected_path_rejected_by_plan_validation(base_ids):
     (e.g., C:\\Windows\\System32\\... or /etc/...) must be rejected by plan validation.
     """
     from pathlib import Path
+
     error_parser = ErrorParser()
     planner = RecoveryPlanner()
 
@@ -422,10 +423,15 @@ def test_missing_resource_protected_path_rejected_by_plan_validation(base_ids):
         assert plan.is_viable is False, f"Expected {p} to be rejected as non-viable"
         assert plan.validation_status == "INVALID"
         assert len(plan.validation_errors) > 0
-        assert any("SafeExecutionPolicy" in err or "Restricted system path" in err for err in plan.validation_errors)
+        assert any(
+            "SafeExecutionPolicy" in err or "Restricted system path" in err
+            for err in plan.validation_errors
+        )
 
         # Confirm path was NEVER created on disk
-        assert not path_obj.exists(), f"Violation: Protected path {p} was created on disk!"
+        assert (
+            not path_obj.exists()
+        ), f"Violation: Protected path {p} was created on disk!"
 
 
 @pytest.mark.asyncio
@@ -448,13 +454,19 @@ async def test_missing_resource_outside_workspace_rejected_and_never_created(bas
     from app.tools.filesystem.models import CreateDirectoryRequest
 
     outside_dir = Path("D:/forbidden_outside_workspace_phoenix_dir_xyz")
-    assert not outside_dir.exists(), "Precondition failed: outside directory already exists"
+    assert (
+        not outside_dir.exists()
+    ), "Precondition failed: outside directory already exists"
 
     # 1. Direct tool executor level enforcement
     fs_executor = FileSystemExecutor()
     with pytest.raises(ValueError, match="outside the permitted workspace directory"):
-        await fs_executor.create_directory(CreateDirectoryRequest(path=str(outside_dir), create_parents=True))
-    assert not outside_dir.exists(), "Violation: directory outside workspace was created on disk!"
+        await fs_executor.create_directory(
+            CreateDirectoryRequest(path=str(outside_dir), create_parents=True)
+        )
+    assert (
+        not outside_dir.exists()
+    ), "Violation: directory outside workspace was created on disk!"
 
     # 2. SelfHealingLoop end-to-end enforcement with protected path
     sys32_dir = Path("C:/Windows/System32/phoenix_never_create_sys32_test")
@@ -489,11 +501,12 @@ async def test_missing_resource_outside_workspace_rejected_and_never_created(bas
         failure_type=FailureType.OUTPUT_MISSING,
         message=f"Output directory missing: {sys32_dir}",
         retryability=True,
-        execution_context={"missing_path": str(sys32_dir), "target_tool": "document_generator"},
+        execution_context={
+            "missing_path": str(sys32_dir),
+            "target_tool": "document_generator",
+        },
     )
 
     result = await loop.process_failure(task, fr, sws)
     assert result.success is False, "Expected self healing to fail on protected path"
     assert not sys32_dir.exists(), "Violation: Protected path was created on disk!"
-
-
