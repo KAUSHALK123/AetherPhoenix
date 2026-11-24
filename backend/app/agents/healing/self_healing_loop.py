@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Tuple, Union
 from uuid import UUID
 
 from shared.contracts.escalation import (
@@ -70,8 +70,13 @@ class SelfHealingLoop(BaseAgent):
         self.tool_registry = tool_registry
         self.error_parser = error_parser or ErrorParser()
         self.root_cause_analyzer = root_cause_analyzer or RootCauseAnalyzer()
-        self.recovery_planner = recovery_planner or RecoveryPlanner(tool_registry=tool_registry)
-        if self.recovery_planner and getattr(self.recovery_planner, "tool_registry", None) is None:
+        self.recovery_planner = recovery_planner or RecoveryPlanner(
+            tool_registry=tool_registry
+        )
+        if (
+            self.recovery_planner
+            and getattr(self.recovery_planner, "tool_registry", None) is None
+        ):
             self.recovery_planner.tool_registry = tool_registry
         self.retry_engine = retry_engine or RetryEngine(
             default_max_retries=max_retries,
@@ -220,17 +225,30 @@ class SelfHealingLoop(BaseAgent):
         )
 
         # Stage 1: Error Parsing
-        record_trace("stage1_error_parsing_start", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
+        record_trace(
+            "stage1_error_parsing_start",
+            workflow_id=workflow_id,
+            task_id=task_id,
+            attempt=attempt_number,
+        )
         parsed_error: ParsedError = self.error_parser.parse(failure_input, task=task)
         record_trace(
             "stage1_error_parsing_end",
             workflow_id=workflow_id,
             task_id=task_id,
             attempt=attempt_number,
-            fault_class=parsed_error.category.value if hasattr(parsed_error.category, "value") else str(parsed_error.category),
+            fault_class=(
+                parsed_error.category.value
+                if hasattr(parsed_error.category, "value")
+                else str(parsed_error.category)
+            ),
             extra={
                 "error_text": parsed_error.raw_message or str(failure_input),
-                "parsed_category": parsed_error.category.value if hasattr(parsed_error.category, "value") else str(parsed_error.category),
+                "parsed_category": (
+                    parsed_error.category.value
+                    if hasattr(parsed_error.category, "value")
+                    else str(parsed_error.category)
+                ),
                 "normalized_code": parsed_error.normalized_code,
             },
         )
@@ -243,7 +261,12 @@ class SelfHealingLoop(BaseAgent):
         self._set_task_state(workflow_id, task_id, HealingState.PLANNING)
 
         # Stage 2: Root Cause Analysis
-        record_trace("stage2_root_cause_analysis_start", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
+        record_trace(
+            "stage2_root_cause_analysis_start",
+            workflow_id=workflow_id,
+            task_id=task_id,
+            attempt=attempt_number,
+        )
         root_cause: RootCauseAnalysis = self.root_cause_analyzer.analyze(
             parsed_error=parsed_error,
             task=task,
@@ -254,10 +277,18 @@ class SelfHealingLoop(BaseAgent):
             workflow_id=workflow_id,
             task_id=task_id,
             attempt=attempt_number,
-            fault_class=root_cause.category.value if hasattr(root_cause.category, "value") else str(root_cause.category),
+            fault_class=(
+                root_cause.category.value
+                if hasattr(root_cause.category, "value")
+                else str(root_cause.category)
+            ),
             extra={
                 "confidence": root_cause.confidence_score,
-                "root_cause_category": root_cause.category.value if hasattr(root_cause.category, "value") else str(root_cause.category),
+                "root_cause_category": (
+                    root_cause.category.value
+                    if hasattr(root_cause.category, "value")
+                    else str(root_cause.category)
+                ),
                 "root_cause_summary": root_cause.root_cause_summary,
             },
         )
@@ -278,7 +309,12 @@ class SelfHealingLoop(BaseAgent):
         baseline = (orig_risk, orig_perms)
 
         # Stage 3: Strategy Selection / Planning
-        record_trace("stage3_strategy_selection_start", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
+        record_trace(
+            "stage3_strategy_selection_start",
+            workflow_id=workflow_id,
+            task_id=task_id,
+            attempt=attempt_number,
+        )
         plan: RecoveryPlan = self.recovery_planner.plan(
             root_cause=root_cause,
             task=task,
@@ -287,7 +323,11 @@ class SelfHealingLoop(BaseAgent):
             mode=exec_mode,
             tool_registry=self.tool_registry,
         )
-        plan_strat_str = plan.strategy.value if hasattr(plan.strategy, "value") else str(plan.strategy)
+        plan_strat_str = (
+            plan.strategy.value
+            if hasattr(plan.strategy, "value")
+            else str(plan.strategy)
+        )
         record_trace(
             "stage3_strategy_selection_end",
             workflow_id=workflow_id,
@@ -406,14 +446,24 @@ class SelfHealingLoop(BaseAgent):
             return result
 
         # Stage 4: Plan Validation
-        record_trace("stage4_plan_validation_start", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
+        record_trace(
+            "stage4_plan_validation_start",
+            workflow_id=workflow_id,
+            task_id=task_id,
+            attempt=attempt_number,
+        )
         is_plan_valid, val_errors = validate_recovery_plan(
             plan,
             original_task=task,
             mode=exec_mode,
             original_baseline=baseline,
         )
-        record_trace("stage4_plan_validation_end", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
+        record_trace(
+            "stage4_plan_validation_end",
+            workflow_id=workflow_id,
+            task_id=task_id,
+            attempt=attempt_number,
+        )
         if not is_plan_valid or not plan.is_viable:
             sec_reason = (
                 "; ".join(val_errors)
@@ -501,7 +551,12 @@ class SelfHealingLoop(BaseAgent):
             self._set_task_state(workflow_id, task_id, HealingState.RETRYING)
 
         # Stage 5: Recovery Execution
-        record_trace("stage5_recovery_execution_start", workflow_id=workflow_id, task_id=task_id, attempt=attempt_number)
+        record_trace(
+            "stage5_recovery_execution_start",
+            workflow_id=workflow_id,
+            task_id=task_id,
+            attempt=attempt_number,
+        )
         result = await self.retry_engine.execute_recovery(
             plan=plan,
             task=task,
@@ -514,12 +569,28 @@ class SelfHealingLoop(BaseAgent):
             workflow_id=workflow_id,
             task_id=task_id,
             attempt=attempt_number,
-            fault_class=root_cause.category.value if hasattr(root_cause.category, "value") else str(root_cause.category),
+            fault_class=(
+                root_cause.category.value
+                if hasattr(root_cause.category, "value")
+                else str(root_cause.category)
+            ),
             extra={
-                "supervisor_result": "PASSED: recovery executed successfully" if result.success else "FAILED: retry engine execution failed",
-                "final_status": HealingState.COMPLETED.value if result.success else HealingState.FAILED.value,
+                "supervisor_result": (
+                    "PASSED: recovery executed successfully"
+                    if result.success
+                    else "FAILED: retry engine execution failed"
+                ),
+                "final_status": (
+                    HealingState.COMPLETED.value
+                    if result.success
+                    else HealingState.FAILED.value
+                ),
                 "retry_count_k": task.retry_count,
-                "plan_chosen": plan.strategy.value if hasattr(plan.strategy, "value") else str(plan.strategy),
+                "plan_chosen": (
+                    plan.strategy.value
+                    if hasattr(plan.strategy, "value")
+                    else str(plan.strategy)
+                ),
                 "patch_applied": getattr(plan, "updated_task_params", {}) or {},
             },
         )

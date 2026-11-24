@@ -1,5 +1,15 @@
-import pytest
 from uuid import uuid4
+
+import pytest
+from shared.contracts.execution import ExecutionResult, TaskError
+from shared.contracts.permission import RiskLevel
+from shared.contracts.task import Task, TaskCategory, TaskPriority, TaskStatus
+from shared.contracts.tool import Tool, ToolHealth, ToolState
+from shared.contracts.workflow import (
+    SharedWorkflowState,
+    WorkflowMetadata,
+    WorkflowStatus,
+)
 
 from app.agents.healing.error_parser import ErrorParser
 from app.agents.healing.models import ErrorCategory
@@ -7,11 +17,6 @@ from app.agents.healing.self_healing_loop import SelfHealingLoop
 from app.core.exceptions import ToolExecutionException, ToolNotFoundException
 from app.tools.browser_extension.controller import BrowserExtensionActionError
 from app.tools.registry import ToolRegistry
-from shared.contracts.execution import ExecutionResult, TaskError
-from shared.contracts.permission import RiskLevel
-from shared.contracts.task import Task, TaskCategory, TaskPriority, TaskStatus
-from shared.contracts.tool import Tool, ToolHealth, ToolState
-from shared.contracts.workflow import SharedWorkflowState, WorkflowMetadata, WorkflowStatus
 
 
 def test_error_parser_classifies_real_adapter_signatures():
@@ -25,9 +30,9 @@ def test_error_parser_classifies_real_adapter_signatures():
     ]
     for exc in exc_list:
         parsed = parser.parse(exc)
-        assert parsed.category == ErrorCategory.TOOL_UNAVAILABLE, (
-            f"Expected {type(exc).__name__} to be TOOL_UNAVAILABLE, got {parsed.category}"
-        )
+        assert (
+            parsed.category == ErrorCategory.TOOL_UNAVAILABLE
+        ), f"Expected {type(exc).__name__} to be TOOL_UNAVAILABLE, got {parsed.category}"
 
     # 2. Real adapter error codes emitted across tools
     adapter_codes = [
@@ -56,9 +61,9 @@ def test_error_parser_classifies_real_adapter_signatures():
             ),
         )
         parsed = parser.parse(exec_res)
-        assert parsed.category == ErrorCategory.TOOL_UNAVAILABLE, (
-            f"Expected code {code} to be TOOL_UNAVAILABLE, got {parsed.category}"
-        )
+        assert (
+            parsed.category == ErrorCategory.TOOL_UNAVAILABLE
+        ), f"Expected code {code} to be TOOL_UNAVAILABLE, got {parsed.category}"
 
 
 @pytest.mark.asyncio

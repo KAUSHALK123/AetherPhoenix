@@ -331,7 +331,6 @@ class TaskDecompositionEngine:
         if any(
             w in lower_goal
             for w in [
-                "github",
                 "gitlab",
                 "create issue",
                 "open issue",
@@ -355,6 +354,10 @@ class TaskDecompositionEngine:
                 ".dev",
                 ".ai",
                 ".app",
+                "canva",
+                "github",
+                "documentation",
+                "docs",
                 "youtube",
                 "utube",
                 "google",
@@ -370,6 +373,9 @@ class TaskDecompositionEngine:
                 "search for",
                 "search on",
                 "web search",
+                "click",
+                "enter text",
+                "fill",
             ]
         ):
             return self._decompose_browser_goal(goal, workflow_id)
@@ -1408,7 +1414,7 @@ class TaskDecompositionEngine:
             + (" - New Issue Form" if is_issue else ""),
             description=f"Open active browser tab to {target_url}",
             assigned_agent="WorkerAgent",
-            required_tool="browser_extension",
+            required_tool="browser_automation",
             category=TaskCategory.BROWSER,
             priority=TaskPriority.HIGH,
             dependencies=[],
@@ -1435,7 +1441,7 @@ class TaskDecompositionEngine:
                 task_name=f"Populate Issue Fields ('{title}')",
                 description="Fill title and markdown description on GitHub issue form",
                 assigned_agent="WorkerAgent",
-                required_tool="browser_extension",
+                required_tool="browser_automation",
                 category=TaskCategory.BROWSER,
                 priority=TaskPriority.HIGH,
                 dependencies=[task_nav.task_id],
@@ -1444,10 +1450,9 @@ class TaskDecompositionEngine:
                 failure_criteria=["Form elements not found"],
                 inputs={
                     "action": "interact",
-                    "title_selector": "input[name='issue[title]'], #issue_title",
-                    "title_value": title,
-                    "body_selector": "textarea[name='issue[body]'], #issue_body",
-                    "body_value": body,
+                    "selector": "input[name='issue[title]'], #issue_title",
+                    "interaction_action": "fill",
+                    "value": title,
                 },
                 estimated_duration_seconds=30,
                 status=TaskStatus.CREATED,
@@ -1459,7 +1464,7 @@ class TaskDecompositionEngine:
                 task_name="Submit Issue & Confirm Creation",
                 description="Click 'Submit new issue' button and verify issue URL in active browser",
                 assigned_agent="WorkerAgent",
-                required_tool="browser_extension",
+                required_tool="browser_automation",
                 category=TaskCategory.BROWSER,
                 priority=TaskPriority.HIGH,
                 dependencies=[task_fill.task_id],
@@ -1467,9 +1472,10 @@ class TaskDecompositionEngine:
                 success_criteria=["Issue submitted and created"],
                 failure_criteria=["Submission button failed"],
                 inputs={
-                    "action": "interact",
-                    "interaction_action": "click",
-                    "selector": "button.btn-primary[type='submit']",
+                    "action": "observe_act_verify",
+                    "step_action": "click",
+                    "target": "button.btn-primary[type='submit'], button:has-text('Submit new issue')",
+                    "expected_outcome": "Issue submitted successfully",
                 },
                 estimated_duration_seconds=30,
                 status=TaskStatus.CREATED,
@@ -1495,6 +1501,20 @@ class TaskDecompositionEngine:
             raw_url = url_match.group(1).rstrip(",.;!?)")
             target_url = raw_url if raw_url.startswith("http") else f"https://{raw_url}"
             site_name = target_url
+        elif "canva" in lower_goal:
+            site_name = "Canva"
+            target_url = "https://www.canva.com"
+        elif "github" in lower_goal:
+            site_name = "GitHub"
+            target_url = "https://github.com"
+        elif "documentation" in lower_goal or "docs" in lower_goal:
+            site_name = "Documentation"
+            if "fastapi" in lower_goal:
+                target_url = "https://fastapi.tiangolo.com/"
+            elif "playwright" in lower_goal:
+                target_url = "https://playwright.dev/python/"
+            else:
+                target_url = "https://docs.python.org/3/"
         elif "youtube" in lower_goal or "utube" in lower_goal:
             site_name = "YouTube"
             target_url = "https://www.youtube.com"
@@ -1567,7 +1587,7 @@ class TaskDecompositionEngine:
             category=TaskCategory.BROWSER,
             priority=TaskPriority.HIGH,
             dependencies=[],
-            expected_output=f"Navigated to {site_name} and executed requested search",
+            expected_output=f"Navigated to {site_name} and executed requested actions",
             estimated_duration_seconds=90,
             status=TaskStatus.CREATED,
         )
@@ -1581,7 +1601,7 @@ class TaskDecompositionEngine:
             ),
             description=f"Open active browser window and navigate to {target_url}",
             assigned_agent="WorkerAgent",
-            required_tool="browser_extension",
+            required_tool="browser_automation",
             category=TaskCategory.BROWSER,
             priority=TaskPriority.HIGH,
             dependencies=[],
@@ -1593,16 +1613,75 @@ class TaskDecompositionEngine:
             status=TaskStatus.CREATED,
         )
 
+        # Detect Observe-Act-Verify action intent
+        step_action = (
+            "click"
+            if ("click" in lower_goal)
+            else (
+                "fill"
+                if any(w in lower_goal for w in ["enter text", "fill", "type"])
+                else "observe"
+            )
+        )
+        target_selector = "button, a, input"
+        step_value = None
+
+        if step_action == "click":
+            click_match = re.search(
+                r"(?:click\s+(?:on\s+)?(?:a\s+|the\s+)?)([^.,;!?]+)",
+                goal,
+                re.IGNORECASE,
+            )
+            target_selector = click_match.group(1).strip() if click_match else "button"
+        elif step_action == "fill":
+            fill_match = re.search(
+                r"(?:enter\s+text|fill|type)\s+['\"]?([^'\",;!?]+)['\"]?\s+(?:in|into)\s+['\"]?([^'\",;!?]+)['\"]?",
+                goal,
+                re.IGNORECASE,
+            )
+            if fill_match:
+                step_value = fill_match.group(1).strip()
+                target_selector = fill_match.group(2).strip()
+            else:
+                target_selector = "input"
+                step_value = query or "test input"
+
+        task_action = Task(
+            parent_task_id=phase_root.task_id,
+            workflow_id=workflow_id,
+            task_name=f"Observe & Verify Action on {site_name}",
+            description=f"Inspect page elements and verify action for '{goal}'",
+            assigned_agent="WorkerAgent",
+            required_tool="browser_automation",
+            category=TaskCategory.BROWSER,
+            priority=TaskPriority.HIGH,
+            dependencies=[task_nav.task_id],
+            expected_output="Interaction executed and verified via Observe-Act-Verify",
+            success_criteria=[
+                "Element located, action dispatched, and state change verified"
+            ],
+            failure_criteria=["Element not found or verification failed"],
+            inputs={
+                "action": "observe_act_verify",
+                "step_action": step_action if step_action != "observe" else "click",
+                "target": target_selector,
+                "value": step_value,
+                "expected_outcome": "Action verified on page",
+            },
+            estimated_duration_seconds=30,
+            status=TaskStatus.CREATED,
+        )
+
         task_extract = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
             task_name="Verify & Extract Search Results",
             description=f"Inspect page content and verify results for '{query or goal}'",
             assigned_agent="WorkerAgent",
-            required_tool="browser_extension",
+            required_tool="browser_automation",
             category=TaskCategory.BROWSER,
             priority=TaskPriority.MEDIUM,
-            dependencies=[task_nav.task_id],
+            dependencies=[task_action.task_id],
             expected_output="Extracted search results list",
             success_criteria=["Results extracted from active page"],
             failure_criteria=["Failed to extract content"],
@@ -1611,7 +1690,7 @@ class TaskDecompositionEngine:
             status=TaskStatus.CREATED,
         )
 
-        return [phase_root, task_nav, task_extract]
+        return [phase_root, task_nav, task_action, task_extract]
 
     def _decompose_desktop_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
         """Decomposes a desktop application launch or GUI automation goal."""

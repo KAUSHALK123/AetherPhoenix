@@ -117,6 +117,29 @@ except ImportError:
     register_export_tool = None
 
 try:
+    from app.tools.browser import (
+        BrowserActionError,
+        BrowserAdapter,
+        BrowserController,
+        BrowserTool,
+        DOMAutomation,
+        MCPBrowserAdapter,
+        ObserveActVerifyEngine,
+        get_browser_controller,
+        register_browser_capability,
+    )
+except ImportError:
+    BrowserActionError = None
+    BrowserAdapter = None
+    BrowserController = None
+    BrowserTool = None
+    DOMAutomation = None
+    MCPBrowserAdapter = None
+    ObserveActVerifyEngine = None
+    get_browser_controller = None
+    register_browser_capability = None
+
+try:
     from app.tools.ocr import (
         OCREngine,
         OCRError,
@@ -178,4 +201,13 @@ __all__ = [
     "OCRError",
     "register_terminal_tool",
     "TerminalToolAdapter",
+    "BrowserController",
+    "BrowserAdapter",
+    "BrowserTool",
+    "BrowserActionError",
+    "DOMAutomation",
+    "ObserveActVerifyEngine",
+    "MCPBrowserAdapter",
+    "get_browser_controller",
+    "register_browser_capability",
 ]
