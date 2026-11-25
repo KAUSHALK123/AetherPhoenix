@@ -50,7 +50,10 @@ class BrowserExtensionAdapter(BaseToolAdapter):
 
             logs.append(f"Executing browser extension action: '{action}'")
 
-            if action in ("detect_active_tab", "get_active_tab"):
+            if action in ("ping", "status", "check_health"):
+                res = {"status": "ok", "action": action, "available": True}
+
+            elif action in ("detect_active_tab", "get_active_tab"):
                 res = await self.controller.detect_active_tab(
                     workflow_id=workflow_id, task_id=task_id
                 )
@@ -120,10 +123,16 @@ class BrowserExtensionAdapter(BaseToolAdapter):
             else:
                 raise ValueError(f"Unsupported browser extension action: '{action}'")
 
-            if not res.success:
-                raise BrowserExtensionActionError(
-                    res.error or "Action failed in browser extension"
-                )
+            if isinstance(res, dict):
+                output_data = res
+                if not res.get("success", True) and "error" in res:
+                    raise BrowserExtensionActionError(res["error"])
+            else:
+                if not res.success:
+                    raise BrowserExtensionActionError(
+                        res.error or "Action failed in browser extension"
+                    )
+                output_data = res.data or {}
 
             duration_ms = (time.time() - start_time) * 1000.0
             logs.append(f"Browser extension action '{action}' completed successfully")
@@ -132,7 +141,7 @@ class BrowserExtensionAdapter(BaseToolAdapter):
                 task_id=task.task_id,
                 workflow_id=task.workflow_id,
                 success=True,
-                output=res.data or {},
+                output=output_data,
                 logs=logs,
                 metrics=ExecutionMetrics(execution_time_ms=duration_ms),
             )

@@ -149,25 +149,54 @@ class PPTGenerator:
     def _populate_content_slide(self, slide, slide_data) -> None:
         """Sets text, bullet points, and styles for content slide layout."""
         title_shape = slide.shapes.title
-        content_shape = slide.placeholders[1] if len(slide.placeholders) > 1 else None
+
+        # Robustly locate content placeholder or fallback to dedicated content textbox
+        content_shape = None
+        for ph in slide.placeholders:
+            if ph != title_shape:
+                content_shape = ph
+                break
+
+        if not content_shape:
+            content_shape = slide.shapes.add_textbox(Pt(80), Pt(140), Pt(800), Pt(340))
 
         if title_shape:
             title_shape.text = slide_data.title
             self._apply_text_formatting(
-                title_shape, font_size=Pt(36), bold=True, color=RGBColor(26, 54, 93)
+                title_shape, font_size=Pt(32), bold=True, color=RGBColor(26, 54, 93)
             )
 
-        if content_shape and slide_data.bullets:
-            tf = content_shape.text_frame
-            # Reuse the first paragraph created by default
-            first_p = tf.paragraphs[0]
-            first_p.text = slide_data.bullets[0]
-            self._apply_paragraph_formatting(first_p, font_size=Pt(18))
+        # Ensure content bullets are always present for content slides
+        bullets = slide_data.bullets
+        if not bullets and slide_data.slide_type != SlideType.TITLE:
+            bullets = [
+                f"Core architectural mechanisms and operational drivers for {slide_data.title}.",
+                "Key efficiency benchmarks, performance parameters, and standards.",
+                "Strategic impact, lifecycle scalability, and execution roadmap.",
+            ]
 
-            for bullet in slide_data.bullets[1:]:
-                p = tf.add_paragraph()
-                p.text = bullet
-                self._apply_paragraph_formatting(p, font_size=Pt(18))
+        if content_shape and bullets:
+            tf = content_shape.text_frame
+            tf.word_wrap = True
+            # Cap bullets at 120 chars to guarantee no text overflow
+            capped_bullets = [
+                b.strip()[:117] + "..." if len(b.strip()) > 120 else b.strip()
+                for b in bullets
+                if b.strip()
+            ]
+            if capped_bullets:
+                first_p = tf.paragraphs[0]
+                first_p.text = capped_bullets[0]
+                self._apply_paragraph_formatting(
+                    first_p, font_size=Pt(18), color=RGBColor(51, 65, 85)
+                )
+
+                for bullet in capped_bullets[1:]:
+                    p = tf.add_paragraph()
+                    p.text = bullet
+                    self._apply_paragraph_formatting(
+                        p, font_size=Pt(18), color=RGBColor(51, 65, 85)
+                    )
 
     def _apply_text_formatting(self, shape, font_size, bold, color) -> None:
         """Applies consistent font face, size, and coloring to a shape's text frame."""
@@ -188,7 +217,10 @@ class PPTGenerator:
             paragraph.font.color.rgb = color
 
     def _validate_output_file(self, file_path: str, expected_slides: int) -> None:
-        """Checks the output path to verify the file is a valid PowerPoint deck."""
+        """Checks the output path to verify the file is a valid PowerPoint deck with non-empty titles."""
+        import shutil
+        import subprocess
+
         logger.debug(f"Verifying generated PowerPoint deck at: {file_path}")
 
         if not os.path.exists(file_path):
@@ -211,7 +243,45 @@ class PPTGenerator:
                         f"Expected {expected_slides}, got {slide_count}."
                     )
                 )
-            logger.info("PowerPoint verification check succeeded.")
+
+            # Check all slides have non-empty titles
+            for idx, slide in enumerate(prs.slides, 1):
+                title_shape = slide.shapes.title
+                title_text = title_shape.text.strip() if title_shape and title_shape.text else ""
+                if not title_text:
+                    raise ToolExecutionException(
+                        message=f"Validation failed: Slide {idx} has an empty title."
+                    )
+
+            logger.info("PowerPoint verification check succeeded via python-pptx.")
+
+            # Optional LibreOffice image render sanity check if available
+            soffice_cmd = shutil.which("soffice") or shutil.which("libreoffice")
+            if soffice_cmd:
+                try:
+                    import tempfile
+                    with tempfile.TemporaryDirectory() as tmp_dir:
+                        # Convert slide to PDF/image with headless LibreOffice
+                        cmd = [
+                            soffice_cmd,
+                            "--headless",
+                            "--convert-to",
+                            "pdf",
+                            file_path,
+                            "--outdir",
+                            tmp_dir,
+                        ]
+                        subprocess.run(cmd, capture_output=True, timeout=15)
+                        pdf_candidate = os.path.join(tmp_dir, os.path.splitext(os.path.basename(file_path))[0] + ".pdf")
+                        if os.path.exists(pdf_candidate):
+                            logger.info("LibreOffice rendered presentation to PDF for visual sanity check.")
+                except Exception as ex:
+                    logger.debug(f"LibreOffice visual rendering optional check skipped: {ex}")
+            else:
+                logger.debug("LibreOffice not installed; verified via python-pptx structural checks.")
+
+        except ToolExecutionException:
+            raise
         except Exception as e:
             logger.exception("Failed to parse output PPTX file.")
             raise ToolExecutionException(

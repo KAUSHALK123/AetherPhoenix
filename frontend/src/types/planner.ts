@@ -32,7 +32,7 @@ export interface FileExplorerItem {
 
 export interface FileExplorerData {
   path: string;
-  action: 'opened_folder' | 'opened_file' | 'created_folder' | 'revealed_artifact';
+  action: 'opened_folder' | 'opened_file' | 'created_folder' | 'revealed_artifact' | 'list_files';
   status: 'COMPLETED' | 'FAILED';
   items?: FileExplorerItem[];
 }
@@ -59,6 +59,15 @@ export interface BrowserAutomationData {
   status: 'COMPLETED' | 'RUNNING' | 'FAILED';
 }
 
+export interface HumanHandoffData {
+  reason: string;
+  url?: string;
+  screenshot?: string;
+  workflowId?: string;
+  taskId?: string;
+  status: 'WAITING_FOR_HUMAN' | 'RESUMED' | 'TIMED_OUT';
+}
+
 export interface Message {
   id: string;
   role: MessageRole;
@@ -75,6 +84,7 @@ export interface Message {
   desktopAppData?: DesktopAppData;
   webResearchData?: WebResearchData;
   browserData?: BrowserAutomationData;
+  humanHandoffData?: HumanHandoffData;
 }
 
 export interface PlannerTask {
@@ -125,7 +135,8 @@ export interface GeneratePlanRequest {
 
 export interface PlannerResponse {
   session_id: string;
-  status: 'ready' | 'clarifying' | 'error' | string;
+  status: 'ready' | 'clarifying' | 'error' | 'chat' | string;
   reply: string;
   action?: string;
+  options?: string[];
 }

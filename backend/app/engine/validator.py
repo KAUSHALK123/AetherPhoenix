@@ -1,8 +1,8 @@
 import os
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from shared.contracts.execution import ExecutionResult
-from shared.contracts.task import Task
+from shared.contracts.task import Task, TaskType
 
 
 class OutputValidationService:
@@ -46,14 +46,82 @@ class OutputValidationService:
         checks["no_failure_criteria_triggered"] = not failure_detected
         issues.extend(failure_issues)
 
+        # 5. Placeholder / no-op task verification
+        is_phase_task = (
+            getattr(task, "task_type", None) == TaskType.PHASE
+            or "phase" in task.task_name.lower()
+        )
+        if not is_phase_task:
+            is_placeholder_name = any(
+                ph in task.task_name.lower()
+                for ph in ["evaluate goal context", "execute primary action"]
+            )
+            is_noop_task = (
+                not task.required_tool
+                and not result.artifacts
+                and self.is_empty_or_noop_output(result.output)
+            )
+            if is_placeholder_name or is_noop_task:
+                checks["no_placeholder_or_noop"] = False
+                issues.append(
+                    f"Task '{task.task_name}' is a placeholder or no-op task and cannot count as COMPLETED."
+                )
+            else:
+                checks["no_placeholder_or_noop"] = True
+        else:
+            checks["no_placeholder_or_noop"] = True
+
         is_valid = (
             checks["execution_success"]
             and checks["artifacts_valid"]
             and checks["output_valid"]
             and checks["no_failure_criteria_triggered"]
+            and checks.get("no_placeholder_or_noop", True)
         )
 
         return is_valid, checks, issues
+
+    @staticmethod
+    def is_empty_or_noop_output(output: Any) -> bool:
+        """
+        Determines whether the provided output is empty or a no-op placeholder.
+        """
+        if output is None:
+            return True
+        if isinstance(output, (dict, list, str)):
+            if len(output) == 0:
+                return True
+        if isinstance(output, str):
+            return not output.strip()
+        if isinstance(output, dict):
+            # Check if all keys are purely no-op or placeholder bookkeeping metadata
+            meta_keys = {
+                "status",
+                "phase",
+                "execution_time",
+                "metrics",
+                "exit_code",
+                "timestamp",
+            }
+            non_meta_keys = [k for k in output.keys() if k not in meta_keys]
+            if not non_meta_keys:
+                return True
+            # Check if all non-meta values are empty/None/whitespace
+            has_substance = False
+            for k in non_meta_keys:
+                v = output[k]
+                if v is not None:
+                    if isinstance(v, (str, list, dict)):
+                        if len(v) > 0:
+                            if isinstance(v, str) and not v.strip():
+                                continue
+                            has_substance = True
+                            break
+                    else:
+                        has_substance = True
+                        break
+            return not has_substance
+        return False
 
     def _verify_artifacts(
         self, task: Task, result: ExecutionResult
@@ -67,6 +135,17 @@ class OutputValidationService:
         # Check task's designated artifact location
         if task.artifact_location:
             filepath = task.artifact_location
+            if not os.path.isabs(filepath) and not os.path.exists(filepath):
+                try:
+                    from app.core.config import get_config
+
+                    cfg = get_config()
+                    resolved = os.path.join(cfg.ARTIFACTS_DIR, filepath)
+                    if os.path.exists(resolved):
+                        filepath = resolved
+                except Exception:
+                    pass
+
             if not os.path.exists(filepath):
                 is_valid = False
                 issues.append(
@@ -79,16 +158,93 @@ class OutputValidationService:
         # Check result artifacts
         if result.artifacts:
             for artifact in result.artifacts:
-                if not os.path.exists(artifact.filepath):
+                art_path = artifact.filepath
+                if not os.path.isabs(art_path) and not os.path.exists(art_path):
+                    try:
+                        from app.core.config import get_config
+
+                        cfg = get_config()
+                        resolved = os.path.join(cfg.ARTIFACTS_DIR, art_path)
+                        if os.path.exists(resolved):
+                            art_path = resolved
+                    except Exception:
+                        pass
+
+                if not os.path.exists(art_path):
                     is_valid = False
                     issues.append(
                         f"Result artifact file not found: {artifact.filepath}"
                     )
-                elif os.path.getsize(artifact.filepath) == 0:
+                elif os.path.getsize(art_path) == 0:
                     is_valid = False
                     issues.append(
                         f"Result artifact file is empty (0 bytes): {artifact.filepath}"
                     )
+
+        # 3. Deep Contract Check for PPT/PDF artifacts: exists, size > 0, opens, slide/page count matches
+        all_paths: List[str] = []
+        if task.artifact_location:
+            all_paths.append(task.artifact_location)
+        if result.artifacts:
+            all_paths.extend([a.filepath for a in result.artifacts if a.filepath])
+        if isinstance(result.output, dict):
+            for k in ("filepath", "output_path", "presentation", "artifact_location"):
+                v = result.output.get(k)
+                if isinstance(v, str) and v not in all_paths:
+                    all_paths.append(v)
+
+        expected_slides = (
+            task.inputs.get("slide_count")
+            or task.inputs.get("slides_count")
+            if hasattr(task, "inputs") and isinstance(task.inputs, dict)
+            else None
+        )
+        expected_pages = (
+            task.inputs.get("page_count")
+            or task.inputs.get("pages_count")
+            if hasattr(task, "inputs") and isinstance(task.inputs, dict)
+            else None
+        )
+
+        for p in all_paths:
+            if not os.path.exists(p):
+                continue
+            ext = os.path.splitext(p)[1].lower()
+            if ext == ".pptx":
+                try:
+                    import pptx
+
+                    prs = pptx.Presentation(p)
+                    actual_slides = len(prs.slides)
+                    if actual_slides == 0:
+                        is_valid = False
+                        issues.append(f"PowerPoint file '{p}' has 0 slides.")
+                    elif expected_slides and actual_slides != int(expected_slides):
+                        is_valid = False
+                        issues.append(
+                            f"PowerPoint slide count mismatch: expected {expected_slides}, got {actual_slides}."
+                        )
+                except Exception as ex:
+                    is_valid = False
+                    issues.append(f"PowerPoint file '{p}' failed verification: {ex}")
+
+            elif ext == ".pdf":
+                try:
+                    import pypdf
+
+                    reader = pypdf.PdfReader(p)
+                    actual_pages = len(reader.pages)
+                    if actual_pages == 0:
+                        is_valid = False
+                        issues.append(f"PDF file '{p}' has 0 pages.")
+                    elif expected_pages and actual_pages != int(expected_pages):
+                        is_valid = False
+                        issues.append(
+                            f"PDF page count mismatch: expected {expected_pages}, got {actual_pages}."
+                        )
+                except Exception as ex:
+                    is_valid = False
+                    issues.append(f"PDF file '{p}' failed verification: {ex}")
 
         return is_valid, issues
 
@@ -108,6 +264,11 @@ class OutputValidationService:
                 issues.append(
                     "Expected output was defined, but no output data "
                     "or artifacts were returned."
+                )
+            elif self.is_empty_or_noop_output(result.output) and not result.artifacts:
+                is_valid = False
+                issues.append(
+                    "Expected output was defined, but tool returned empty or no-op output."
                 )
 
         # Check success criteria
@@ -142,6 +303,36 @@ class OutputValidationService:
                             f"Success criteria failed: '{criterion}' "
                             "could not be verified (empty output)"
                         )
+                    elif (
+                        self.is_empty_or_noop_output(result.output)
+                        and not result.artifacts
+                    ):
+                        is_valid = False
+                        issues.append(
+                            f"Success criteria failed: '{criterion}' "
+                            "could not be verified (no-op output)"
+                        )
+
+        # Research contract check: A research task is complete ONLY when a synthesized answer
+        # with at least 2 sources exists (never leave at "opened a page").
+        from shared.contracts.task import TaskCategory
+        is_research = (
+            getattr(task, "category", None) == "web_research"
+            or getattr(task, "category", None) == TaskCategory.WEB_RESEARCH
+            or "research" in task.task_name.lower()
+        )
+        if is_research and not result.artifacts:
+            out_dict = result.output if isinstance(result.output, dict) else {}
+            sources = out_dict.get("sources", [])
+            summary = out_dict.get("summary", "") or out_dict.get("chat_reply", "")
+            if not summary or len(str(summary).strip()) < 50:
+                is_valid = False
+                issues.append("Research output must contain a substantive synthesized summary.")
+            if not isinstance(sources, list) or len(sources) < 2:
+                is_valid = False
+                issues.append(
+                    f"Research task requires at least 2 verified sources, got {len(sources) if isinstance(sources, list) else 0}."
+                )
 
         return is_valid, issues
 

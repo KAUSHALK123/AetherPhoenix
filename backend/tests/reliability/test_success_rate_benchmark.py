@@ -24,25 +24,31 @@ import csv
 import json
 import logging
 import os
-from pathlib import Path
 import random
 import time
+from pathlib import Path
 from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
-import pytest
 
 import matplotlib
+import pytest
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
-from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
-
-from shared.contracts.execution import ExecutionResult, TaskError, HealingResult
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.platypus import (
+    Image,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
+from shared.contracts.execution import ExecutionResult, HealingResult, TaskError
 from shared.contracts.task import Task, TaskCategory, TaskStatus, TaskType
-from shared.contracts.tool import Tool, ToolState, ToolHealth
+from shared.contracts.tool import Tool, ToolHealth, ToolState
 from shared.contracts.workflow import (
     ExecutionMode,
     SharedWorkflowState,
@@ -57,13 +63,13 @@ from app.core.events.bus import EventBus
 from app.core.permissions.manager import PermissionManager
 from app.engine.orchestrator import PipelineOrchestrator
 from app.planner.decomposer import TaskDecompositionEngine
-from app.tools.registry import ToolRegistry
-from app.tools.file_explorer.adapter import FileExplorerToolAdapter
-from app.tools.terminal.adapter import TerminalToolAdapter
-from app.tools.ppt.adapter import PPTToolAdapter
 from app.tools.browser.interface import BrowserAdapter
-from app.tools.desktop.interface import DesktopToolAdapter, DesktopController
+from app.tools.desktop.interface import DesktopController, DesktopToolAdapter
 from app.tools.desktop.models import DesktopActionResult
+from app.tools.file_explorer.adapter import FileExplorerToolAdapter
+from app.tools.ppt.adapter import PPTToolAdapter
+from app.tools.registry import ToolRegistry
+from app.tools.terminal.adapter import TerminalToolAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +77,13 @@ logger = logging.getLogger(__name__)
 RESULTS_DIR = Path(__file__).parent / "results"
 
 # Injected Fault Taxonomy
-FAULT_TAXONOMY = ["TIMEOUT", "FILE_NOT_FOUND", "SYNTAX_ERROR", "INVALID_ARGUMENTS", "PERMISSION_DENIED"]
+FAULT_TAXONOMY = [
+    "TIMEOUT",
+    "FILE_NOT_FOUND",
+    "SYNTAX_ERROR",
+    "INVALID_ARGUMENTS",
+    "PERMISSION_DENIED",
+]
 
 
 class FaultInjector:
@@ -93,7 +105,9 @@ class FaultInjector:
             return
 
         eligible_tasks = [t for t in tasks if t.task_type == TaskType.LEAF]
-        chosen_tasks = self.rng.sample(eligible_tasks, min(num_faults, len(eligible_tasks)))
+        chosen_tasks = self.rng.sample(
+            eligible_tasks, min(num_faults, len(eligible_tasks))
+        )
 
         for task in chosen_tasks:
             self.faulted_task_ids.add(task.task_id)
@@ -138,29 +152,59 @@ def assign_tool_and_inputs(task: Task, goal: str):
     task_lower = task.task_name.lower()
     task.expected_output = None
 
-    if any(k in goal_lower or k in task_lower for k in ["ppt", "presentation", "slide"]):
+    if any(
+        k in goal_lower or k in task_lower for k in ["ppt", "presentation", "slide"]
+    ):
         task.category = TaskCategory.PPT_GENERATION
         task.required_tool = "ppt_tool"
         task.inputs = {
             "title": "AetherPhoenix Reliability Deck",
             "slides": [
-                {"title": "Overview", "slide_type": "TITLE", "bullets": ["Slide 1 content"]},
-                {"title": "Architecture", "slide_type": "CONTENT", "bullets": ["Bullet 1", "Bullet 2"]},
+                {
+                    "title": "Overview",
+                    "slide_type": "TITLE",
+                    "bullets": ["Slide 1 content"],
+                },
+                {
+                    "title": "Architecture",
+                    "slide_type": "CONTENT",
+                    "bullets": ["Bullet 1", "Bullet 2"],
+                },
             ],
         }
-    elif any(k in goal_lower or k in task_lower for k in ["ip", "terminal", "network", "command", "diagnostic"]):
+    elif any(
+        k in goal_lower or k in task_lower
+        for k in ["ip", "terminal", "network", "command", "diagnostic"]
+    ):
         task.category = TaskCategory.POWERSHELL
         task.required_tool = "terminal_tool"
         task.inputs = {"command": "ipconfig"}
-    elif any(k in goal_lower or k in task_lower for k in ["download", "folder", "organize", "file", "directory", "inspect", "metadata"]):
+    elif any(
+        k in goal_lower or k in task_lower
+        for k in [
+            "download",
+            "folder",
+            "organize",
+            "file",
+            "directory",
+            "inspect",
+            "metadata",
+        ]
+    ):
         task.category = TaskCategory.FILE_SYSTEM
         task.required_tool = "file_explorer"
         task.inputs = {"action": "detect_existence", "path": "."}
-    elif any(k in goal_lower or k in task_lower for k in ["browser", "web", "search", "navigate"]):
+    elif any(
+        k in goal_lower or k in task_lower
+        for k in ["browser", "web", "search", "navigate"]
+    ):
         task.category = TaskCategory.BROWSER
         task.required_tool = "browser_automation"
         task.inputs = {"action": "navigate", "url": "http://localhost:8000/health"}
-    elif any(k in goal_lower or k in task_lower for k in ["vs code", "notepad", "app", "desktop", "editing"]):
+    elif any(
+        k in goal_lower or k in task_lower
+        for k in ["vs code", "notepad", "app", "desktop", "editing"]
+    ):
         task.category = TaskCategory.DESKTOP
         task.required_tool = "desktop_automation"
         task.inputs = {"action": "mouse_click", "x": 100, "y": 100}
@@ -170,7 +214,9 @@ def assign_tool_and_inputs(task: Task, goal: str):
         task.inputs = {"action": "detect_existence", "path": "."}
 
 
-def build_synthetic_workload(target_n: int = 100) -> tuple[list[Task], dict[UUID, Task], list[SharedWorkflowState]]:
+def build_synthetic_workload(
+    target_n: int = 100,
+) -> tuple[list[Task], dict[UUID, Task], list[SharedWorkflowState]]:
     """
     Generates a fixed synthetic workload of target_n tasks across 5 categories
     using the real TaskDecompositionEngine DAG generator.
@@ -233,7 +279,9 @@ def create_reliability_environment(config_type: str, fault_injector: FaultInject
     """
     event_bus = EventBus()
     tool_registry = ToolRegistry()
-    permission_manager = PermissionManager(mode=ExecutionMode.AUTONOMOUS, event_bus=event_bus)
+    permission_manager = PermissionManager(
+        mode=ExecutionMode.AUTONOMOUS, event_bus=event_bus
+    )
 
     # Register Real Adapters
     file_adapter = FileExplorerToolAdapter(permission_manager=permission_manager)
@@ -246,30 +294,65 @@ def create_reliability_environment(config_type: str, fault_injector: FaultInject
             task_id=task.task_id,
             workflow_id=task.workflow_id,
             success=True,
-            output={"status": "navigated", "url": task.inputs.get("url", "http://localhost"), "page_text": "Sample web page text"},
+            output={
+                "status": "navigated",
+                "url": task.inputs.get("url", "http://localhost"),
+                "page_text": "Sample web page text",
+            },
         )
+
     browser_adapter.execute = mock_browser_execute
 
     mock_desktop_controller = AsyncMock(spec=DesktopController)
     mock_desktop_controller.execute_action.return_value = DesktopActionResult(
-        action="mouse_click", success=True, output={"status": "ok"}, execution_time_ms=0.5
+        action="mouse_click",
+        success=True,
+        output={"status": "ok"},
+        execution_time_ms=0.5,
     )
     desktop_adapter = DesktopToolAdapter(
         controller=mock_desktop_controller, permission_manager=permission_manager
     )
 
-    worker_agent = WorkerAgent(tool_registry=tool_registry, permission_manager=permission_manager)
+    worker_agent = WorkerAgent(
+        tool_registry=tool_registry, permission_manager=permission_manager
+    )
 
     tools_info = [
-        ("file_explorer", "file_explorer_adapter", TaskCategory.FILE_SYSTEM, file_adapter),
-        ("terminal_tool", "terminal_tool_adapter", TaskCategory.POWERSHELL, term_adapter),
+        (
+            "file_explorer",
+            "file_explorer_adapter",
+            TaskCategory.FILE_SYSTEM,
+            file_adapter,
+        ),
+        (
+            "terminal_tool",
+            "terminal_tool_adapter",
+            TaskCategory.POWERSHELL,
+            term_adapter,
+        ),
         ("ppt_tool", "ppt_tool_adapter", TaskCategory.PPT_GENERATION, ppt_adapter),
-        ("browser_automation", "browser_automation_adapter", TaskCategory.BROWSER, browser_adapter),
-        ("desktop_automation", "desktop_automation_adapter", TaskCategory.DESKTOP, desktop_adapter),
+        (
+            "browser_automation",
+            "browser_automation_adapter",
+            TaskCategory.BROWSER,
+            browser_adapter,
+        ),
+        (
+            "desktop_automation",
+            "desktop_automation_adapter",
+            TaskCategory.DESKTOP,
+            desktop_adapter,
+        ),
     ]
 
     for name, adapter_str, cat, adapter in tools_info:
-        tool_contract = Tool(name=name, adapter=adapter_str, status=ToolState.READY, health=ToolHealth.HEALTHY)
+        tool_contract = Tool(
+            name=name,
+            adapter=adapter_str,
+            status=ToolState.READY,
+            health=ToolHealth.HEALTHY,
+        )
         tool_registry.register(tool_contract, adapter)
         worker_agent.register_adapter(name, adapter)
         worker_agent.register_adapter(adapter_str, adapter)
@@ -283,41 +366,58 @@ def create_reliability_environment(config_type: str, fault_injector: FaultInject
 
         should_fault, fault_type = fault_injector.should_fault(task, attempt)
         if should_fault:
-            logger.info(f"[FAULT INJECTED] Task {task.task_id} ({task.task_name}): {fault_type}")
+            logger.info(
+                f"[FAULT INJECTED] Task {task.task_id} ({task.task_name}): {fault_type}"
+            )
             if fault_type == "TIMEOUT":
                 return ExecutionResult(
                     task_id=task.task_id,
                     workflow_id=task.workflow_id,
                     success=False,
-                    error=TaskError(error_code="TIMEOUT", error_message="Task execution timed out after 30s"),
+                    error=TaskError(
+                        error_code="TIMEOUT",
+                        error_message="Task execution timed out after 30s",
+                    ),
                 )
             elif fault_type == "FILE_NOT_FOUND":
                 return ExecutionResult(
                     task_id=task.task_id,
                     workflow_id=task.workflow_id,
                     success=False,
-                    error=TaskError(error_code="FILE_NOT_FOUND", error_message="Target file not found at path"),
+                    error=TaskError(
+                        error_code="FILE_NOT_FOUND",
+                        error_message="Target file not found at path",
+                    ),
                 )
             elif fault_type == "SYNTAX_ERROR":
                 return ExecutionResult(
                     task_id=task.task_id,
                     workflow_id=task.workflow_id,
                     success=False,
-                    error=TaskError(error_code="SYNTAX_ERROR", error_message="Invalid command syntax near '|'"),
+                    error=TaskError(
+                        error_code="SYNTAX_ERROR",
+                        error_message="Invalid command syntax near '|'",
+                    ),
                 )
             elif fault_type == "INVALID_ARGUMENTS":
                 return ExecutionResult(
                     task_id=task.task_id,
                     workflow_id=task.workflow_id,
                     success=False,
-                    error=TaskError(error_code="INVALID_ARGUMENTS", error_message="Missing required parameter 'url'"),
+                    error=TaskError(
+                        error_code="INVALID_ARGUMENTS",
+                        error_message="Missing required parameter 'url'",
+                    ),
                 )
             elif fault_type == "PERMISSION_DENIED":
                 return ExecutionResult(
                     task_id=task.task_id,
                     workflow_id=task.workflow_id,
                     success=False,
-                    error=TaskError(error_code="PERMISSION_DENIED", error_message="Permission denied for action"),
+                    error=TaskError(
+                        error_code="PERMISSION_DENIED",
+                        error_message="Permission denied for action",
+                    ),
                 )
 
         try:
@@ -328,19 +428,31 @@ def create_reliability_environment(config_type: str, fault_injector: FaultInject
                 task_id=task.task_id,
                 workflow_id=task.workflow_id,
                 success=False,
-                error=TaskError(error_code="UNEXPECTED_EXCEPTION", error_message=str(e)),
+                error=TaskError(
+                    error_code="UNEXPECTED_EXCEPTION", error_message=str(e)
+                ),
             )
 
     worker_agent.execute = patched_worker_execute
 
-    supervisor_agent = SupervisorAgent(event_bus=event_bus, max_retries=3 if config_type != "no_recovery" else 0)
+    supervisor_agent = SupervisorAgent(
+        event_bus=event_bus, max_retries=3 if config_type != "no_recovery" else 0
+    )
 
     healing_agent = HealingAgent(event_bus=event_bus, max_healing_attempts=3)
 
     if config_type == "healing_enabled":
-        async def full_healing_execute(task: Task = None, result: ExecutionResult = None, state: SharedWorkflowState = None, **kwargs) -> HealingResult:
-            err_code = result.error.error_code if (result and result.error) else "UNKNOWN"
+
+        async def full_healing_execute(
+            task: Task = None,
+            result: ExecutionResult = None,
+            state: SharedWorkflowState = None,
+            **kwargs,
+        ) -> HealingResult:
             attempt = (task.retry_count or 0) + 1
+            err_code = (
+                result.error.error_code if (result and result.error) else "UNKNOWN"
+            )
 
             if err_code == "PERMISSION_DENIED":
                 task.status = TaskStatus.FAILED
@@ -396,8 +508,13 @@ def create_reliability_environment(config_type: str, fault_injector: FaultInject
         healing_agent.execute = full_healing_execute
 
     elif config_type == "retry_only":
-        async def blind_retry_execute(task: Task = None, result: ExecutionResult = None, state: SharedWorkflowState = None, **kwargs) -> HealingResult:
-            err_code = result.error.error_code if (result and result.error) else "UNKNOWN"
+
+        async def blind_retry_execute(
+            task: Task = None,
+            result: ExecutionResult = None,
+            state: SharedWorkflowState = None,
+            **kwargs,
+        ) -> HealingResult:
             attempt = (task.retry_count or 0) + 1
 
             if attempt <= 3:
@@ -458,12 +575,16 @@ async def test_reliability_success_rate_benchmark():
 
     benchmark_results = []
     category_recovery_stats = {
-        config_key: {cat: {"total": 0, "faulted": 0, "recovered": 0} for cat in FAULT_TAXONOMY}
+        config_key: {
+            cat: {"total": 0, "faulted": 0, "recovered": 0} for cat in FAULT_TAXONOMY
+        }
         for config_key, _ in configurations
     }
 
     print("\n" + "=" * 80)
-    print("RELIABILITY BENCHMARK: TASK SUCCESS RATE UNDER INJECTED FAULTS (arXiv:2606.01416)")
+    print(
+        "RELIABILITY BENCHMARK: TASK SUCCESS RATE UNDER INJECTED FAULTS (arXiv:2606.01416)"
+    )
     print("=" * 80)
 
     for fault_rate in fault_intensities:
@@ -475,7 +596,9 @@ async def test_reliability_success_rate_benchmark():
             fault_injector.assign_faults(all_tasks)
             num_faulted = len(fault_injector.faulted_task_ids)
 
-            orchestrator, attempt_tracker = create_reliability_environment(config_key, fault_injector)
+            orchestrator, attempt_tracker = create_reliability_environment(
+                config_key, fault_injector
+            )
 
             start_time = time.perf_counter()
             completed_count = 0
@@ -489,8 +612,12 @@ async def test_reliability_success_rate_benchmark():
                     if task.status == TaskStatus.COMPLETED:
                         completed_count += 1
                         if t_id in fault_injector.faulted_task_ids:
-                            fault_type = fault_injector.task_fault_map.get(t_id, "UNKNOWN")
-                            category_recovery_stats[config_key][fault_type]["recovered"] += 1
+                            fault_type = fault_injector.task_fault_map.get(
+                                t_id, "UNKNOWN"
+                            )
+                            category_recovery_stats[config_key][fault_type][
+                                "recovered"
+                            ] += 1
                     elif task.status in (TaskStatus.FAILED, TaskStatus.BLOCKED):
                         failed_count += 1
 
@@ -571,7 +698,9 @@ async def test_reliability_success_rate_benchmark():
     assert os.path.exists(pdf_path)
 
 
-def generate_pdf_report(results: list[dict], category_stats: dict, pdf_output_path: Path):
+def generate_pdf_report(
+    results: list[dict], category_stats: dict, pdf_output_path: Path
+):
     """
     Generates an IEEE-style PDF report with a grayscale success rate chart and summary table.
     """
@@ -615,13 +744,24 @@ def generate_pdf_report(results: list[dict], category_stats: dict, pdf_output_pa
         linestyle=":",
     )
 
-    ax.set_title("Task Success Rate vs. Fault Intensity Level", fontsize=11, fontweight="bold", pad=10)
+    ax.set_title(
+        "Task Success Rate vs. Fault Intensity Level",
+        fontsize=11,
+        fontweight="bold",
+        pad=10,
+    )
     ax.set_xlabel("Fault Intensity (% Faulted Tasks)", fontsize=9.5, fontweight="bold")
     ax.set_ylabel("Task Success Rate (%)", fontsize=9.5, fontweight="bold")
     ax.set_xticks(intensities)
     ax.set_ylim(0, 105)
     ax.grid(True, linestyle="--", alpha=0.5, color="#cccccc")
-    ax.legend(loc="lower left", fontsize=8.5, frameon=True, facecolor="white", edgecolor="#666666")
+    ax.legend(
+        loc="lower left",
+        fontsize=8.5,
+        frameon=True,
+        facecolor="white",
+        edgecolor="#666666",
+    )
 
     plt.tight_layout()
     plt.savefig(chart_path, dpi=300)
@@ -676,7 +816,11 @@ def generate_pdf_report(results: list[dict], category_stats: dict, pdf_output_pa
     )
 
     story = []
-    story.append(Paragraph("AetherPhoenix — Reliability & Self-Healing Benchmark Report", title_style))
+    story.append(
+        Paragraph(
+            "AetherPhoenix — Reliability & Self-Healing Benchmark Report", title_style
+        )
+    )
     story.append(Spacer(1, 4))
     story.append(
         Paragraph(
@@ -686,7 +830,11 @@ def generate_pdf_report(results: list[dict], category_stats: dict, pdf_output_pa
     )
     story.append(Spacer(1, 12))
 
-    story.append(Paragraph("1. Task Success Rate by Configuration & Fault Intensity", heading_style))
+    story.append(
+        Paragraph(
+            "1. Task Success Rate by Configuration & Fault Intensity", heading_style
+        )
+    )
 
     table_data = [
         [
@@ -706,7 +854,14 @@ def generate_pdf_report(results: list[dict], category_stats: dict, pdf_output_pa
     for key, label in labels:
         row = [Paragraph(f"<b>{label}</b>", body_style)]
         for fault in [0, 10, 25, 50]:
-            match = next((r for r in results if r["config_key"] == key and r["fault_intensity_pct"] == fault), None)
+            match = next(
+                (
+                    r
+                    for r in results
+                    if r["config_key"] == key and r["fault_intensity_pct"] == fault
+                ),
+                None,
+            )
             val_str = f"{match['success_rate_pct']:.1f}%" if match else "N/A"
             row.append(Paragraph(val_str, body_style))
         table_data.append(row)
@@ -726,7 +881,9 @@ def generate_pdf_report(results: list[dict], category_stats: dict, pdf_output_pa
     story.append(t)
     story.append(Spacer(1, 12))
 
-    story.append(Paragraph("2. Performance Evaluation Chart (IEEE Format)", heading_style))
+    story.append(
+        Paragraph("2. Performance Evaluation Chart (IEEE Format)", heading_style)
+    )
     story.append(Image(str(chart_path), width=480, height=280))
     story.append(Spacer(1, 12))
 

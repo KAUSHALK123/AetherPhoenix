@@ -1,5 +1,6 @@
 import hashlib
 import logging
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ from app.services.artifact_storage import (
 )
 from app.tools.adapter import BaseToolAdapter
 from app.tools.ppt.generator import PPTGenerator
+from app.tools.ppt.content_generator import PPTContentGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +61,23 @@ class PPTToolAdapter(BaseToolAdapter):
         )
         title = inputs.get("title") or topic
 
+        # Determine requested slide count
+        raw_slide_count = inputs.get("slide_count") or inputs.get("slides_count")
+        if not raw_slide_count:
+            # Check task name, goal, description
+            search_text = f"{task.task_name} {task.description} {topic}".lower()
+            m = re.search(r"(\d+)\s*(?:slide|page|deck)", search_text)
+            slide_count = int(m.group(1)) if m else 5
+        else:
+            slide_count = int(raw_slide_count)
+        slide_count = max(1, slide_count)
+
+        # Sanitize filename
+        clean_topic = re.sub(r"[^\w\s-]", "", str(title)).strip().replace(" ", "_").lower()
+        if not clean_topic or clean_topic in ["presentation", "ppt"]:
+            clean_topic = "presentation"
+        filename = f"{clean_topic}.pptx"
+
         # Determine output file path
         if inputs.get("output_path"):
             output_path = str(Path(inputs["output_path"]).expanduser().resolve())
@@ -75,9 +94,16 @@ class PPTToolAdapter(BaseToolAdapter):
                 Path(cfg.ARTIFACTS_DIR) / str(task.workflow_id) / str(task.task_id)
             )
             output_dir.mkdir(parents=True, exist_ok=True)
-            output_path = str(output_dir / "presentation.pptx")
+            output_path = str(output_dir / filename)
 
-        # Build 5-slide PresentationSchema if explicit slides aren't provided
+        # Always enforce .pptx extension
+        if not output_path.lower().endswith(".pptx"):
+            output_path = f"{output_path}.pptx"
+
+        # Ensure parent directory exists
+        Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+
+        # Build PresentationSchema
         slides_data = inputs.get("slides")
         if slides_data and isinstance(slides_data, list) and len(slides_data) > 0:
             presentation = PresentationSchema(
@@ -98,122 +124,31 @@ class PPTToolAdapter(BaseToolAdapter):
                 ],
             )
         else:
-            # Construct a complete 5-slide presentation deck
+            # Generate outline respecting requested slide_count exactly
+            content_gen = PPTContentGenerator()
+            context_str = inputs.get("context") or task.description
+            outline = await content_gen.generate_outline(
+                topic=str(topic),
+                slide_count=slide_count,
+                context=context_str,
+            )
+
+            schema_slides = []
+            for idx, s in enumerate(outline.slides):
+                s_type = SlideType.TITLE if idx == 0 else SlideType.CONTENT
+                schema_slides.append(
+                    SlideContent(
+                        title=s.title,
+                        subtitle=s.subtitle,
+                        slide_type=s_type,
+                        bullets=s.bullets,
+                        speaker_notes=s.speaker_notes,
+                    )
+                )
+
             presentation = PresentationSchema(
-                title=title,
-                slides=[
-                    SlideContent(
-                        title=title,
-                        subtitle="Executive Briefing & Strategic Overview",
-                        slide_type=SlideType.TITLE,
-                        bullets=[],
-                        speaker_notes=(
-                            "Welcome everyone. Today we will review our comprehensive"
-                            " analysis and strategic recommendations."
-                        ),
-                    ),
-                    SlideContent(
-                        title="1. Executive Summary & Context",
-                        slide_type=SlideType.CONTENT,
-                        bullets=[
-                            (
-                                "Overview of core objectives and market landscape"
-                                " analysis."
-                            ),
-                            (
-                                "Key challenges identified across deployment and"
-                                " operational workflows."
-                            ),
-                            (
-                                "Strategic intent: Drive efficiency, scalability,"
-                                " and robust fault-tolerance."
-                            ),
-                            (
-                                "Quantifiable impact and success criteria"
-                                " established for execution."
-                            ),
-                        ],
-                        speaker_notes=(
-                            "This summary highlights our key objectives and"
-                            " background context."
-                        ),
-                    ),
-                    SlideContent(
-                        title="2. Key Capabilities & Technical Features",
-                        slide_type=SlideType.CONTENT,
-                        bullets=[
-                            (
-                                "Multi-agent autonomous coordination across Planner,"
-                                " Worker, and Supervisor."
-                            ),
-                            (
-                                "Automated document and artifact compilation"
-                                " (PPTX, PDF, CSV, JSON)."
-                            ),
-                            (
-                                "Strict permission verification and isolated"
-                                " safe-mode execution."
-                            ),
-                            (
-                                "Self-healing execution pipeline with real-time error"
-                                " recovery."
-                            ),
-                        ],
-                        speaker_notes=(
-                            "Here are the key technical capabilities delivered in"
-                            " this phase."
-                        ),
-                    ),
-                    SlideContent(
-                        title="3. System Architecture & Performance",
-                        slide_type=SlideType.CONTENT,
-                        bullets=[
-                            (
-                                "Event-driven DAG workflow orchestrator with"
-                                " dependency management."
-                            ),
-                            (
-                                "Sub-second execution overhead and automated"
-                                " validation checks."
-                            ),
-                            (
-                                "Unified export engine supporting native binary"
-                                " formats."
-                            ),
-                            (
-                                "End-to-end telemetry, structured logging, and"
-                                " observability."
-                            ),
-                        ],
-                        speaker_notes=(
-                            "Detailed architecture demonstrating high availability"
-                            " and low latency."
-                        ),
-                    ),
-                    SlideContent(
-                        title="4. Conclusion & Next Steps",
-                        slide_type=SlideType.CONTENT,
-                        bullets=[
-                            (
-                                "Final release verification completed with all unit"
-                                " & integration tests passing."
-                            ),
-                            (
-                                "Deployment orchestration configured via Docker &"
-                                " local runtime."
-                            ),
-                            (
-                                "Next milestones: Remote multi-node worker scaling"
-                                " and plugin ecosystem."
-                            ),
-                            "Open Q&A and discussion.",
-                        ],
-                        speaker_notes=(
-                            "Summary of conclusions, rollout plan, and open"
-                            " discussion."
-                        ),
-                    ),
-                ],
+                title=outline.title or str(title),
+                slides=schema_slides,
             )
 
         try:
@@ -252,12 +187,19 @@ class PPTToolAdapter(BaseToolAdapter):
             duration_ms = (time.time() - start_time) * 1000.0
             download_url = f"/api/v1/artifacts/{saved_artifact.artifact_id}/download"
 
+            resolved_output_path = str(Path(output_path).resolve())
+            task.artifact_location = resolved_output_path
+
             output_payload = {
                 "artifact_id": str(saved_artifact.artifact_id),
-                "filepath": str(Path(output_path).resolve()),
+                "filepath": resolved_output_path,
+                "output_path": resolved_output_path,
+                "artifact_location": resolved_output_path,
                 "file_size": file_size,
                 "slide_count": len(presentation.slides),
                 "download_url": download_url,
+                "presentation": resolved_output_path,
+                "expected_output": getattr(task, "expected_output", None),
             }
 
             logs_captured.append(

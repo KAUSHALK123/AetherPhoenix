@@ -73,6 +73,43 @@ export const WorkflowStatusPopcard: React.FC<WorkflowStatusPopcardProps> = ({ wo
           );
         })}
       </div>
+
+      {/* Synthesized Answer & Collapsible Raw Output */}
+      {isDone && (workflow.answer || workflow.final_response?.answer) && (
+        <div className="pt-2 border-t border-slate-800/80 space-y-3">
+          <div className="bg-slate-950/70 border border-indigo-500/30 p-3.5 rounded-xl text-slate-100 text-xs sm:text-sm whitespace-pre-wrap leading-relaxed shadow-inner">
+            <div className="flex items-center gap-1.5 text-indigo-400 font-semibold text-[11px] mb-1.5 uppercase tracking-wider font-mono">
+              <span className="material-symbols-outlined text-sm">smart_toy</span>
+              <span>Result Summary</span>
+            </div>
+            {workflow.answer || workflow.final_response?.answer}
+          </div>
+
+          {(workflow.raw_output || workflow.final_response?.raw_output) &&
+            Object.keys(workflow.raw_output || workflow.final_response?.raw_output || {}).length > 0 && (
+              <details className="group border border-slate-800 rounded-xl bg-slate-950/40 overflow-hidden text-xs">
+                <summary className="flex items-center justify-between p-2.5 px-3 cursor-pointer text-slate-400 hover:text-slate-200 select-none font-mono text-[11px] transition-colors">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-sm text-slate-500">terminal</span>
+                    <span>Raw Tool Output</span>
+                  </div>
+                  <span className="material-symbols-outlined text-sm transition-transform group-open:rotate-180">
+                    expand_more
+                  </span>
+                </summary>
+                <div className="p-3 border-t border-slate-800/80 bg-slate-950/80 max-h-60 overflow-y-auto">
+                  <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-[11px] text-slate-300">
+                    {JSON.stringify(
+                      workflow.raw_output || workflow.final_response?.raw_output,
+                      null,
+                      2
+                    )}
+                  </pre>
+                </div>
+              </details>
+            )}
+        </div>
+      )}
     </div>
   );
 };

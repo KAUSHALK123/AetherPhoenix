@@ -76,6 +76,55 @@ class SafeExecutionPolicy:
         "browser_capture_screenshot": RiskLevel.LOW,
         "extract_content": RiskLevel.LOW,
         "capture_screenshot": RiskLevel.LOW,
+        # Canva design automation actions (browser runtime)
+        "canva_open": RiskLevel.LOW,
+        "open_canva": RiskLevel.LOW,
+        "canva_create_design": RiskLevel.LOW,
+        "create_design": RiskLevel.LOW,
+        "canva_edit_design": RiskLevel.LOW,
+        "edit_design": RiskLevel.LOW,
+        "canva_edit_existing_design": RiskLevel.LOW,
+        "edit_existing_design": RiskLevel.LOW,
+        "canva_add_text": RiskLevel.LOW,
+        "add_text": RiskLevel.LOW,
+        "canva_add_element": RiskLevel.LOW,
+        "add_element": RiskLevel.LOW,
+        "canva_change_colors": RiskLevel.LOW,
+        "change_colors": RiskLevel.LOW,
+        "canva_apply_template": RiskLevel.LOW,
+        "apply_template": RiskLevel.LOW,
+        "canva_export_design": RiskLevel.LOW,
+        "export_design": RiskLevel.LOW,
+        "canva_tool": RiskLevel.LOW,
+        "canva": RiskLevel.LOW,
+        # Canva skills (Phase 3)
+        "canva_skill_open": RiskLevel.LOW,
+        "canva_skill_create_design": RiskLevel.LOW,
+        "canva_skill_pick_template": RiskLevel.LOW,
+        "canva_skill_edit_text": RiskLevel.LOW,
+        "canva_skill_add_slide": RiskLevel.LOW,
+        "canva_skill_upload_image": RiskLevel.LOW,
+        "canva_skill_apply_brand_colors": RiskLevel.LOW,
+        "canva_skill_export": RiskLevel.LOW,
+        "canva_skill_adapter": RiskLevel.LOW,
+        "pick_template": RiskLevel.LOW,
+        "add_slide": RiskLevel.LOW,
+        "upload_image": RiskLevel.LOW,
+        "apply_brand_colors": RiskLevel.LOW,
+        "export": RiskLevel.LOW,
+        # Canva critical actions (require explicit approval)
+        "publish_design": RiskLevel.CRITICAL,
+        "canva_publish_design": RiskLevel.CRITICAL,
+        "canva_skill_publish": RiskLevel.CRITICAL,
+        "canva_skill_publish_design": RiskLevel.CRITICAL,
+        "share_design": RiskLevel.CRITICAL,
+        "canva_share_design": RiskLevel.CRITICAL,
+        "canva_skill_share": RiskLevel.CRITICAL,
+        "canva_skill_share_design": RiskLevel.CRITICAL,
+        "purchase_template": RiskLevel.CRITICAL,
+        "canva_purchase_template": RiskLevel.CRITICAL,
+        "canva_skill_purchase": RiskLevel.CRITICAL,
+        "canva_skill_purchase_template": RiskLevel.CRITICAL,
         # Browser medium / high risk
         "browser_navigate": RiskLevel.MEDIUM,
         "navigate": RiskLevel.MEDIUM,
@@ -134,7 +183,13 @@ class SafeExecutionPolicy:
     ) -> RiskLevel:
         """Classifies the risk level of an automation action."""
         ctx = context or {}
-        norm_action = action.lower().replace("desktopaction: ", "").replace(" ", "_")
+        norm_action = (
+            action.lower()
+            .replace("desktopaction: ", "")
+            .replace("canvaaction: ", "")
+            .replace("browseraction: ", "")
+            .replace(" ", "_")
+        )
 
         # Check for restricted hotkeys
         if "hotkey" in norm_action or "keys" in ctx:
@@ -165,6 +220,88 @@ class SafeExecutionPolicy:
             for token in DESTRUCTIVE_COMMAND_TOKENS:
                 if token in cmd:
                     return RiskLevel.CRITICAL
+
+        # Check for Critical Canva actions: publishing, sharing, and purchasing templates
+        critical_canva_actions = {
+            "publish_design",
+            "canva_publish_design",
+            "canva_skill_publish",
+            "canva_skill_publish_design",
+            "share_design",
+            "canva_share_design",
+            "canva_skill_share",
+            "canva_skill_share_design",
+            "purchase_template",
+            "canva_purchase_template",
+            "canva_skill_purchase",
+            "canva_skill_purchase_template",
+        }
+        if norm_action in critical_canva_actions or any(
+            ca in norm_action
+            for ca in ("publish_design", "share_design", "purchase_template")
+        ):
+            return RiskLevel.CRITICAL
+
+        # Check for high-risk browser interactions (clicks/actions that submit, publish, delete or pay)
+        high_risk_interaction_keywords = {
+            "submit",
+            "publish",
+            "delete",
+            "remove",
+            "pay",
+            "payment",
+            "checkout",
+            "buy",
+            "purchase",
+            "order",
+            "destroy",
+            "subscribe",
+            "transfer",
+        }
+        if norm_action in (
+            "interact",
+            "browser_interact",
+            "click",
+            "mouse_click",
+            "mouse_double_click",
+            "keyboard_press",
+        ):
+            target_str = str(
+                ctx.get("selector")
+                or ctx.get("text")
+                or ctx.get("target_text")
+                or ctx.get("interaction_action")
+                or ctx.get("value")
+                or ""
+            ).lower()
+            if any(kw in target_str for kw in high_risk_interaction_keywords):
+                return RiskLevel.HIGH
+
+        # Check for opening new sites in browser automation
+        if norm_action in ("navigate", "browser_navigate", "open_site", "open_url"):
+            if ctx.get("new_site") or ctx.get("is_new_site"):
+                return RiskLevel.HIGH
+            if "url" in ctx:
+                url_str = str(ctx.get("url", "")).lower()
+                is_safe_default = any(
+                    safe_dom in url_str
+                    for safe_dom in [
+                        "canva.com",
+                        "localhost",
+                        "127.0.0.1",
+                        "0.0.0.0",
+                        "example.com",
+                    ]
+                )
+                if not is_safe_default and (
+                    url_str.startswith("http://") or url_str.startswith("https://")
+                ):
+                    return RiskLevel.HIGH
+
+        # Check for trusted Canva actions and domain navigation
+        if "url" in ctx and "canva.com" in str(ctx.get("url", "")).lower():
+            if norm_action in ("navigate", "browser_navigate", "browser_start_session"):
+                return RiskLevel.LOW
 
         # Lookup in standard map
         if norm_action in cls.ACTION_RISK_MAP:

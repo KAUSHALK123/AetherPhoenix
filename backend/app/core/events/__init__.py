@@ -1,4 +1,4 @@
-from .bus import EventBus, EventCallback, Publisher, Subscriber
+from .bus import EventBus, EventCallback, Publisher, Subscriber, get_event_bus
 from .models import Event, EventType
 
 __all__ = [
@@ -8,4 +8,5 @@ __all__ = [
     "EventCallback",
     "Publisher",
     "Subscriber",
+    "get_event_bus",
 ]

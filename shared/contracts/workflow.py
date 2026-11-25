@@ -106,3 +106,11 @@ class SharedWorkflowState(BaseModel):
             "Execution/healing structured feedback generated during workflow failures."
         ),
     )
+    task_outputs: dict[str, Any] = Field(
+        default_factory=dict,
+        description="Collected outputs from completed tasks keyed by task_name or task_id.",
+    )
+    final_response: dict[str, Any] | None = Field(
+        None,
+        description="Synthesized final answer and raw outputs for the user's original goal.",
+    )

@@ -41,6 +41,7 @@ class PlannerAgent:
 
         # Initialize CapabilityRegistry with mock defaults for Planner V1 testing
         from shared.contracts.capability import Capability
+        from shared.contracts.permission import PermissionType
         from shared.contracts.task import TaskCategory
 
         from app.engine.registry import CapabilityRegistry
@@ -120,6 +121,21 @@ class PlannerAgent:
                 description="Controls web browser navigation, interaction and scraping",
                 category=TaskCategory.BROWSER,
                 required_tools=["browser_automation"],
+            )
+        )
+        cap_reg.register(
+            Capability(
+                name="canva_design",
+                description=(
+                    "Automates natural-language Canva design creation, editing, "
+                    "templates, and export via live browser runtime"
+                ),
+                category=TaskCategory.BROWSER,
+                required_tools=["canva_tool"],
+                required_permissions=[
+                    PermissionType.BROWSER_ACCESS.value,
+                    PermissionType.INTERNET.value,
+                ],
             )
         )
         cap_reg.register(
@@ -307,8 +323,25 @@ class PlannerAgent:
                 ):
                     unavailable_tools.append(request.feedback.failure_summary.tool_used)
 
-        # Restore session context if this is a clarification answer
-        if request.session_id in self.active_sessions:
+        # Restore session context if this is a clarification answer or multi-turn follow-up
+        if not hasattr(self, "session_context"):
+            self.session_context = {}
+
+        history = self.session_context.get(request.session_id, [])
+        if history and request.session_id not in self.active_sessions:
+            last_goal = history[-1]
+            lower_msg = request.message.lower().strip()
+            followup_triggers = [
+                "play", "open", "start", "click", "first", "continue", "again",
+                "listen", "watch", "why", "it", "music", "song", "video",
+                "slide", "ppt", "pdf", "summarize", "search", "more", "now",
+            ]
+            if len(lower_msg.split()) <= 8 and any(trig in lower_msg for trig in followup_triggers):
+                combined_message = f"{last_goal} (Follow-up instruction: {request.message})"
+                request.message = combined_message
+            else:
+                combined_message = request.message
+        elif request.session_id in self.active_sessions:
             original_goal = self.active_sessions[request.session_id]
             # Combine original goal with clarification answer
             combined_message = f"{original_goal} (Clarification provided: {request.message})"  # noqa: E501
@@ -316,17 +349,47 @@ class PlannerAgent:
         else:
             combined_message = request.message
 
+        # Check if request is a pure conversational question needing no tools
+        from app.planner.llm_planner import LLMPlanner
+
+        if not hasattr(self, "llm_planner") or self.llm_planner is None:
+            self.llm_planner = LLMPlanner()
+
+        chat_reply = self.llm_planner.is_conversational_chat(request.message)
+        if chat_reply:
+            return PlannerResponse(
+                session_id=request.session_id,
+                status="chat",
+                reply=chat_reply,
+                action="reply",
+            )
+
+        # Check for nonsense requests
+        if self.llm_planner.is_nonsense(request.message):
+            self.active_sessions.pop(request.session_id, None)
+            return PlannerResponse(
+                session_id=request.session_id,
+                status="error",
+                reply="I cannot fulfill this request: unable to recognize a meaningful objective or actionable task from your input.",
+                action="await_user_input",
+            )
+
         # Stage 1 & 2: User Requirement Analysis
         user_req = self.requirement_analyzer.analyze_request(request)
+        from shared.contracts.planner import IntentCategory
+
+        is_read_only = user_req.intent == IntentCategory.DATA_RETRIEVAL
 
         # Stage 3: Clarification
         clarification = self.clarification_engine.evaluate_requirement(user_req)
-        if clarification.needs_clarification:
+        # Bias toward acting: low-risk read-only requests proceed without clarification
+        if clarification.needs_clarification and not is_read_only:
             self.active_sessions[request.session_id] = combined_message
             return PlannerResponse(
                 session_id=request.session_id,
                 status="clarifying",
                 reply=clarification.question,
+                options=clarification.options,
                 action="await_user_input",
             )
 
@@ -342,12 +405,13 @@ class PlannerAgent:
                 action="await_user_input",
             )
 
-        if goal_result.confidence_score < 0.6:
+        if goal_result.confidence_score < 0.6 and not is_read_only:
             self.active_sessions[request.session_id] = combined_message
             return PlannerResponse(
                 session_id=request.session_id,
                 status="clarifying",
                 reply="Your request is a bit too vague. Could you provide more specific details?",  # noqa: E501
+                options=None,
                 action="await_user_input",
             )
 
@@ -369,19 +433,31 @@ class PlannerAgent:
         )
         tasks = decomposition_plan.tasks
 
+        if not tasks:
+            self.active_sessions.pop(request.session_id, None)
+            return PlannerResponse(
+                session_id=request.session_id,
+                status="error",
+                reply="I cannot fulfill this request: no registered tools in the catalog can perform this action.",
+                action="await_user_input",
+            )
+
         # Capability Discovery
         tasks, unsupported_caps = self.capability_engine.discover_capabilities(
             tasks, unavailable_tools=unavailable_tools
         )
-        if unsupported_caps:
-            decomposition_plan.unsupported_capabilities = unsupported_caps
+        if unsupported_caps or decomposition_plan.unsupported_capabilities:
+            unsupported_all = list(
+                set(unsupported_caps + decomposition_plan.unsupported_capabilities)
+            )
+            decomposition_plan.unsupported_capabilities = unsupported_all
             self.active_sessions.pop(request.session_id, None)
             return PlannerResponse(
                 session_id=request.session_id,
                 status="error",
                 reply=(
                     f"Unsupported capabilities detected: "
-                    f"{', '.join(unsupported_caps)}. Cannot execute this goal."
+                    f"{', '.join(unsupported_all)}. Cannot execute this goal."
                 ),
                 action="await_user_input",
             )
@@ -483,6 +559,7 @@ class PlannerAgent:
         # Serialize to JSON as per requirements
         plan_json = planner_output.model_dump_json()
 
+        self.session_context.setdefault(request.session_id, []).append(combined_message)
         self.active_sessions.pop(request.session_id, None)
 
         return PlannerResponse(

@@ -85,6 +85,38 @@ npm run dev
 
 ---
 
+### 4. Multimodal Vision Model Setup (Free Tier & Local)
+
+AetherPhoenix integrates a unified vision client (`app.llm.vision_client`) with a provider switch between Google Gemini (Free Tier) and Ollama (Local Models):
+
+#### Option A: Google Gemini Free Tier (Recommended Default)
+1. Get a free API key from [Google AI Studio](https://aistudio.google.com/).
+2. Set the environment variable in your `backend/.env` file:
+```env
+VISION_PROVIDER=gemini
+GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_VISION_MODEL=gemini-2.5-flash
+```
+
+#### Option B: Local Vision Model via Ollama
+1. Install [Ollama](https://ollama.ai/) and pull a vision-capable model:
+```bash
+ollama run qwen2.5-vl
+# or
+ollama run llama3.2-vision
+```
+2. Configure your `backend/.env`:
+```env
+VISION_PROVIDER=ollama
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_VISION_MODEL=qwen2.5-vl
+```
+
+> [!NOTE]
+> If vision API calls encounter rate limits (HTTP 429), exponential backoff is automatically applied. If the call cannot complete, the system automatically falls back to local Tesseract OCR text extraction. API keys are never logged.
+
+---
+
 ## 🏗 System Architecture Overview
 
 AetherPhoenix is built on a modular, event-driven multi-agent execution pipeline:

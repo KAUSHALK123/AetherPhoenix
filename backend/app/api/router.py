@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api.endpoints import (
     artifacts,
+    browser,
     browser_extension,
     dashboard,
     export,
@@ -21,6 +22,7 @@ api_router.include_router(
 api_router.include_router(
     notifications.router, prefix="/notifications", tags=["notifications"]
 )
+api_router.include_router(browser.router, prefix="/browser", tags=["browser"])
 api_router.include_router(
     browser_extension.router, prefix="/browser-extension", tags=["browser-extension"]
 )
