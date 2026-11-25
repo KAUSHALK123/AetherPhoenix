@@ -239,7 +239,8 @@ class PipelineOrchestrator:
                                     f"Task {t.task_id} failed validation "
                                     "and is not retryable."
                                 )
-                                if t.retry_count >= max_retries:
+                                total_attempts = getattr(t, "retry_count", 0) + getattr(t, "replan_count", 0)
+                                if total_attempts >= max_retries:
                                     logger.error(
                                         f"Task '{t.task_name}' ({t.task_id}) exhausted maximum retry budget "
                                         f"(K_max={max_retries}). Halting retries and terminating workflow execution."
@@ -248,6 +249,7 @@ class PipelineOrchestrator:
                                         t.task_id, TaskStatus.FAILED
                                     )
                                 else:
+                                    t.replan_count = getattr(t, "replan_count", 0) + 1
                                     healing_res = None
                                     if self.healing:
                                         logger.info(

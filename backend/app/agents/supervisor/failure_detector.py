@@ -486,6 +486,27 @@ class FailureDetectorService:
             except OSError as exc:
                 return f"Artifact file '{path}' is not readable: {str(exc)}"
 
+            # Format-specific deep opening check for PPTX and PDF
+            ext = os.path.splitext(path)[1].lower()
+            if ext == ".pptx":
+                try:
+                    import pptx
+
+                    prs = pptx.Presentation(path)
+                    if len(prs.slides) == 0:
+                        return f"PowerPoint file '{path}' contains 0 slides."
+                except Exception as exc:
+                    return f"PowerPoint file '{path}' cannot be opened: {str(exc)}"
+            elif ext == ".pdf":
+                try:
+                    import pypdf
+
+                    reader = pypdf.PdfReader(path)
+                    if len(reader.pages) == 0:
+                        return f"PDF file '{path}' contains 0 pages."
+                except Exception as exc:
+                    return f"PDF file '{path}' cannot be opened: {str(exc)}"
+
         return None
 
     def _determine_retryability(

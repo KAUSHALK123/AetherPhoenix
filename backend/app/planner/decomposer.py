@@ -443,133 +443,95 @@ class TaskDecompositionEngine:
             return []
 
     def _decompose_presentation_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
-        """Decomposes a presentation/PPT generation goal into a task hierarchy."""
-        # Phase 1: Research & Outline (Root task 1)
-        phase1 = Task(
+        """Decomposes a presentation/PPT generation goal into an executable task hierarchy."""
+        lower = goal.lower()
+        # Extract requested slide count
+        m_count = re.search(r"(\d+)\s*(?:slide|page|slides|pages)", lower)
+        slide_count = int(m_count.group(1)) if m_count else 5
+        slide_count = max(1, slide_count)
+
+        # Extract topic
+        topic = re.sub(
+            r"^(?:make|create|generate|prepare|design|build)?\s*(?:a|an)?\s*\d*\s*(?:slide|slides|page|pages)?\s*(?:ppt|pptx|presentation|deck|slides)?\s*(?:on|about|for|regarding)?\s*",
+            "",
+            goal,
+            flags=re.IGNORECASE,
+        ).strip()
+        if not topic or topic.lower() in ["presentation", "ppt", "slides", "deck", ""]:
+            topic = "Executive Strategic Presentation"
+
+        clean_topic = re.sub(r"[^\w\s-]", "", topic).strip().replace(" ", "_").lower()
+        if not clean_topic:
+            clean_topic = "presentation"
+
+        # Phase 1: Presentation Generation
+        phase = Task(
             workflow_id=workflow_id,
-            task_name="Phase 1: Research & Outline",
-            description="Gather topics and create outline for presentation",
+            task_name="Phase 1: Presentation Generation",
+            description=f"Compile {slide_count}-slide presentation deck on '{topic}'",
             task_type=TaskType.PHASE,
             assigned_agent="System",
-            success_criteria=["All child leaf tasks completed successfully"],
-            failure_criteria=["One or more child tasks failed"],
-            required_tool="",
-            category=TaskCategory.WEB_RESEARCH,
-            priority=TaskPriority.HIGH,
-            dependencies=[],
-            expected_output="Topic outline and reference materials",
-            artifact_location=None,
-            estimated_duration_seconds=120,
-            status=TaskStatus.CREATED,
-        )
-
-        subtask_research = Task(
-            parent_task_id=phase1.task_id,
-            workflow_id=workflow_id,
-            task_name="Collect Topic Information",
-            description=f"Gather detailed facts and data for '{goal}'",
-            assigned_agent="WorkerAgent",
-            required_tool="",
-            category=TaskCategory.WEB_RESEARCH,
-            priority=TaskPriority.HIGH,
-            dependencies=[],
-            expected_output="Raw topic notes",
-            artifact_location=None,
-            success_criteria=["Research notes are collected and documented"],
-            failure_criteria=["Unable to find information online"],
-            estimated_duration_seconds=60,
-            status=TaskStatus.CREATED,
-        )
-
-        subtask_outline = Task(
-            parent_task_id=phase1.task_id,
-            workflow_id=workflow_id,
-            task_name="Draft Slide Outline",
-            description="Structure content into slide titles and bullet points",
-            assigned_agent="WorkerAgent",
-            required_tool="",
-            category=TaskCategory.PPT_GENERATION,
-            priority=TaskPriority.MEDIUM,
-            dependencies=[subtask_research.task_id],
-            expected_output="Structured slide outline",
-            artifact_location=None,
-            success_criteria=["Slide titles and bullets are logically organized"],
-            failure_criteria=["Missing outline structure"],
-            estimated_duration_seconds=60,
-            status=TaskStatus.CREATED,
-        )
-
-        # Phase 2: Generation & Export (Root task 2)
-        phase2 = Task(
-            workflow_id=workflow_id,
-            task_name="Phase 2: Presentation Generation",
-            description="Generate PPT slides and export deliverables",
-            task_type=TaskType.PHASE,
-            assigned_agent="System",
-            success_criteria=["All child leaf tasks completed successfully"],
-            failure_criteria=["One or more child tasks failed"],
+            success_criteria=["PowerPoint deck generated and verified"],
+            failure_criteria=["Failed to generate presentation"],
             required_tool="",
             category=TaskCategory.PPT_GENERATION,
             priority=TaskPriority.HIGH,
-            dependencies=[phase1.task_id],
+            dependencies=[],
             expected_output="Final presentation file",
             artifact_location=None,
-            estimated_duration_seconds=180,
+            estimated_duration_seconds=120,
             status=TaskStatus.CREATED,
         )
 
         subtask_generate_ppt = Task(
-            parent_task_id=phase2.task_id,
+            parent_task_id=phase.task_id,
             workflow_id=workflow_id,
             task_name="Build PPTX Deck",
-            description="Create presentation slides with formatting and visuals",
+            description=f"Generate {slide_count} presentation slides with formatted content on '{topic}'",
             assigned_agent="WorkerAgent",
             required_tool="ppt_tool",
             category=TaskCategory.PPT_GENERATION,
             priority=TaskPriority.HIGH,
-            dependencies=[subtask_outline.task_id],
+            dependencies=[],
             expected_output="Presentation deck (.pptx)",
-            artifact_location=None,
-            success_criteria=["PPTX file is created and readable"],
+            artifact_location=f"{workflow_id}/presentation/{clean_topic}.pptx",
+            success_criteria=["PPTX file is created, non-empty, and has valid slide titles"],
             failure_criteria=["Failed to generate valid PPTX"],
-            estimated_duration_seconds=120,
+            estimated_duration_seconds=90,
             status=TaskStatus.CREATED,
+            inputs={
+                "topic": topic,
+                "title": topic.title(),
+                "slide_count": slide_count,
+                "slides_count": slide_count,
+            },
         )
 
-        subtask_export_pdf = Task(
-            parent_task_id=phase2.task_id,
-            workflow_id=workflow_id,
-            task_name="Export PDF Handout",
-            description="Convert PowerPoint deck to PDF format",
-            assigned_agent="WorkerAgent",
-            required_tool="export",
-            category=TaskCategory.PDF_GENERATION,
-            priority=TaskPriority.LOW,
-            dependencies=[subtask_generate_ppt.task_id],
-            expected_output="PDF handout (.pdf)",
-            artifact_location=None,
-            success_criteria=["PDF file is created"],
-            failure_criteria=["PDF generation failed"],
-            estimated_duration_seconds=60,
-            status=TaskStatus.CREATED,
-            inputs={"target_format": "pdf"},
-        )
+        tasks = [phase, subtask_generate_ppt]
 
-        subtask_generate_ppt.artifact_location = (
-            f"{workflow_id}/{subtask_generate_ppt.task_id}/presentation.pptx"
-        )
-        subtask_export_pdf.artifact_location = (
-            f"{workflow_id}/{subtask_export_pdf.task_id}/handout.pdf"
-        )
+        # Check if user explicitly asked for PDF handout/export
+        if any(w in lower for w in ["pdf", "handout", "convert to pdf", "export as pdf"]):
+            subtask_export_pdf = Task(
+                parent_task_id=phase.task_id,
+                workflow_id=workflow_id,
+                task_name="Export PDF Handout",
+                description="Convert PowerPoint deck to PDF format",
+                assigned_agent="WorkerAgent",
+                required_tool="export",
+                category=TaskCategory.PDF_GENERATION,
+                priority=TaskPriority.LOW,
+                dependencies=[subtask_generate_ppt.task_id],
+                expected_output="PDF handout (.pdf)",
+                artifact_location=f"{workflow_id}/presentation/{clean_topic}_handout.pdf",
+                success_criteria=["PDF file is created"],
+                failure_criteria=["PDF generation failed"],
+                estimated_duration_seconds=60,
+                status=TaskStatus.CREATED,
+                inputs={"target_format": "pdf", "title": topic.title()},
+            )
+            tasks.append(subtask_export_pdf)
 
-        return [
-            phase1,
-            subtask_research,
-            subtask_outline,
-            phase2,
-            subtask_generate_ppt,
-            subtask_export_pdf,
-        ]
+        return tasks
 
     def _decompose_research_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
         """Decomposes a research/information retrieval goal."""

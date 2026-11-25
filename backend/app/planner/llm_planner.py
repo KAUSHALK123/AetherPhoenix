@@ -448,6 +448,50 @@ class LLMPlanner:
                     action="execute_plan",
                 )
 
+        # PowerPoint / Presentation Generation Intent
+        if (
+            any(
+                w in lower
+                for w in ["ppt", "presentation", "powerpoint", "slide", "slides", "deck"]
+            )
+            and not ("canva" in lower or "instagram" in lower or "poster" in lower)
+        ):
+            if "ppt_tool" in registered_tools:
+                from app.planner.decomposer import TaskDecompositionEngine
+
+                ppt_tasks = TaskDecompositionEngine()._decompose_presentation_goal(
+                    request.message, workflow_id
+                )
+                leaf_tasks = [t for t in ppt_tasks if t.task_type == TaskType.LEAF]
+                output = PlannerOutput(
+                    metadata=PlanMetadata(
+                        workflow_id=str(workflow_id),
+                        session_id=request.session_id,
+                        goal=request.message,
+                    ),
+                    workflow_spec=f"Presentation Workflow for {request.message}",
+                    tasks=ppt_tasks,
+                    dependency_graph={
+                        t.task_id: [str(d) for d in t.dependencies] for t in leaf_tasks
+                    },
+                    estimated_time_seconds=60,
+                    risks=[],
+                    required_permissions=["FILE_SYSTEM"],
+                    expected_outputs=["Presentation deck (.pptx)"],
+                    confidence_score=0.95,
+                    execution_summary=(
+                        f"**PowerPoint Execution Plan**\n- **Goal**: {request.message}\n"
+                        f"- **Tasks**: {len(ppt_tasks)}\n- **Tool**: ppt_tool\n"
+                    ),
+                    parallel_groups=[[t.task_id] for t in leaf_tasks],
+                )
+                return PlannerResponse(
+                    session_id=request.session_id,
+                    status="ready",
+                    reply=output.model_dump_json(),
+                    action="execute_plan",
+                )
+
         # Canva Design Automation
         if (
             any(

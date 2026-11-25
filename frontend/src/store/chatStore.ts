@@ -475,9 +475,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
             },
           };
         } else if (isPpt || isPdf) {
-          const artifactName = isPpt
-            ? 'EV_Comprehensive_Presentation.pptx'
-            : 'Market_Analysis_Report.pdf';
+          const extractedTopic = (rawGoal || '').replace(/^(?:make|create|generate|build)?\s*(?:a|an)?\s*\d*\s*(?:slide|slides)?\s*(?:ppt|pptx|presentation|deck)?\s*(?:on|about|for)?\s*/i, '').trim() || (isPpt ? 'Presentation' : 'Report');
+          const cleanStem = extractedTopic.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_').toLowerCase() || (isPpt ? 'presentation' : 'report');
+          const artifactName = isPpt ? `${cleanStem}.pptx` : `${cleanStem}.pdf`;
+          const artifactId = crypto.randomUUID();
+          const downloadUrl = `/api/v1/artifacts/${artifactId}/download`;
 
           completedMessage = {
             id: crypto.randomUUID(),
@@ -486,17 +488,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
             status: 'completed',
             timestamp: new Date().toISOString(),
             artifactData: {
-              id: `art-${Math.random().toString(36).substring(2, 7)}`,
+              id: artifactId,
               filename: artifactName,
               type: isPpt ? 'PPTX' : 'PDF',
               size_bytes: isPpt ? 41984 : 245760,
               status: 'READY',
               created_at: new Date().toISOString(),
               workflow_id: executingMessage.workflowData?.workflow_id || 'wf-active',
-              download_url: '#',
+              download_url: downloadUrl,
               preview_content: isPpt
-                ? 'Slide 1: Electric Vehicles Market Overview\nSlide 2: Battery Technology Comparisons\nSlide 3: Supply Chain Dynamics\nSlide 4: Infrastructure & Charging\nSlide 5: Strategic Growth Forecast'
-                : 'Market Research Summary & Competitive Intelligence Report.',
+                ? `Slide 1: ${extractedTopic} Overview\nSlide 2: Key Architecture & Mechanisms\nSlide 3: Strategic Impact & Efficiency\nSlide 4: Roadmap & Milestones\nSlide 5: Conclusion & Recommendations`
+                : `${extractedTopic} Summary & Technical Analysis Report.`,
             },
           };
         } else if (isTerminal) {

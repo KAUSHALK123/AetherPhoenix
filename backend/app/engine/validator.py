@@ -181,6 +181,71 @@ class OutputValidationService:
                         f"Result artifact file is empty (0 bytes): {artifact.filepath}"
                     )
 
+        # 3. Deep Contract Check for PPT/PDF artifacts: exists, size > 0, opens, slide/page count matches
+        all_paths: List[str] = []
+        if task.artifact_location:
+            all_paths.append(task.artifact_location)
+        if result.artifacts:
+            all_paths.extend([a.filepath for a in result.artifacts if a.filepath])
+        if isinstance(result.output, dict):
+            for k in ("filepath", "output_path", "presentation", "artifact_location"):
+                v = result.output.get(k)
+                if isinstance(v, str) and v not in all_paths:
+                    all_paths.append(v)
+
+        expected_slides = (
+            task.inputs.get("slide_count")
+            or task.inputs.get("slides_count")
+            if hasattr(task, "inputs") and isinstance(task.inputs, dict)
+            else None
+        )
+        expected_pages = (
+            task.inputs.get("page_count")
+            or task.inputs.get("pages_count")
+            if hasattr(task, "inputs") and isinstance(task.inputs, dict)
+            else None
+        )
+
+        for p in all_paths:
+            if not os.path.exists(p):
+                continue
+            ext = os.path.splitext(p)[1].lower()
+            if ext == ".pptx":
+                try:
+                    import pptx
+
+                    prs = pptx.Presentation(p)
+                    actual_slides = len(prs.slides)
+                    if actual_slides == 0:
+                        is_valid = False
+                        issues.append(f"PowerPoint file '{p}' has 0 slides.")
+                    elif expected_slides and actual_slides != int(expected_slides):
+                        is_valid = False
+                        issues.append(
+                            f"PowerPoint slide count mismatch: expected {expected_slides}, got {actual_slides}."
+                        )
+                except Exception as ex:
+                    is_valid = False
+                    issues.append(f"PowerPoint file '{p}' failed verification: {ex}")
+
+            elif ext == ".pdf":
+                try:
+                    import pypdf
+
+                    reader = pypdf.PdfReader(p)
+                    actual_pages = len(reader.pages)
+                    if actual_pages == 0:
+                        is_valid = False
+                        issues.append(f"PDF file '{p}' has 0 pages.")
+                    elif expected_pages and actual_pages != int(expected_pages):
+                        is_valid = False
+                        issues.append(
+                            f"PDF page count mismatch: expected {expected_pages}, got {actual_pages}."
+                        )
+                except Exception as ex:
+                    is_valid = False
+                    issues.append(f"PDF file '{p}' failed verification: {ex}")
+
         return is_valid, issues
 
     def _verify_output_data(
