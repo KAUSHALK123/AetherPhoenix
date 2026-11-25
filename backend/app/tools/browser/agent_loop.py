@@ -144,7 +144,7 @@ class BrowserAgentLoop:
         ocr_engine: Optional[OCREngine] = None,
         vision_model: Optional[str] = None,
         decider: Optional[DeciderFunc] = None,
-        max_steps: int = 40,
+        max_steps: int = 30,
         step_timeout_seconds: float = 30.0,
     ):
         self.controller = controller
@@ -273,20 +273,77 @@ class BrowserAgentLoop:
     ) -> VisionAction:
         """
         Step 2: Decide.
-        Sends observation and history to the vision model (or injected decider).
+        Sends observation and history to the vision model via VisionClient (or injected decider).
         Validates response against VisionAction Pydantic schema.
         """
         if self.decider:
             action = await self.decider(obs, goal, history)
             return VisionAction.model_validate(action)
 
+        prompt = (
+            f"You are an autonomous browser vision agent.\n"
+            f"GOAL: {goal}\n\n"
+            f"CURRENT PAGE URL: {obs.url}\n"
+            f"VISIBLE DOM TEXT:\n{obs.dom_text[:1500]}\n\n"
+            f"INTERACTIVE ELEMENTS (prefer these selectors when available):\n"
+            f"{json.dumps(obs.interactive_elements[:30], indent=2)}\n\n"
+            f"OCR EXTRACTED TEXT & BOUNDING BOXES:\n"
+            f"{json.dumps(obs.ocr_segments[:40], indent=2)}\n\n"
+            f"ACTION HISTORY ({len(history)} steps taken):\n"
+            + "\n".join(
+                [
+                    f"Step {h.step_number}: {h.action.action.value} -> {h.thought}"
+                    for h in history[-5:]
+                ]
+            )
+            + "\n\n"
+            "REQUIREMENT: Pick EXACTLY ONE next action from (click, type, press, scroll, wait, ask_human, done).\n"
+            "Prefer DOM/ARIA selectors (element); use coordinates (x, y) ONLY as fallback for canvas/visual-only buttons.\n"
+            "Format JSON matching schema:\n"
+            "{\n"
+            '  "thought": "explanation of what is visible on screen and why choosing this action",\n'
+            '  "action": "click|type|press|scroll|wait|ask_human|done",\n'
+            '  "element": "selector or text target (or null)",\n'
+            '  "x": float or null,\n'
+            '  "y": float or null,\n'
+            '  "text": "text to type if typing",\n'
+            '  "key": "key to press if pressing",\n'
+            '  "reason": "reason if ask_human",\n'
+            '  "summary": "final summary if done"\n'
+            "}"
+        )
+
+        try:
+            from app.llm.vision_client import VisionClient
+
+            client = VisionClient(model_name=self.vision_model)
+            analyzed = await client.analyze(
+                image_bytes=obs.screenshot_bytes,
+                prompt=prompt,
+                response_schema=VisionAction,
+            )
+            if isinstance(analyzed, VisionAction):
+                return analyzed
+            if isinstance(analyzed, dict):
+                return VisionAction.model_validate(analyzed)
+        except Exception as e:
+            logger.warning(
+                f"VisionClient analysis in BrowserAgentLoop failed, falling back to heuristics: {e}"
+            )
+
         api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
         if api_key and "gemini" in self.vision_model.lower():
-            return await self._call_gemini_vision(obs, goal, history, api_key)
+            try:
+                return await self._call_gemini_vision(obs, goal, history, api_key)
+            except Exception as e:
+                logger.warning(f"Gemini fallback vision call failed: {e}")
 
         openai_key = os.getenv("OPENAI_API_KEY")
         if openai_key and ("gpt" in self.vision_model.lower() or "o1" in self.vision_model.lower()):
-            return await self._call_openai_vision(obs, goal, history, openai_key)
+            try:
+                return await self._call_openai_vision(obs, goal, history, openai_key)
+            except Exception as e:
+                logger.warning(f"OpenAI fallback vision call failed: {e}")
 
         # Heuristic fallback when no external LLM API key is configured
         return self._heuristic_decide(obs, goal, history)

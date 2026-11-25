@@ -334,3 +334,48 @@ async def test_agent_loop_final_report_content(flow_server, temp_user_dir):
         assert report.message is not None
     finally:
         await controller.close_session()
+
+
+@pytest.mark.asyncio
+async def test_browser_tool_adapter_see_think_act_safety_net(flow_server, temp_user_dir):
+    """Stage 3: Verify BrowserToolAdapter runs see-think-act loop and reports what it did, what it sees, and where it got stuck."""
+    from shared.contracts.task import Task, TaskCategory
+    from app.tools.browser.interface import BrowserToolAdapter
+
+    controller = BrowserController(permission_manager=False, user_data_dir=temp_user_dir)
+    adapter = BrowserToolAdapter(controller=controller)
+
+    streamed_events = []
+    event_bus = get_event_bus()
+    event_bus.subscribe("browser.agent_step", lambda evt: streamed_events.append(evt))
+
+    try:
+        await controller.start_session(headless=True, persistent=True)
+        await controller.navigate(f"http://127.0.0.1:{flow_server.port}/stall-page", auto_handoff=False)
+
+        workflow_id = uuid4()
+        task = Task(
+            workflow_id=workflow_id,
+            task_name="See-Think-Act Safety Net",
+            description="Perform interactive goal on stalled page",
+            required_tool="browser_tool",
+            category=TaskCategory.BROWSER,
+            expected_output="Goal status report",
+            inputs={
+                "action": "see_think_act",
+                "goal": "Click non-existent button and confirm changes",
+                "max_steps": 5,
+            },
+        )
+
+        res = await adapter.execute(task)
+
+        # Should report execution details honestly
+        out = res.output
+        assert "what_it_did" in out
+        assert "what_the_last_screenshot_shows" in out
+        assert "where_it_got_stuck" in out or "stuck_reason" in out
+        assert out.get("final_screenshot_b64") is not None
+        assert len(streamed_events) >= 1
+    finally:
+        await controller.close_session()

@@ -189,13 +189,13 @@ class BrowserAdapter(BaseToolAdapter):
                 )
                 output = res.data
 
-            elif action in ("agent_loop", "vision_loop", "run_goal") or inputs.get("goal"):
+            elif action in ("agent_loop", "vision_loop", "run_goal", "see_think_act") or inputs.get("see_think_act") or inputs.get("goal"):
                 from app.tools.browser.agent_loop import BrowserAgentLoop
 
                 goal = inputs.get("goal") or task.description
-                max_steps = int(inputs.get("max_steps", 40))
+                max_steps = int(inputs.get("max_steps", 30))
                 vision_model = inputs.get("vision_model")
-                logs.append(f"Running vision-driven BrowserAgentLoop for goal: '{goal}'")
+                logs.append(f"Running see-think-act BrowserAgentLoop for goal: '{goal}'")
                 loop = BrowserAgentLoop(
                     controller=self.controller,
                     vision_model=vision_model,
@@ -206,9 +206,36 @@ class BrowserAdapter(BaseToolAdapter):
                     workflow_id=workflow_id,
                     task_id=task_id,
                 )
-                output = report.model_dump()
+                output = {
+                    "goal": report.goal,
+                    "status": report.status,
+                    "total_steps": report.total_steps,
+                    "what_it_did": report.actions_taken,
+                    "actions_taken": report.actions_taken,
+                    "what_the_last_screenshot_shows": report.what_agent_sees_now,
+                    "what_agent_sees_now": report.what_agent_sees_now,
+                    "where_it_got_stuck": report.stuck_reason,
+                    "stuck_reason": report.stuck_reason,
+                    "final_screenshot_b64": report.final_screenshot_b64,
+                    "final_screenshot_path": report.final_screenshot_path,
+                    "message": report.message,
+                }
                 if not report.success:
-                    raise BrowserActionError(report.message)
+                    return ExecutionResult(
+                        task_id=task.task_id,
+                        workflow_id=task.workflow_id,
+                        success=False,
+                        output=output,
+                        error=TaskError(
+                            error_code=report.status or "BROWSER_LOOP_STUCK",
+                            error_message=report.stuck_reason or report.message,
+                            is_recoverable=False,
+                        ),
+                        logs=logs + [f"Loop ended with status {report.status}: {report.stuck_reason or report.message}"],
+                        metrics=ExecutionMetrics(
+                            execution_time_ms=(time.time() - start_time) * 1000.0
+                        ),
+                    )
 
             else:
                 raise ValueError(f"Unknown browser action: {action}")
@@ -311,3 +338,7 @@ class BrowserTool:
         if not res.success:
             raise RuntimeError(res.error)
         return res.data["screenshot_bytes"]
+
+
+# Export alias so both BrowserToolAdapter and BrowserAdapter can be imported interchangeably
+BrowserToolAdapter = BrowserAdapter
