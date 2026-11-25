@@ -97,7 +97,9 @@ class PPTContentGenerator:
         if not cleaned:
             return "Executive Strategic Briefing"
 
-        return cleaned.title()
+        if cleaned.islower():
+            return cleaned.title()
+        return cleaned
 
     async def _call_gemini_outline(
         self,

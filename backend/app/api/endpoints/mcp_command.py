@@ -39,6 +39,30 @@ class MCPSourceItem(BaseModel):
     snippet: str
 
 
+class MCPPPTRequest(BaseModel):
+    topic: Optional[str] = None
+    prompt: Optional[str] = None
+    slide_count: Optional[int] = 5
+    title: Optional[str] = None
+
+
+class SlidePreviewItem(BaseModel):
+    slide_number: int
+    title: str
+    bullets: List[str]
+
+
+class MCPPPTResponse(BaseModel):
+    artifact_id: str
+    filename: str
+    download_url: str
+    file_size_bytes: int
+    slide_count: int
+    title: str
+    slides: List[SlidePreviewItem]
+    preview_content: str
+
+
 class MCPResearchResponse(BaseModel):
     query: str
     summary: str
@@ -89,6 +113,113 @@ async def execute_mcp_research_endpoint(
         sources=clean_sources,
         total_sources_found=len(clean_sources),
         execution_time_seconds=result.execution_time_seconds,
+    )
+
+
+@router.post("/ppt", response_model=MCPPPTResponse)
+async def generate_mcp_ppt_endpoint(request: MCPPPTRequest) -> MCPPPTResponse:
+    """
+    MCP-compatible endpoint to generate a fully populated PowerPoint presentation (.pptx)
+    with complete outlines, structured titles, 3-5 informative bullets per slide, and speaker notes.
+    """
+    import hashlib
+    import re
+    import uuid
+    from pathlib import Path
+    from shared.contracts.artifact import Artifact, ArtifactType
+    from app.core.config import get_config
+    from app.schemas.ppt import PresentationSchema, SlideContent, SlideType
+    from app.services.artifact_storage import get_artifact_storage_service
+    from app.tools.ppt.content_generator import PPTContentGenerator
+    from app.tools.ppt.generator import PPTGenerator
+
+    topic = (request.topic or request.prompt or "Executive Strategic Presentation").strip()
+    slide_count = max(1, request.slide_count or 5)
+
+    # 1. Generate rich structured outline with bullets
+    content_gen = PPTContentGenerator()
+    outline = await content_gen.generate_outline(topic=topic, slide_count=slide_count)
+
+    schema_slides = []
+    for idx, s in enumerate(outline.slides):
+        s_type = SlideType.TITLE if idx == 0 else SlideType.CONTENT
+        schema_slides.append(
+            SlideContent(
+                title=s.title,
+                subtitle=s.subtitle,
+                slide_type=s_type,
+                bullets=s.bullets,
+                speaker_notes=s.speaker_notes,
+            )
+        )
+
+    presentation = PresentationSchema(
+        title=outline.title or topic,
+        slides=schema_slides,
+    )
+
+    # 2. Compile .pptx file
+    clean_stem = re.sub(r"[^\w\s-]", "", topic).strip().replace(" ", "_").lower()
+    if not clean_stem or clean_stem in ["presentation", "ppt"]:
+        clean_stem = "presentation"
+    filename = f"{clean_stem}.pptx"
+
+    cfg = get_config()
+    workflow_id = uuid.uuid4()
+    task_id = uuid.uuid4()
+    output_dir = Path(cfg.ARTIFACTS_DIR) / str(workflow_id) / str(task_id)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = str(output_dir / filename)
+
+    generator = PPTGenerator()
+    generator.generate(
+        presentation=presentation,
+        output_path=output_path,
+        workflow_id=workflow_id,
+    )
+
+    file_bytes = Path(output_path).read_bytes()
+    checksum = hashlib.sha256(file_bytes).hexdigest()
+
+    # 3. Register with ArtifactStorageService
+    storage_svc = get_artifact_storage_service()
+    artifact = Artifact(
+        workflow_id=workflow_id,
+        task_id=task_id,
+        name=filename,
+        filepath=str(Path(output_path).resolve()),
+        artifact_type=ArtifactType.PPT,
+        size_bytes=len(file_bytes),
+        checksum=checksum,
+    )
+    registered = await storage_svc.register_artifact(artifact)
+
+    # 4. Format preview content with full bullets
+    preview_lines = [f"# {presentation.title}"]
+    slide_previews = []
+    for idx, s in enumerate(presentation.slides, 1):
+        preview_lines.append(f"\n### Slide {idx}: {s.title}")
+        if s.subtitle:
+            preview_lines.append(f"*{s.subtitle}*")
+        for b in s.bullets:
+            preview_lines.append(f"- {b}")
+        slide_previews.append(
+            SlidePreviewItem(
+                slide_number=idx,
+                title=s.title,
+                bullets=s.bullets,
+            )
+        )
+
+    return MCPPPTResponse(
+        artifact_id=str(registered.artifact_id),
+        filename=filename,
+        download_url=f"/api/v1/artifacts/{registered.artifact_id}/download",
+        file_size_bytes=len(file_bytes),
+        slide_count=len(presentation.slides),
+        title=presentation.title,
+        slides=slide_previews,
+        preview_content="\n".join(preview_lines),
     )
 
 

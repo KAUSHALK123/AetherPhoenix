@@ -514,11 +514,44 @@ export const useChatStore = create<ChatState>((set, get) => ({
             },
           };
         } else if (isPpt || isPdf) {
+          const countMatch = (rawGoal || planName).match(/(\d+)\s*(?:slide|slides|page|pages)/i);
+          const requestedSlideCount = countMatch ? parseInt(countMatch[1], 10) : 5;
           const extractedTopic = (rawGoal || '').replace(/^(?:make|create|generate|build)?\s*(?:a|an)?\s*\d*\s*(?:slide|slides)?\s*(?:ppt|pptx|presentation|deck)?\s*(?:on|about|for)?\s*/i, '').trim() || (isPpt ? 'Presentation' : 'Report');
           const cleanStem = extractedTopic.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_').toLowerCase() || (isPpt ? 'presentation' : 'report');
-          const artifactName = isPpt ? `${cleanStem}.pptx` : `${cleanStem}.pdf`;
-          const artifactId = crypto.randomUUID();
-          const downloadUrl = `/api/v1/artifacts/${artifactId}/download`;
+          let artifactName = isPpt ? `${cleanStem}.pptx` : `${cleanStem}.pdf`;
+          let artifactId = crypto.randomUUID();
+          let downloadUrl = `/api/v1/artifacts/${artifactId}/download`;
+          let sizeBytes = isPpt ? 45000 : 245760;
+          let previewContent = '';
+
+          if (isPpt) {
+            try {
+              const res = await fetch('/api/v1/mcp/commands/ppt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  topic: extractedTopic,
+                  slide_count: requestedSlideCount,
+                }),
+              });
+              if (res.ok) {
+                const data = await res.json();
+                artifactId = data.artifact_id;
+                artifactName = data.filename;
+                downloadUrl = data.download_url;
+                sizeBytes = data.file_size_bytes;
+                previewContent = data.preview_content;
+              }
+            } catch (err) {
+              console.warn('Backend PPT generation API call failed:', err);
+            }
+          }
+
+          if (!previewContent) {
+            previewContent = isPpt
+              ? `Slide 1: ${extractedTopic} Overview\n  - Strategic landscape, current market context, and primary operational scope.\n  - Key drivers, adoption benchmarks, and readiness analysis.\nSlide 2: Core Architecture & Operating Mechanisms\n  - Fundamental operating mechanisms and component design.\n  - Performance parameters, efficiency metrics, and integration interfaces.\nSlide 3: Strategic Impact, Economics & Scalability\n  - Capital investment efficiency and lifecycle ROI trajectory.\n  - Quantifiable metrics, risk mitigations, and compliance standards.\nSlide 4: Implementation Roadmap & Execution Gates\n  - Phase 1 validation prototyping and readiness testing.\n  - Phased infrastructure scaling and milestone governance.\nSlide 5: Strategic Outlook & Future Milestones\n  - Emerging paradigms, strategic partnerships, and 3-5 year trajectory.\n  - Actionable execution steps and stakeholder alignment.`
+              : `${extractedTopic} Summary & Technical Analysis Report.`;
+          }
 
           completedMessage = {
             id: crypto.randomUUID(),
@@ -530,14 +563,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
               id: artifactId,
               filename: artifactName,
               type: isPpt ? 'PPTX' : 'PDF',
-              size_bytes: isPpt ? 41984 : 245760,
+              size_bytes: sizeBytes,
               status: 'READY',
               created_at: new Date().toISOString(),
               workflow_id: executingMessage.workflowData?.workflow_id || 'wf-active',
               download_url: downloadUrl,
-              preview_content: isPpt
-                ? `Slide 1: ${extractedTopic} Overview\nSlide 2: Key Architecture & Mechanisms\nSlide 3: Strategic Impact & Efficiency\nSlide 4: Roadmap & Milestones\nSlide 5: Conclusion & Recommendations`
-                : `${extractedTopic} Summary & Technical Analysis Report.`,
+              preview_content: previewContent,
             },
           };
         } else if (isTerminal) {

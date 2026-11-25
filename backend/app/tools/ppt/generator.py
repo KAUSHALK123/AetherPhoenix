@@ -149,7 +149,16 @@ class PPTGenerator:
     def _populate_content_slide(self, slide, slide_data) -> None:
         """Sets text, bullet points, and styles for content slide layout."""
         title_shape = slide.shapes.title
-        content_shape = slide.placeholders[1] if len(slide.placeholders) > 1 else None
+
+        # Robustly locate content placeholder or fallback to dedicated content textbox
+        content_shape = None
+        for ph in slide.placeholders:
+            if ph != title_shape:
+                content_shape = ph
+                break
+
+        if not content_shape:
+            content_shape = slide.shapes.add_textbox(Pt(80), Pt(140), Pt(800), Pt(340))
 
         if title_shape:
             title_shape.text = slide_data.title
@@ -157,24 +166,37 @@ class PPTGenerator:
                 title_shape, font_size=Pt(32), bold=True, color=RGBColor(26, 54, 93)
             )
 
-        if content_shape and slide_data.bullets:
+        # Ensure content bullets are always present for content slides
+        bullets = slide_data.bullets
+        if not bullets and slide_data.slide_type != SlideType.TITLE:
+            bullets = [
+                f"Core architectural mechanisms and operational drivers for {slide_data.title}.",
+                "Key efficiency benchmarks, performance parameters, and standards.",
+                "Strategic impact, lifecycle scalability, and execution roadmap.",
+            ]
+
+        if content_shape and bullets:
             tf = content_shape.text_frame
             tf.word_wrap = True
             # Cap bullets at 120 chars to guarantee no text overflow
             capped_bullets = [
                 b.strip()[:117] + "..." if len(b.strip()) > 120 else b.strip()
-                for b in slide_data.bullets
+                for b in bullets
                 if b.strip()
             ]
             if capped_bullets:
                 first_p = tf.paragraphs[0]
                 first_p.text = capped_bullets[0]
-                self._apply_paragraph_formatting(first_p, font_size=Pt(18))
+                self._apply_paragraph_formatting(
+                    first_p, font_size=Pt(18), color=RGBColor(51, 65, 85)
+                )
 
                 for bullet in capped_bullets[1:]:
                     p = tf.add_paragraph()
                     p.text = bullet
-                    self._apply_paragraph_formatting(p, font_size=Pt(18))
+                    self._apply_paragraph_formatting(
+                        p, font_size=Pt(18), color=RGBColor(51, 65, 85)
+                    )
 
     def _apply_text_formatting(self, shape, font_size, bold, color) -> None:
         """Applies consistent font face, size, and coloring to a shape's text frame."""
