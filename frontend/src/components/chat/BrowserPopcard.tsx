@@ -58,6 +58,8 @@ export const BrowserPopcard: React.FC<BrowserPopcardProps> = ({ data }) => {
                 ? 'Connected to live Canva design editor via browser runtime'
                 : isGitHub && data.url.includes('issues/new')
                 ? 'Opened new GitHub issue creation form with pre-filled fields'
+                : isYouTube && (data.action === 'interacted' || (data.query && data.query.toLowerCase().includes('lofi')))
+                ? 'Navigated to YouTube and initiated video playback'
                 : data.action === 'searched'
                 ? 'Executed search query in web browser'
                 : 'Navigated active browser tab'}
@@ -108,8 +110,10 @@ export const BrowserPopcard: React.FC<BrowserPopcardProps> = ({ data }) => {
           onClick={handleOpenBrowser}
           className="px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-600/30 flex items-center gap-1.5 cursor-pointer transition-all active:scale-95"
         >
-          <span className="material-symbols-outlined text-sm">open_in_new</span>
-          Open in Browser
+          <span className="material-symbols-outlined text-sm">
+            {isYouTube ? 'play_circle' : 'open_in_new'}
+          </span>
+          {isYouTube ? 'Play on YouTube' : 'Open in Browser'}
         </button>
       </div>
     </div>

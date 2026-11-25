@@ -1134,19 +1134,29 @@ class TaskDecompositionEngine:
             raw_url = url_match.group(1).rstrip(",.;!?)")
             target_url = raw_url if raw_url.startswith("http") else f"https://{raw_url}"
             site_name = target_url
-        elif "youtube" in lower_goal or "utube" in lower_goal:
+        elif "youtube" in lower_goal or "utube" in lower_goal or any(w in lower_goal for w in ["play lofi", "play music", "play song", "lofi"]):
             site_name = "YouTube"
             target_url = "https://www.youtube.com"
             match = re.search(
-                r"(?:search\s+(?:for\s+)?|query\s+|find\s+|watch\s+|lookup\s+)(.+)",
+                r"(?:play\s+|listen\s+to\s+|search\s+(?:for\s+)?|query\s+|find\s+|watch\s+|lookup\s+)(.+)",
                 goal,
                 re.IGNORECASE,
             )
             if match:
-                query = match.group(1).strip()
-                query = re.sub(r"[.?!]+$", "", query).strip()
+                raw_q = match.group(1).strip()
+                clean_q = re.sub(
+                    r"(?:on|in|at)\s+(?:youtube|utube)[.?!]*$",
+                    "",
+                    raw_q,
+                    flags=re.IGNORECASE,
+                ).strip()
+                clean_q = re.sub(r"[.?!]+$", "", clean_q).strip()
+                query = clean_q or raw_q
                 encoded_q = urllib.parse.quote_plus(query)
                 target_url = f"https://www.youtube.com/results?search_query={encoded_q}"
+            elif "lofi" in lower_goal:
+                query = "lofi music"
+                target_url = "https://www.youtube.com/results?search_query=lofi+music"
         elif "google" in lower_goal:
             site_name = "Google"
             target_url = "https://www.google.com"
@@ -1231,6 +1241,35 @@ class TaskDecompositionEngine:
             estimated_duration_seconds=30,
             status=TaskStatus.CREATED,
         )
+
+        is_play_intent = (
+            "youtube" in lower_goal or "utube" in lower_goal or "lofi" in lower_goal
+        ) and any(w in lower_goal for w in ["play", "listen", "music", "song", "lofi", "track", "audio"])
+
+        if is_play_intent:
+            task_play = Task(
+                parent_task_id=phase_root.task_id,
+                workflow_id=workflow_id,
+                task_name=f"Play Top Video for '{query or 'music'}'",
+                description=f"Click the first video title in YouTube results to start audio playback",
+                assigned_agent="WorkerAgent",
+                required_tool="browser_extension",
+                category=TaskCategory.BROWSER,
+                priority=TaskPriority.HIGH,
+                dependencies=[task_nav.task_id],
+                expected_output=f"Playback initiated for top YouTube video result",
+                success_criteria=["Video player launched and audio playback active"],
+                failure_criteria=["Failed to locate or click video link"],
+                inputs={
+                    "action": "interact",
+                    "interaction_action": "click",
+                    "selector": "ytd-video-renderer a#video-title, #contents ytd-video-renderer a#thumbnail, a#video-title",
+                    "url": target_url,
+                },
+                estimated_duration_seconds=30,
+                status=TaskStatus.CREATED,
+            )
+            return [phase_root, task_nav, task_play]
 
         task_extract = Task(
             parent_task_id=phase_root.task_id,

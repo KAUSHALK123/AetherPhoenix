@@ -323,8 +323,25 @@ class PlannerAgent:
                 ):
                     unavailable_tools.append(request.feedback.failure_summary.tool_used)
 
-        # Restore session context if this is a clarification answer
-        if request.session_id in self.active_sessions:
+        # Restore session context if this is a clarification answer or multi-turn follow-up
+        if not hasattr(self, "session_context"):
+            self.session_context = {}
+
+        history = self.session_context.get(request.session_id, [])
+        if history and request.session_id not in self.active_sessions:
+            last_goal = history[-1]
+            lower_msg = request.message.lower().strip()
+            followup_triggers = [
+                "play", "open", "start", "click", "first", "continue", "again",
+                "listen", "watch", "why", "it", "music", "song", "video",
+                "slide", "ppt", "pdf", "summarize", "search", "more", "now",
+            ]
+            if len(lower_msg.split()) <= 8 and any(trig in lower_msg for trig in followup_triggers):
+                combined_message = f"{last_goal} (Follow-up instruction: {request.message})"
+                request.message = combined_message
+            else:
+                combined_message = request.message
+        elif request.session_id in self.active_sessions:
             original_goal = self.active_sessions[request.session_id]
             # Combine original goal with clarification answer
             combined_message = f"{original_goal} (Clarification provided: {request.message})"  # noqa: E501
@@ -542,6 +559,7 @@ class PlannerAgent:
         # Serialize to JSON as per requirements
         plan_json = planner_output.model_dump_json()
 
+        self.session_context.setdefault(request.session_id, []).append(combined_message)
         self.active_sessions.pop(request.session_id, None)
 
         return PlannerResponse(

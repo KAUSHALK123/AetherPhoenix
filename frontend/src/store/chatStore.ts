@@ -301,12 +301,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
           } else {
             immediateTargetUrl = `https://github.com/${repo}`;
           }
-        } else if (lowerGoal.includes('youtube') || lowerGoal.includes('utube')) {
+        } else if (lowerGoal.includes('youtube') || lowerGoal.includes('utube') || lowerGoal.includes('lofi') || lowerGoal.includes('play music')) {
           immediateSiteName = 'YouTube';
-          const match = lowerGoal.match(/(?:search\s+(?:for\s+)?|query\s+|find\s+|watch\s+|lookup\s+)(.+)/i);
+          const match = lowerGoal.match(/(?:play\s+|listen\s+to\s+|search\s+(?:for\s+)?|query\s+|find\s+|watch\s+|lookup\s+)(.+)/i);
           if (match) {
-            immediateQuery = match[1].replace(/[.?!]+$/, '').trim();
+            let q = match[1].replace(/[.?!]+$/, '').trim();
+            q = q.replace(/(?:on|in|at)\s+(?:youtube|utube)[.?!]*$/i, '').trim();
+            immediateQuery = q || 'lofi music';
             immediateTargetUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(immediateQuery)}`;
+          } else if (lowerGoal.includes('lofi')) {
+            immediateQuery = 'lofi music';
+            immediateTargetUrl = 'https://www.youtube.com/results?search_query=lofi+music';
           } else {
             immediateTargetUrl = 'https://www.youtube.com';
           }
@@ -384,24 +389,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
           const siteName = immediateSiteName || 'Web Browser';
           const query = immediateQuery;
 
-          // 1. Command backend to launch/navigate or interact
-          const interactTask = plan.tasks?.find(t => t.inputs && t.inputs.action === 'interact');
-          if (interactTask && interactTask.inputs) {
-            try {
-              await fetch('/api/v1/browser-extension/interact', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  selector: interactTask.inputs.selector || "button.btn-primary[type='submit']",
-                  action: interactTask.inputs.interaction_action || 'click',
-                  value: interactTask.inputs.value,
-                  workflow_id: executingMessage.workflowData?.workflow_id,
-                }),
-              });
-            } catch (err) {
-              console.warn('Backend browser interact API call failed:', err);
-            }
-          } else if (targetUrl) {
+          // 1. Command backend to launch/navigate
+          if (targetUrl) {
             try {
               await fetch('/api/v1/browser-extension/navigate', {
                 method: 'POST',
@@ -413,6 +402,45 @@ export const useChatStore = create<ChatState>((set, get) => ({
             }
           }
 
+          // 2. Command interaction (click submit on GitHub, play video on YouTube, etc.)
+          const interactTask = plan.tasks?.find(t => t.inputs && t.inputs.action === 'interact');
+          const isYouTubePlay = (lowerGoal.includes('play') || lowerGoal.includes('listen') || lowerGoal.includes('lofi') || lowerGoal.includes('music')) && (siteName === 'YouTube' || targetUrl.includes('youtube.com'));
+
+          if (interactTask && interactTask.inputs) {
+            setTimeout(async () => {
+              try {
+                await fetch('/api/v1/browser-extension/interact', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    selector: interactTask.inputs?.selector || (isYouTubePlay ? "ytd-video-renderer a#video-title, #contents ytd-video-renderer a#thumbnail, a#video-title" : "button.btn-primary[type='submit']"),
+                    action: interactTask.inputs?.interaction_action || 'click',
+                    value: interactTask.inputs?.value,
+                    workflow_id: executingMessage.workflowData?.workflow_id,
+                  }),
+                });
+              } catch (err) {
+                console.warn('Backend browser interact API call failed:', err);
+              }
+            }, 2000);
+          } else if (isYouTubePlay) {
+            setTimeout(async () => {
+              try {
+                await fetch('/api/v1/browser-extension/interact', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    selector: "ytd-video-renderer a#video-title, #contents ytd-video-renderer a#thumbnail, a#video-title",
+                    action: 'click',
+                    workflow_id: executingMessage.workflowData?.workflow_id,
+                  }),
+                });
+              } catch (err) {
+                console.warn('Backend browser interact API call failed:', err);
+              }
+            }, 2000);
+          }
+
           const isSubmitAction = lowerGoal.includes('press submit') || lowerGoal.includes('click submit') || lowerGoal.includes('submit issue') || lowerGoal.includes('submit new issue');
 
           completedMessage = {
@@ -422,6 +450,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
               ? 'Dispatched click interaction to "Submit new issue" button on your active GitHub tab!'
               : siteName === 'GitHub'
               ? `Successfully opened GitHub issue form with pre-filled title "${query || 'New Issue'}": ${targetUrl}`
+              : isYouTubePlay
+              ? `Successfully launched YouTube, searched for "${query || 'lofi music'}", and initiated video playback!`
               : `Successfully opened browser to ${siteName}${query ? ` and searched for "${query}"` : ''}: ${targetUrl}`,
             status: 'completed',
             timestamp: new Date().toISOString(),
@@ -429,7 +459,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               url: targetUrl,
               siteName,
               query: query || undefined,
-              action: isSubmitAction ? 'clicked submit' : query ? 'searched' : 'navigated',
+              action: isSubmitAction ? 'clicked submit' : isYouTubePlay ? 'interacted' : query ? 'searched' : 'navigated',
               status: 'COMPLETED',
             },
           };
