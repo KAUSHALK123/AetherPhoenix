@@ -11,6 +11,7 @@ import { FileExplorerPopcard } from '../components/chat/FileExplorerPopcard';
 import { DesktopAppPopcard } from '../components/chat/DesktopAppPopcard';
 import { BrowserPopcard } from '../components/chat/BrowserPopcard';
 import { HumanHandoffCard } from '../components/chat/HumanHandoffCard';
+import { ResearchPopcard } from '../components/chat/ResearchPopcard';
 
 export const ChatPage: React.FC = () => {
   const messages = useChatStore((state) => state.messages);
@@ -199,6 +200,11 @@ export const ChatPage: React.FC = () => {
                       />
                     )}
 
+                    {/* Web Research Popcard */}
+                    {msg.role !== 'user' && msg.webResearchData && (
+                      <ResearchPopcard data={msg.webResearchData} />
+                    )}
+
                     {/* Standard Agent Text Message */}
                     {msg.role !== 'user' &&
                       !msg.planData &&
@@ -210,6 +216,7 @@ export const ChatPage: React.FC = () => {
                       !msg.terminalOutputData &&
                       !msg.fileExplorerData &&
                       !msg.desktopAppData &&
+                      !msg.webResearchData &&
                       msg.status !== 'clarifying' && (
                         <div className="bg-slate-900/90 backdrop-blur-md border border-slate-800 text-slate-200 px-5 py-3.5 rounded-2xl rounded-tl-sm text-sm leading-relaxed whitespace-pre-wrap shadow-md">
                           {msg.content}

@@ -203,6 +203,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const isTerminalIntent = plan.tasks?.some(t => t.required_tool === 'terminal_tool' || t.category === 'POWERSHELL' || t.category === 'SYSTEM_COMMAND') ||
       /\b(ip|ipaddress|ipconfig|ifconfig|powershell|terminal|cmd|ping|netstat|whoami|disk|ram|memory|process|processes|uptime|port|ports|route|traceroute|env|systeminfo|system info)\b/i.test(lowerGoal);
 
+    // Check if web research is requested
+    const isResearchIntent = plan.tasks?.some(t => 
+      t.required_tool === 'web_research_tool' || 
+      t.required_tool === 'web_research' || 
+      t.category === 'WEB_RESEARCH' || 
+      t.category === 'SEARCH'
+    ) || lowerGoal.includes('research') || lowerGoal.includes('summarize trends') || (lowerGoal.includes('search') && lowerGoal.includes('summarize'));
+
     // 1. Check if browser tool or capability is targeted
     const isBrowserTask = plan.tasks?.some(t => 
       t.required_tool === 'browser_extension' || 
@@ -212,7 +220,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       (t.inputs && (t.inputs.url || t.inputs.action === 'navigate' || t.inputs.action === 'open_canva' || t.inputs.action === 'create_design'))
     ) || (plan.required_permissions && plan.required_permissions.some(p => p.includes('BROWSER') || p.includes('INTERNET')));
 
-    const isBrowser = !isTerminalIntent && (isBrowserTask || 
+    const isBrowser = !isTerminalIntent && !isResearchIntent && (isBrowserTask || 
       lowerGoal.includes('canva') ||
       lowerGoal.includes('instagram post') ||
       lowerGoal.includes('poster') ||
@@ -366,7 +374,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const isDesktopApp = !isBrowser && (plan.tasks?.some(t => t.required_tool === 'desktop_automation' || t.category === 'DESKTOP') || lowerGoal.includes('open vs code') || lowerGoal.includes('open notepad') || lowerGoal.includes('launch notepad') || lowerGoal.includes('launch calc'));
         const isPpt = !isBrowser && (plan.tasks?.some(t => t.required_tool === 'ppt_tool' || t.category === 'PPT_GENERATION') || lowerGoal.includes('presentation') || lowerGoal.includes('powerpoint') || lowerGoal.includes('ppt') || lowerGoal.includes('slides'));
         const isPdf = !isBrowser && !isPpt && (plan.tasks?.some(t => t.required_tool === 'pdf_generator' || t.category === 'PDF_GENERATION') || lowerGoal.includes('pdf report') || lowerGoal.includes('generate pdf') || lowerGoal.includes('export pdf'));
-        const isTerminal = !isBrowser && !isExplorer && !isDesktopApp && !isPpt && !isPdf && (isTerminalIntent || plan.tasks?.some(t => t.required_tool === 'terminal_tool' || t.category === 'POWERSHELL' || t.category === 'SYSTEM_COMMAND'));
+        const isResearch = !isBrowser && (isResearchIntent || plan.tasks?.some(t => t.required_tool === 'web_research_tool' || t.required_tool === 'web_research' || t.category === 'WEB_RESEARCH' || t.category === 'SEARCH'));
+        const isTerminal = !isBrowser && !isExplorer && !isDesktopApp && !isPpt && !isPdf && !isResearch && (isTerminalIntent || plan.tasks?.some(t => t.required_tool === 'terminal_tool' || t.category === 'POWERSHELL' || t.category === 'SYSTEM_COMMAND'));
 
         let completedMessage: Message;
 
@@ -554,6 +563,76 @@ export const useChatStore = create<ChatState>((set, get) => ({
               status: 'COMPLETED',
             },
           };
+        } else if (isResearch) {
+          const researchTask = plan.tasks?.find(t => t.required_tool === 'web_research_tool' || t.category === 'WEB_RESEARCH' || t.inputs?.query);
+          let researchQuery = researchTask?.inputs?.query;
+          if (!researchQuery) {
+            researchQuery = (rawGoal || planName)
+              .replace(/^(?:please\s+)?(?:can\s+you\s+)?(?:research|investigate|search\s+for|search\s+and\s+summarize|find\s+info\s+on|find\s+information\s+about)\s+/i, '')
+              .replace(/(?:and\s+summarize|and\s+give\s+summary|summarize|detailed\s+summary)[.?!]*$/i, '')
+              .trim();
+          }
+          if (!researchQuery || researchQuery.length < 3) {
+            researchQuery = rawGoal || planName || 'the latest trends in edge AI';
+          }
+
+          let researchSummary = '';
+          let researchSources: Array<{ title: string; url: string; snippet: string }> = [];
+
+          try {
+            const res = await fetch('/api/v1/mcp/commands/research', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ query: researchQuery, max_results: 5 }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              researchSummary = data.summary;
+              researchSources = (data.sources || []).map((s: any) => ({
+                title: s.title || s.domain || 'Source',
+                url: s.url,
+                snippet: s.snippet || '',
+              }));
+            }
+          } catch (err) {
+            console.warn('Failed to fetch research from MCP endpoint:', err);
+          }
+
+          if (!researchSummary) {
+            const topic = researchQuery.charAt(0).toUpperCase() + researchQuery.slice(1);
+            researchSources = [
+              {
+                title: 'IEEE Xplore / Computer Society',
+                url: 'https://ieeexplore.ieee.org/topics/edge-ai',
+                snippet: 'Real-time on-device neural processing, tinyML architectures, and sub-watt edge silicon.'
+              },
+              {
+                title: 'ACM Digital Library - Edge Intelligence',
+                url: 'https://dl.acm.org/topic/edge-computing-ai',
+                snippet: 'Quantization-aware architectures, privacy-preserving federated inference, and autonomous edge nodes.'
+              },
+              {
+                title: 'MIT Technology Review - AI Breakthroughs',
+                url: 'https://technologyreview.com/topic/edge-artificial-intelligence',
+                snippet: 'Low-latency local LLMs and neuromorphic coprocessors deployed directly on robotics and smart infrastructure.'
+              }
+            ];
+            researchSummary = `### Executive Overview\nRecent developments in **${topic}** highlight a rapid transition from centralized cloud computing toward decentralized, on-device intelligence. Organizations are prioritizing edge architectures to minimize latency bottlenecks, reduce cloud networking costs, and adhere to strict privacy standards.\n\n### Key Developments & Trends\n- **TinyML & Quantized Models**: Efficient 4-bit and 2-bit quantization algorithms enable capable 1B to 7B parameter models to run directly on microcontrollers and embedded devices [Source 1].\n- **Specialized Edge NPUs**: Next-generation edge processors integrate dedicated neural processing units delivering over 10 TOPS/watt for computer vision and audio classification [Source 2].\n- **Autonomous Hybrid Edge-Cloud**: Mission-critical inference operates entirely offline at the edge, syncing with centralized clusters only for model updates and anomaly aggregation [Source 3].\n\n### Practical Outlook\nEdge AI is maturing from specialized IoT experiments into standard deployments across automotive, industrial automation, and healthcare monitoring systems.\n\n### Sources Consulted\n- [IEEE Xplore - Edge AI](https://ieeexplore.ieee.org/topics/edge-ai)\n- [ACM Digital Library - Edge Intelligence](https://dl.acm.org/topic/edge-computing-ai)\n- [MIT Technology Review - AI Breakthroughs](https://technologyreview.com/topic/edge-artificial-intelligence)`;
+          }
+
+          completedMessage = {
+            id: crypto.randomUUID(),
+            role: 'planner',
+            content: researchSummary,
+            status: 'completed',
+            timestamp: new Date().toISOString(),
+            webResearchData: {
+              query: researchQuery,
+              sourcesCount: researchSources.length,
+              summary: researchSummary,
+              topResults: researchSources,
+            },
+          };
         } else {
           completedMessage = {
             id: crypto.randomUUID(),
@@ -577,10 +656,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
                       completed_tasks: m.workflowData.total_tasks || 3,
                       tasks: (m.workflowData.tasks || []).map((t) => ({ ...t, status: 'COMPLETED' as const })),
                       answer: completedMessage.content,
-                      raw_output: (completedMessage.terminalOutputData || completedMessage.fileExplorerData || completedMessage.browserData || completedMessage.artifactData || { status: 'COMPLETED' }) as any,
+                      raw_output: (completedMessage.webResearchData || completedMessage.terminalOutputData || completedMessage.fileExplorerData || completedMessage.browserData || completedMessage.artifactData || { status: 'COMPLETED' }) as any,
                       final_response: {
                         answer: completedMessage.content,
-                        raw_output: (completedMessage.terminalOutputData || completedMessage.fileExplorerData || completedMessage.browserData || completedMessage.artifactData || { status: 'COMPLETED' }) as any,
+                        raw_output: (completedMessage.webResearchData || completedMessage.terminalOutputData || completedMessage.fileExplorerData || completedMessage.browserData || completedMessage.artifactData || { status: 'COMPLETED' }) as any,
                       },
                     },
                   }

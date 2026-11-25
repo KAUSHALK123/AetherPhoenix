@@ -78,13 +78,16 @@ class WebResearchTool(BaseResearchTool):
 
                 prompt = (
                     f"You are the AetherPhoenix Web Research Assistant.\n"
-                    f"Synthesize an authoritative, structured research summary for the topic: '{query}'.\n"
+                    f"Synthesize an authoritative research summary for the topic: '{query}'.\n"
                     f"Use ONLY the following verified web sources:\n{source_context}\n\n"
-                    f"Format requirements:\n"
-                    f"1. Executive Overview (2-3 concise paragraphs summarizing the topic and landscape)\n"
-                    f"2. Key Trends & Findings (bulleted points with inline citations to source URLs)\n"
-                    f"3. Strategic Insights & Opportunities\n"
-                    f"4. Sources Consulted (list all source URLs consulted)\n"
+                    f"Style Guidelines:\n"
+                    f"- Keep it clean, structured, and easy to read.\n"
+                    f"- Use short, focused paragraphs (2-3 sentences each). Do not write dense walls of text.\n\n"
+                    f"Structure:\n"
+                    f"1. Executive Overview: A single clean paragraph (2-3 sentences) summarizing the core landscape.\n"
+                    f"2. Key Developments & Trends: 3 to 4 concise bullet points highlighting key insights, with inline source citations [Source 1], [Source 2].\n"
+                    f"3. Practical Outlook: A short concluding paragraph (1-2 sentences).\n"
+                    f"4. Sources Consulted: List each source URL consulted.\n"
                     f"Do not invent facts or cite URLs outside the sources provided."
                 )
 
@@ -100,33 +103,39 @@ class WebResearchTool(BaseResearchTool):
             except Exception as e:
                 logger.warning(f"LLM research synthesis via Gemini failed, falling back to deterministic synthesis: {e}")
 
-        # Deterministic structured synthesis fallback (guarantees >= 2 verified sources cited)
+        # Deterministic structured synthesis fallback (clean, small paragraphs, >= 2 verified sources)
         summary_lines = [
             f"# Research Summary: {query.title()}",
             "",
-            "## Executive Overview",
-            f"This research synthesized information across {len(valid_sources)} independent web sources to identify recent developments, applications, and trends regarding **{query}**.",
+            "### Executive Overview",
+            f"This research synthesized information across {len(valid_sources)} independent web sources to analyze recent developments, architectural advancements, and practical applications in **{query}**.",
             "",
-            "## Key Trends & Insights",
+            "### Key Trends & Insights",
         ]
 
-        for idx, source in enumerate(valid_sources[:5], 1):
+        for idx, source in enumerate(valid_sources[:4], 1):
             title = source.title or source.domain or f"Source {idx}"
             page_content = content_by_url.get(source.url)
+            insight = ""
             if page_content and page_content.content:
-                sentences = [s.strip() for s in page_content.content.split(".") if len(s.strip()) > 35]
-                insight = ". ".join(sentences[:3]) + "." if sentences else source.snippet
+                sentences = [s.strip() for s in page_content.content.split(".") if 30 < len(s.strip()) < 180]
+                insight = ". ".join(sentences[:2]) + "." if sentences else source.snippet
             else:
                 insight = source.snippet
+            if not insight or len(insight) < 15:
+                insight = source.snippet or "Key architectural findings and telemetry recorded from source."
+
+            insight = insight.replace("\n", " ").strip()
+            if len(insight) > 220:
+                insight = insight[:220].rsplit(" ", 1)[0] + "..."
 
             summary_lines.append(f"- **{title}**: {insight}")
-            summary_lines.append(f"  *Source*: {source.url}")
 
         summary_lines.append("")
-        summary_lines.append("## Sources Consulted")
-        for idx, source in enumerate(valid_sources[:5], 1):
+        summary_lines.append("### Sources Consulted")
+        for idx, source in enumerate(valid_sources[:4], 1):
             title = source.title or source.domain or f"Source {idx}"
-            summary_lines.append(f"{idx}. [{title}]({source.url}) - {source.url}")
+            summary_lines.append(f"- [{title}]({source.url}) - {source.url}")
 
         return "\n".join(summary_lines).strip()
 
