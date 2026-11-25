@@ -237,6 +237,12 @@ class LLMPlanner:
             "apply",
             "save",
             "download",
+            "research",
+            "summarize",
+            "investigate",
+            "search",
+            "play",
+            "listen",
         ]
         domain_targets = [
             "canva",
@@ -253,6 +259,14 @@ class LLMPlanner:
             "file",
             "terminal",
             "thumbnail",
+            "research",
+            "trends",
+            "ai",
+            "web",
+            "youtube",
+            "music",
+            "song",
+            "video",
         ]
         has_action = any(a in lower for a in action_verbs)
         has_domain = any(d in lower for d in domain_targets)
@@ -482,6 +496,125 @@ class LLMPlanner:
                     execution_summary=(
                         f"**PowerPoint Execution Plan**\n- **Goal**: {request.message}\n"
                         f"- **Tasks**: {len(ppt_tasks)}\n- **Tool**: ppt_tool\n"
+                    ),
+                    parallel_groups=[[t.task_id] for t in leaf_tasks],
+                )
+                return PlannerResponse(
+                    session_id=request.session_id,
+                    status="ready",
+                    reply=output.model_dump_json(),
+                    action="execute_plan",
+                )
+
+        # Web Research & Sourced Synthesis Intent
+        if (
+            any(
+                w in lower
+                for w in [
+                    "research",
+                    "investigate",
+                    "find information about",
+                    "find info on",
+                    "summarize trends",
+                    "latest trends",
+                ]
+            )
+            or ("search" in lower and "summarize" in lower)
+        ) and not ("canva" in lower or "instagram" in lower or "poster" in lower):
+            if (
+                "web_research_tool" in registered_tools
+                or "web_research" in registered_tools
+            ):
+                from app.planner.decomposer import TaskDecompositionEngine
+
+                research_tasks = TaskDecompositionEngine()._decompose_research_goal(
+                    request.message, workflow_id
+                )
+                leaf_tasks = [t for t in research_tasks if t.task_type == TaskType.LEAF]
+                output = PlannerOutput(
+                    metadata=PlanMetadata(
+                        workflow_id=str(workflow_id),
+                        session_id=request.session_id,
+                        goal=request.message,
+                    ),
+                    workflow_spec=f"Web Research Workflow for {request.message}",
+                    tasks=research_tasks,
+                    dependency_graph={
+                        t.task_id: [str(d) for d in t.dependencies] for t in leaf_tasks
+                    },
+                    estimated_time_seconds=90,
+                    risks=[],
+                    required_permissions=["INTERNET"],
+                    expected_outputs=[
+                        "Structured research summary with source citations"
+                    ],
+                    confidence_score=0.95,
+                    execution_summary=(
+                        f"**Web Research Execution Plan**\n- **Goal**: {request.message}\n"
+                        f"- **Tasks**: {len(research_tasks)}\n- **Tool**: web_research_tool\n"
+                    ),
+                    parallel_groups=[[t.task_id] for t in leaf_tasks],
+                )
+                return PlannerResponse(
+                    session_id=request.session_id,
+                    status="ready",
+                    reply=output.model_dump_json(),
+                    action="execute_plan",
+                )
+
+        # YouTube & General Browser Interaction Intent
+        if (
+            any(
+                w in lower
+                for w in [
+                    "youtube",
+                    "utube",
+                    "play lofi",
+                    "play music",
+                    "open browser",
+                    "navigate to",
+                    "browse to",
+                ]
+            )
+            and not ("canva" in lower or "instagram" in lower or "poster" in lower)
+        ):
+            browser_tool_name = next(
+                (name for name in ["browser_automation", "browser_tool", "browser_adapter"] if name in registered_tools),
+                None,
+            )
+            if browser_tool_name:
+                from app.planner.decomposer import TaskDecompositionEngine
+
+                browser_tasks = TaskDecompositionEngine()._decompose_browser_goal(
+                    request.message, workflow_id
+                )
+                # Ensure leaf tasks use the registered browser tool name
+                for t in browser_tasks:
+                    if t.task_type == TaskType.LEAF and not t.required_tool:
+                        t.required_tool = browser_tool_name
+                    elif t.required_tool in ("browser_extension", "browser_tool", "browser_adapter"):
+                        t.required_tool = browser_tool_name
+
+                leaf_tasks = [t for t in browser_tasks if t.task_type == TaskType.LEAF]
+                output = PlannerOutput(
+                    metadata=PlanMetadata(
+                        workflow_id=str(workflow_id),
+                        session_id=request.session_id,
+                        goal=request.message,
+                    ),
+                    workflow_spec=f"Browser Workflow for {request.message}",
+                    tasks=browser_tasks,
+                    dependency_graph={
+                        t.task_id: [str(d) for d in t.dependencies] for t in leaf_tasks
+                    },
+                    estimated_time_seconds=60,
+                    risks=["Live browser interaction"],
+                    required_permissions=["BROWSER_ACCESS", "INTERNET"],
+                    expected_outputs=["Completed browser interaction"],
+                    confidence_score=0.95,
+                    execution_summary=(
+                        f"**Browser Execution Plan**\n- **Goal**: {request.message}\n"
+                        f"- **Tasks**: {len(browser_tasks)}\n- **Tool**: {browser_tool_name}\n"
                     ),
                     parallel_groups=[[t.task_id] for t in leaf_tasks],
                 )

@@ -40,13 +40,14 @@ class DuckDuckGoSearchEngine(SearchEngineInterface):
 
     def __init__(self, timeout_seconds: float = 10.0):
         self.timeout_seconds = timeout_seconds
-        self.user_agent = (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        # Using standard Mozilla/5.0 ensures DuckDuckGo returns clean HTML without anti-bot redirection
+        self.user_agent = "Mozilla/5.0"
+        self.fallback_user_agent = (
+            "AetherPhoenixResearch/1.0 (https://github.com/aetherphoenix; contact@example.com)"
         )
 
     async def search(self, query: str, max_results: int = 5) -> List[SourceMetadata]:
-        """Performs search and parses source metadata."""
+        """Performs search and parses source metadata, with automated fallback if blocked."""
         if not query or not query.strip():
             logger.warning("Empty search query provided to DuckDuckGoSearchEngine")
             return []
@@ -64,47 +65,102 @@ class DuckDuckGoSearchEngine(SearchEngineInterface):
                 timeout=self.timeout_seconds, follow_redirects=True
             ) as client:
                 response = await client.post(url, data=data, headers=headers)
-                response.raise_for_status()
-                html = response.text
+                if response.status_code == 200:
+                    html = response.text
+                    soup = BeautifulSoup(html, "html.parser")
+                    results = soup.select(".result")
 
-            soup = BeautifulSoup(html, "html.parser")
-            results = soup.select(".result")
+                    for result in results[:max_results]:
+                        title_tag = result.select_one(".result__title a")
+                        snippet_tag = result.select_one(".result__snippet")
 
-            for result in results[:max_results]:
-                title_tag = result.select_one(".result__title a")
-                snippet_tag = result.select_one(".result__snippet")
+                        if not title_tag:
+                            continue
 
-                if not title_tag:
-                    continue
+                        raw_href = title_tag.get("href", "")
+                        target_url = clean_ddg_url(raw_href)
+                        title_text = title_tag.get_text(strip=True)
+                        snippet_text = snippet_tag.get_text(strip=True) if snippet_tag else ""
+                        domain_name = extract_domain(target_url)
 
-                raw_href = title_tag.get("href", "")
-                target_url = clean_ddg_url(raw_href)
-                title_text = title_tag.get_text(strip=True)
-                snippet_text = snippet_tag.get_text(strip=True) if snippet_tag else ""
-                domain_name = extract_domain(target_url)
+                        if target_url and target_url.startswith("http"):
+                            sources.append(
+                                SourceMetadata(
+                                    url=target_url,
+                                    title=title_text,
+                                    snippet=snippet_text,
+                                    domain=domain_name,
+                                    status=SourceStatus.SUCCESS,
+                                )
+                            )
 
-                if target_url and target_url.startswith("http"):
-                    sources.append(
-                        SourceMetadata(
-                            url=target_url,
-                            title=title_text,
-                            snippet=snippet_text,
-                            domain=domain_name,
-                            status=SourceStatus.SUCCESS,
-                        )
-                    )
-
-            logger.info("Search query completed", query=query, count=len(sources))
-            return sources
+            if sources:
+                logger.info("DuckDuckGo search completed", query=query, count=len(sources))
+                return sources[:max_results]
 
         except Exception as exc:
-            logger.error(
-                "DuckDuckGo web search failed",
+            logger.warning(
+                "Primary DuckDuckGo web search encountered issue; trying Wikipedia fallback",
                 query=query,
                 error=str(exc),
-                exc_info=True,
             )
-            raise RuntimeError(f"Web search engine failure: {str(exc)}") from exc
+
+        # Fallback search engine: Wikipedia srsearch API
+        try:
+            wiki_sources = await self._search_wikipedia(query, max_results=max_results)
+            if wiki_sources:
+                logger.info(
+                    "Wikipedia fallback search completed", query=query, count=len(wiki_sources)
+                )
+                return wiki_sources
+        except Exception as wiki_exc:
+            logger.warning(
+                "Wikipedia fallback search failed", query=query, error=str(wiki_exc)
+            )
+
+        return sources[:max_results]
+
+    async def _search_wikipedia(
+        self, query: str, max_results: int = 5
+    ) -> List[SourceMetadata]:
+        """Fallback search using Wikipedia's search API."""
+        api_url = "https://en.wikipedia.org/w/api.php"
+        params = {
+            "action": "query",
+            "list": "search",
+            "srsearch": query,
+            "format": "json",
+            "srlimit": max_results,
+        }
+        headers = {"User-Agent": self.fallback_user_agent}
+
+        sources: List[SourceMetadata] = []
+        async with httpx.AsyncClient(
+            timeout=self.timeout_seconds, follow_redirects=True
+        ) as client:
+            resp = await client.get(api_url, params=params, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+            search_items = data.get("query", {}).get("search", [])
+
+            for item in search_items[:max_results]:
+                title = item.get("title", "")
+                snippet_html = item.get("snippet", "")
+                snippet = BeautifulSoup(snippet_html, "html.parser").get_text(strip=True)
+                page_slug = urllib.parse.quote(title.replace(" ", "_"))
+                target_url = f"https://en.wikipedia.org/wiki/{page_slug}"
+
+                sources.append(
+                    SourceMetadata(
+                        url=target_url,
+                        title=title,
+                        snippet=snippet,
+                        domain="wikipedia.org",
+                        status=SourceStatus.SUCCESS,
+                    )
+                )
+
+        return sources
 
 
 class MockSearchEngine(SearchEngineInterface):

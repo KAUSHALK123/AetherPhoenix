@@ -313,6 +313,27 @@ class OutputValidationService:
                             "could not be verified (no-op output)"
                         )
 
+        # Research contract check: A research task is complete ONLY when a synthesized answer
+        # with at least 2 sources exists (never leave at "opened a page").
+        from shared.contracts.task import TaskCategory
+        is_research = (
+            getattr(task, "category", None) == "web_research"
+            or getattr(task, "category", None) == TaskCategory.WEB_RESEARCH
+            or "research" in task.task_name.lower()
+        )
+        if is_research and not result.artifacts:
+            out_dict = result.output if isinstance(result.output, dict) else {}
+            sources = out_dict.get("sources", [])
+            summary = out_dict.get("summary", "") or out_dict.get("chat_reply", "")
+            if not summary or len(str(summary).strip()) < 50:
+                is_valid = False
+                issues.append("Research output must contain a substantive synthesized summary.")
+            if not isinstance(sources, list) or len(sources) < 2:
+                is_valid = False
+                issues.append(
+                    f"Research task requires at least 2 verified sources, got {len(sources) if isinstance(sources, list) else 0}."
+                )
+
         return is_valid, issues
 
     def _check_failure_criteria(

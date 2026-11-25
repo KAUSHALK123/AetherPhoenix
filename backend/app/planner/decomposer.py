@@ -534,76 +534,61 @@ class TaskDecompositionEngine:
         return tasks
 
     def _decompose_research_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
-        """Decomposes a research/information retrieval goal."""
+        """Decomposes a research/information retrieval goal into executable tasks."""
         phase_root = Task(
             workflow_id=workflow_id,
-            task_name="Phase 1: Research Execution",
-            description=f"Conduct research for goal: '{goal}'",
+            task_name="Phase 1: Research & Synthesis Execution",
+            description=f"Conduct research and synthesis for goal: '{goal}'",
             task_type=TaskType.PHASE,
             assigned_agent="System",
-            success_criteria=["All child leaf tasks completed successfully"],
+            success_criteria=["Synthesized research report with at least 2 sources generated"],
             failure_criteria=["One or more child tasks failed"],
             required_tool="",
             category=TaskCategory.WEB_RESEARCH,
-            priority=TaskPriority.HIGH,
+            priority=TaskPriority.LOW,
             dependencies=[],
-            expected_output="Comprehensive research summary",
-            estimated_duration_seconds=180,
+            expected_output="Structured research summary with source citations",
+            estimated_duration_seconds=120,
             status=TaskStatus.CREATED,
         )
 
-        task_search = Task(
+        lower_goal = goal.lower()
+        # Clean topic from query prefixes
+        topic = re.sub(
+            r"^(?:research|investigate|find info on|find information about|look up|search for|summarize trends in|summarize)\s+",
+            "",
+            goal,
+            flags=re.IGNORECASE,
+        ).strip()
+        topic = re.sub(r"\s+and\s+summarize.*$", "", topic, flags=re.IGNORECASE).strip()
+        if not topic:
+            topic = goal
+
+        target_format = "chat"
+        if "pdf" in lower_goal:
+            target_format = "pdf"
+        elif "ppt" in lower_goal or "presentation" in lower_goal or "slide" in lower_goal:
+            target_format = "pptx"
+
+        task_research = Task(
             parent_task_id=phase_root.task_id,
             workflow_id=workflow_id,
-            task_name="Execute Web Search",
-            description=f"Query search engines for topics in '{goal}'",
+            task_name=f"Web Research & Sourced Synthesis: {topic[:40]}",
+            description=f"Search web, extract content from top results, and synthesize sourced summary for '{topic}'",
             assigned_agent="WorkerAgent",
-            required_tool="",
-            category=TaskCategory.SEARCH,
-            priority=TaskPriority.HIGH,
+            required_tool="web_research_tool",
+            category=TaskCategory.WEB_RESEARCH,
+            priority=TaskPriority.LOW,
             dependencies=[],
-            expected_output="Search result links and snippets",
-            success_criteria=["Relevant URLs are found"],
-            failure_criteria=["No search results returned"],
-            estimated_duration_seconds=60,
+            expected_output="Structured research summary with source citations",
+            success_criteria=["Synthesized answer with at least 2 verified sources exists"],
+            failure_criteria=["Search failed or fewer than 2 sources found"],
+            inputs={"query": topic, "max_results": 5, "target_format": target_format},
+            estimated_duration_seconds=90,
             status=TaskStatus.CREATED,
         )
 
-        task_extract = Task(
-            parent_task_id=phase_root.task_id,
-            workflow_id=workflow_id,
-            task_name="Extract Content Details",
-            description="Browse search results and extract key findings",
-            assigned_agent="WorkerAgent",
-            required_tool="",
-            category=TaskCategory.BROWSER,
-            priority=TaskPriority.MEDIUM,
-            dependencies=[task_search.task_id],
-            expected_output="Extracted text and notes",
-            success_criteria=["Text content is extracted from URLs"],
-            failure_criteria=["Failed to scrape pages"],
-            estimated_duration_seconds=60,
-            status=TaskStatus.CREATED,
-        )
-
-        task_synthesize = Task(
-            parent_task_id=phase_root.task_id,
-            workflow_id=workflow_id,
-            task_name="Synthesize Research Report",
-            description="Compile findings into a structured summary report",
-            assigned_agent="WorkerAgent",
-            required_tool="",
-            category=TaskCategory.OTHER,
-            priority=TaskPriority.MEDIUM,
-            dependencies=[task_extract.task_id],
-            expected_output="Summary research report",
-            success_criteria=["A cohesive summary is generated"],
-            failure_criteria=["Unable to synthesize extracted data"],
-            estimated_duration_seconds=60,
-            status=TaskStatus.CREATED,
-        )
-
-        return [phase_root, task_search, task_extract, task_synthesize]
+        return [phase_root, task_research]
 
     def _decompose_coding_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
         """Decomposes a software/coding goal into task hierarchy."""
@@ -1127,6 +1112,14 @@ class TaskDecompositionEngine:
     def _decompose_browser_goal(self, goal: str, workflow_id: UUID) -> List[Task]:
         """Decomposes a browser automation / navigation / search goal into tasks."""
         lower_goal = goal.lower()
+
+        # If this is a research or synthesis request, route to the research workflow
+        # so it never stops at merely opening a search engine page unattended.
+        if (
+            any(w in lower_goal for w in ["research", "summarize", "investigate", "report", "trends"])
+            or ("search" in lower_goal and "summarize" in lower_goal)
+        ) and not ("youtube" in lower_goal or "canva" in lower_goal):
+            return self._decompose_research_goal(goal, workflow_id)
 
         target_url = "https://www.google.com"
         site_name = "Web Browser"

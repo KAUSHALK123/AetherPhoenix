@@ -444,6 +444,17 @@ class FailureDetectorService:
                 if "stdout" in result.output:
                     return False
 
+            # Semantic match for Web Research results
+            if getattr(task, "category", None) == TaskCategory.WEB_RESEARCH or task.required_tool in (
+                "web_research_tool",
+                "web_research",
+            ):
+                if (
+                    "summary" in result.output
+                    or "chat_reply" in result.output
+                ) and "sources" in result.output:
+                    return False
+
         # Task category compatibility check: if task succeeded and produced artifacts matching category
         if result.success and result.artifacts:
             if getattr(task, "category", None) == TaskCategory.PPT_GENERATION:
